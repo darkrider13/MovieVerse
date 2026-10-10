@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f1120">
+<meta name="theme-color" content="#0a0b18">
 <title>MovieVerse</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0f1120;--s:#181b2f;--s2:#222640;--ink:#eef0fb;--mut:#9aa0c0;--line:#2b3052;--acc:#ff5d73;--onacc:#fff;--w:#2fbf85;--p:#e8a33d;--n:#9a7bff}
-@media(prefers-color-scheme:light){:root{--bg:#f3f4fa;--s:#fff;--s2:#eceefa;--ink:#161830;--mut:#5c6286;--line:#d9dcef;--acc:#e0344f;--w:#12865a;--p:#a96600;--n:#6a46d9}}
+:root{--bg:#0a0b18;--nav:rgba(10,11,24,.55);--dlg:rgba(22,24,46,.82);--s:rgba(255,255,255,.07);--s2:rgba(255,255,255,.1);--ink:#f1f2fc;--mut:#a3a9c9;--line:rgba(255,255,255,.15);--acc:#ff1a1a;--onacc:#fff;--w:#2fbf85;--p:#e8a33d;--n:#9a7bff;--g:radial-gradient(60% 40% at 12% 0%,rgba(255,26,26,.30),transparent 70%),radial-gradient(55% 45% at 100% 32%,rgba(60,90,255,.30),transparent 70%),radial-gradient(65% 50% at 28% 100%,rgba(150,70,255,.24),transparent 70%)}
+@media(prefers-color-scheme:light){:root{--bg:#eceefb;--nav:rgba(236,238,251,.6);--dlg:rgba(255,255,255,.85);--s:rgba(255,255,255,.55);--s2:rgba(255,255,255,.7);--ink:#161830;--mut:#575d82;--line:rgba(20,24,70,.14);--acc:#e00000;--w:#12865a;--p:#a96600;--n:#6a46d9;--g:radial-gradient(60% 40% at 12% 0%,rgba(255,60,60,.22),transparent 70%),radial-gradient(55% 45% at 100% 32%,rgba(90,120,255,.25),transparent 70%),radial-gradient(65% 50% at 28% 100%,rgba(170,110,255,.2),transparent 70%)}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 'Bricolage Grotesque',system-ui,-apple-system,Roboto,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
 button,input,select,textarea{font:inherit;color:inherit}
-.nav{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top)) 16px 10px}
+.nav{position:sticky;top:0;z-index:5;background:var(--nav);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top)) 16px 10px}
 .nav-in{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .brand{font-size:24px;font-weight:800;letter-spacing:-.03em;margin-right:auto}
 .brand i{color:var(--acc);font-style:normal}
@@ -71,6 +71,9 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 #mdlg{width:min(90vw,380px)}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90vw}
 #toast.show{opacity:1}
+body::before{content:"";position:fixed;top:0;left:0;right:0;bottom:0;background:var(--g);z-index:-1;pointer-events:none}
+.hero,.fold,.seg,.btn,.pill,.hit{-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+dialog{background:var(--dlg);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);border:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -145,20 +148,18 @@ label{display:block;font-weight:700;margin:12px 0 4px}
     <button class="btn pri" id="ksave">Save key</button>
     <button class="btn" id="exp">Export backup</button>
     <button class="btn" id="imp">Import backup</button>
-    <button class="btn" id="impt">Paste backup text</button>
     <button class="btn" data-close>Close</button>
   </div>
   <input type="file" id="file" accept=".json" hidden>
 </dialog>
 
 <dialog id="mdlg"><h2 id="mt" style="margin-top:0"></h2><p class="note" id="mx"></p><input type="text" id="mi" hidden><div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn" id="mno">Cancel</button><button class="btn pri" id="mok">OK</button></div></dialog>
-<dialog id="bdlg"><h2 id="bt" style="margin-top:0"></h2><p class="note" id="bn"></p><textarea id="bx" rows="8"></textarea><div class="row" style="margin-top:12px"><button class="btn pri" id="bgo">Copy</button><button class="btn" data-close>Close</button></div></dialog>
 <div id="toast"></div>
 <script>
 var $=function(s){return document.querySelector(s)};
 var IMG='https://image.tmdb.org/t/p/';
 var LS=window.localStorage;
-var movies=JSON.parse(LS.getItem('shelf.movies')||'[]');
+var movies=[],lim=60,db=null,qt;
 var key=LS.getItem('shelf.key')||'';
 var tab='all',country='all',q='',pick=null,editId=null,rating=0,timer;
 var uc='',upage=1,uitems=[];
@@ -166,7 +167,11 @@ var folders=JSON.parse(LS.getItem('shelf.folders')||'[]'),folder=null,fstat='wat
 var FI='<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
 var SL={watched:'Watched',plan:'Plan to watch',watching:'Watching'};
 var CO=[['','All countries'],['BD','Bangladesh'],['IN','India'],['US','United States'],['KR','South Korea'],['JP','Japan'],['GB','United Kingdom'],['FR','France'],['CN','China'],['TR','Turkey'],['TH','Thailand'],['ES','Spain'],['DE','Germany'],['IT','Italy'],['PK','Pakistan']];
-function store(){LS.setItem('shelf.movies',JSON.stringify(movies))}
+function idb(){return new Promise(function(res,rej){var r=indexedDB.open('movieverse',1);r.onupgradeneeded=function(){r.result.createObjectStore('m',{keyPath:'id'})};r.onsuccess=function(){res(r.result)};r.onerror=function(){rej(r.error)}})}
+function tx(fn){return new Promise(function(res,rej){var t=db.transaction('m','readwrite');fn(t.objectStore('m'));t.oncomplete=res;t.onerror=function(){rej(t.error)}})}
+function putMany(l){return tx(function(st){l.forEach(function(m){st.put(m)})})}
+function delOne(id){return tx(function(st){st.delete(id)})}
+function loadAll(){return new Promise(function(res,rej){var q=db.transaction('m').objectStore('m').getAll();q.onsuccess=function(){res(q.result)};q.onerror=function(){rej(q.error)}})}
 function saveF(){LS.setItem('shelf.folders',JSON.stringify(folders))}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function toast(t){var e=$('#toast');e.textContent=t;e.className='show';clearTimeout(tt);tt=setTimeout(function(){e.className=''},2600)}
@@ -218,11 +223,12 @@ function render(){
   }
   $('#fold').innerHTML=h;
   var list=inTab.filter(function(m){return (country==='all'||(m.country||'Other')===country)&&m.title.toLowerCase().indexOf(q.toLowerCase())>-1}).sort(function(a,b){return b.added-a.added});
+  var total=list.length;list=list.slice(0,lim);
   if(!list.length){$('#list').innerHTML='<div class="empty">'+(folder?'This folder is empty. Tap Add movie to put the first film in it.':movies.length?'No movies match this view.':'Your shelf is empty. Tap Add movie, or browse Upcoming.')+'</div>';return}
   var g={};list.forEach(function(m){var c=m.country||'Other';(g[c]=g[c]||[]).push(m)});
   $('#list').innerHTML=Object.keys(g).sort().map(function(c){
     return '<h2>'+esc(c)+'<small>'+g[c].length+'</small></h2><div class="grid">'+g[c].map(function(m){
-      return '<button class="card" data-id="'+m.id+'"><div class="poster">'+img(m.poster)+'<span class="tag s-'+m.status+'">'+SL[m.status]+'</span>'+(m.rating?'<span class="rate">★ '+m.rating+'</span>':'')+'<div class="cap"><b>'+esc(m.title)+'</b><span>'+esc(m.year)+'</span></div></div></button>'}).join('')+'</div>'}).join('');
+      return '<button class="card" data-id="'+m.id+'"><div class="poster">'+img(m.poster)+'<span class="tag s-'+m.status+'">'+SL[m.status]+'</span>'+(m.rating?'<span class="rate">★ '+m.rating+'</span>':'')+'<div class="cap"><b>'+esc(m.title)+'</b><span>'+esc(m.year)+'</span></div></div></button>'}).join('')+'</div>'}).join('')+(total>lim?'<div class="row" style="justify-content:center;margin:18px 0"><button class="btn" id="smore">Show more ('+(total-lim)+' left)</button></div>':'');
 }
 
 /* ---------- upcoming ---------- */
@@ -302,15 +308,16 @@ document.addEventListener('click',function(e){var c=e.target.closest('[data-clos
 $('#save').onclick=function(){
   var title=$('#ft').value.trim();if(!title){$('#ft').focus();return}
   var d={title:title,year:$('#fy').value.trim(),country:$('#fc').value.trim(),status:fstat,folder:fsel,note:$('#fn').value.trim(),rating:rating};
-  if(editId){Object.assign(movies.find(function(m){return m.id===editId}),d)}
-  else movies.push(Object.assign(d,{id:Date.now()+Math.random().toString(36).slice(2,6),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,added:Date.now()}));
-  store();$('#dlg').close();render();if(!$('#up').hidden)drawUp();
+  var mv;
+  if(editId){mv=movies.filter(function(m){return m.id===editId})[0];Object.assign(mv,d)}
+  else{mv=Object.assign(d,{id:uid(),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,added:Date.now()});movies.push(mv)}
+  putMany([mv]);$('#dlg').close();render();if(!$('#up').hidden)drawUp();
 };
-$('#del').onclick=function(){modal({title:'Delete this movie?',text:'It will be removed from your shelf.',ok:'Delete',danger:true}).then(function(y){if(y){movies=movies.filter(function(m){return m.id!==editId});store();$('#dlg').close();render()}})};
-$('#list').onclick=function(e){var c=e.target.closest('[data-id]');if(!c)return;var m=movies.find(function(x){return x.id===c.dataset.id});editId=m.id;pick=m;showForm(m,true);$('#dlg').showModal()};
-$('#tabs').onclick=function(e){var b=e.target.closest('[data-tab]');if(b){tab=b.dataset.tab;folder=null;country='all';render()}};
-$('#chips').onclick=function(e){var b=e.target.closest('[data-c]');if(b){country=b.dataset.c;render()}};
-$('#q').oninput=function(e){q=e.target.value;render()};
+$('#del').onclick=function(){modal({title:'Delete this movie?',text:'It will be removed from your shelf.',ok:'Delete',danger:true}).then(function(y){if(y){var did=editId;movies=movies.filter(function(m){return m.id!==did});delOne(did);$('#dlg').close();render()}})};
+$('#list').onclick=function(e){if(e.target.closest('#smore')){lim+=60;render();return}var c=e.target.closest('[data-id]');if(!c)return;var m=movies.find(function(x){return x.id===c.dataset.id});editId=m.id;pick=m;showForm(m,true);$('#dlg').showModal()};
+$('#tabs').onclick=function(e){var b=e.target.closest('[data-tab]');if(b){tab=b.dataset.tab;folder=null;country='all';lim=60;render()}};
+$('#chips').onclick=function(e){var b=e.target.closest('[data-c]');if(b){country=b.dataset.c;lim=60;render()}};
+$('#q').oninput=function(e){q=e.target.value;lim=60;clearTimeout(qt);qt=setTimeout(render,250)};
 $('#uchips').onclick=function(e){var b=e.target.closest('[data-u]');if(b){uc=b.dataset.u;loadUp(true)}};
 $('#more').onclick=function(){upage++;loadUp(false)};
 $('#ulist').onclick=function(e){var c=e.target.closest('[data-up]');if(c)choose(+c.dataset.up,'plan',true)};
@@ -329,35 +336,29 @@ $('#copy').onclick=function(){
 };
 $('#set').onclick=function(){$('#key').value=key;$('#sdlg').showModal()};
 $('#ksave').onclick=function(){key=$('#key').value.trim();LS.setItem('shelf.key',key);$('#sdlg').close();uitems=[];if(!$('#up').hidden)loadUp(true)};
-function textDlg(mode,txt,why){
-  $('#sdlg').close();
-  $('#bt').textContent=mode==='out'?'Your backup':'Paste backup text';
-  $('#bn').textContent=mode==='out'?'Tap Copy, then paste it into Notes, WhatsApp or Drive to keep it safe.'+(why?' ('+why+')':''):'Paste the backup text you copied earlier.';
-  $('#bx').value=txt||'';$('#bx').readOnly=mode==='out';
-  $('#bgo').textContent=mode==='out'?'Copy':'Import';
-  $('#bgo').onclick=function(){
-    if(mode==='out'){$('#bx').select();(navigator.clipboard?navigator.clipboard.writeText($('#bx').value):Promise.reject()).then(function(){toast('Copied')},function(){document.execCommand('copy');toast('Copied')})}
-    else{$('#bdlg').close();importData($('#bx').value)}
-  };
-  $('#bdlg').showModal();
-}
 function exportBackup(){
-  var txt=JSON.stringify({movies:movies,folders:folders},null,1),name='movieverse-backup-'+new Date().toISOString().slice(0,10)+'.json';
-  var C=window.Capacitor,P=C&&C.Plugins,native=C&&C.isNativePlatform&&C.isNativePlatform();
-  if(native){
-    var F=P&&P.Filesystem;
-    if(!F){textDlg('out',txt,'Backup plugin is missing in this APK build');return}
-    Promise.resolve(F.requestPermissions?F.requestPermissions():0).catch(function(){}).then(function(){
-      return F.writeFile({path:'MovieVerse/'+name,data:txt,directory:'DOCUMENTS',encoding:'utf8',recursive:true});
-    }).then(function(){$('#sdlg').close();toast('Saved: Documents/MovieVerse/'+name)}).catch(function(e){
-      var why=(e&&e.message)||'';
-      if(P.Share)F.writeFile({path:name,data:txt,directory:'CACHE',encoding:'utf8'}).then(function(r){return P.Share.share({title:'MovieVerse backup',url:r.uri})}).catch(function(x){if(!/cancel/i.test((x&&x.message)||''))textDlg('out',txt,why)});
-      else textDlg('out',txt,why);
-    });
-    return;
+  var name='movieverse-backup-'+new Date().toISOString().slice(0,10)+'.json',C=window.Capacitor,P=C&&C.Plugins,F=P&&P.Filesystem;
+  var native=C&&C.isNativePlatform&&C.isNativePlatform(),N=1500,i=0,first=true;
+  var str=function(l){return l.map(function(m){return JSON.stringify(m)}).join(',')};
+  $('#sdlg').close();
+  if(!native){
+    var parts=['{"movies":['];
+    for(var j=0;j<movies.length;j+=N)parts.push((j?',':'')+str(movies.slice(j,j+N)));
+    parts.push('],"folders":'+JSON.stringify(folders)+'}');
+    var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(parts,{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();
+    toast('Backup downloaded');return;
   }
-  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();
-  $('#sdlg').close();toast('Backup downloaded');
+  if(!F){toast('Backup plugin is missing in this APK build');return}
+  toast('Saving backup…');
+  var put=function(t){var o={path:'MovieVerse/'+name,directory:'DOCUMENTS',encoding:'utf8',data:t};if(first){first=false;o.recursive=true;return F.writeFile(o)}return F.appendFile(o)};
+  var next=function(){
+    if(i>=movies.length)return put((i===0?'{"movies":[':'')+'],"folders":'+JSON.stringify(folders)+'}');
+    var t=(i===0?'{"movies":[':',')+str(movies.slice(i,i+N));i+=N;
+    return put(t).then(next);
+  };
+  Promise.resolve(F.requestPermissions?F.requestPermissions():0).catch(function(){}).then(next)
+    .then(function(){toast('Saved '+movies.length+' movies: Documents/MovieVerse/'+name)})
+    .catch(function(e){toast('Could not save backup: '+((e&&e.message)||'unknown error'))});
 }
 $('#exp').onclick=exportBackup;
 $('#imp').onclick=function(){$('#file').click()};
@@ -365,25 +366,30 @@ function importData(t){
   try{
     var o=JSON.parse(t),d=Array.isArray(o)?o:o.movies;if(!Array.isArray(d))throw 0;
     (o.folders||[]).forEach(function(f){if(!folders.some(function(x){return x.id===f.id}))folders.push(f)});saveF();
-    var ids=movies.map(function(m){return m.id});
-    d.forEach(function(m){if(m&&m.title&&ids.indexOf(m.id)<0)movies.push(m)});
-    store();render();$('#sdlg').close();toast('Backup imported');
+    var ids=new Set(movies.map(function(m){return m.id})),add=[];
+    d.forEach(function(m){if(m&&m.title&&m.id&&!ids.has(m.id)){ids.add(m.id);add.push(m);movies.push(m)}});
+    putMany(add).then(function(){render();$('#sdlg').close();toast(add.length+' movies imported')});
   }catch(x){$('#sdlg').close();toast('That is not a valid backup.')}
 }
 $('#file').onchange=function(e){e.target.files[0].text().then(importData)};
-$('#impt').onclick=function(){textDlg('in','')};
 $('#fsb').onclick=function(e){var b=e.target.closest('[data-s]');if(!b)return;fstat=b.dataset.s;if(fsel&&!folders.some(function(f){return f.id===fsel&&f.status===fstat}))fsel=null;drawSeg()};
 $('#ffol').onclick=function(e){var b=e.target.closest('[data-fo]');if(b){fsel=b.dataset.fo||null;drawSeg()}};
 $('#csug').onclick=function(e){var b=e.target.closest('[data-cs]');if(b)$('#fc').value=b.dataset.cs};
 $('#fold').onclick=function(e){
-  var f=e.target.closest('[data-f]');if(f){folder=f.dataset.f;country='all';render();return}
+  var f=e.target.closest('[data-f]');if(f){folder=f.dataset.f;country='all';lim=60;render();return}
   var a=e.target.closest('[data-fa]');if(!a)return;var k=a.dataset.fa;
-  if(k==='back'){folder=null;render();return}
+  if(k==='back'){folder=null;lim=60;render();return}
   if(k==='new'){modal({title:'New folder in '+SL[tab],input:true,placeholder:'e.g. South Indian',ok:'Create'}).then(function(n){if(n){folders.push({id:uid(),name:n,status:tab});saveF();render()}});return}
   var cf=folders.filter(function(x){return x.id===folder})[0];
   if(k==='ren')modal({title:'Rename folder',input:true,value:cf.name,ok:'Save'}).then(function(n){if(n){cf.name=n;saveF();render()}});
-  else modal({title:'Delete "'+cf.name+'"?',text:'The movies stay in '+SL[tab]+'. Only the folder is removed.',ok:'Delete',danger:true}).then(function(y){if(y){movies.forEach(function(m){if(m.folder===cf.id)m.folder=null});folders=folders.filter(function(x){return x!==cf});folder=null;store();saveF();render()}});
+  else modal({title:'Delete "'+cf.name+'"?',text:'The movies stay in '+SL[tab]+'. Only the folder is removed.',ok:'Delete',danger:true}).then(function(y){if(y){var ch=movies.filter(function(m){return m.folder===cf.id});ch.forEach(function(m){m.folder=null});putMany(ch);folders=folders.filter(function(x){return x!==cf});folder=null;saveF();render()}});
 };
+idb().then(function(d){db=d;return loadAll()}).then(function(list){
+  var old=LS.getItem('shelf.movies');
+  if(!old)return list;
+  if(list.length){LS.removeItem('shelf.movies');return list}
+  var o=JSON.parse(old);return putMany(o).then(function(){LS.removeItem('shelf.movies');return o});
+}).then(function(list){movies=list;render()}).catch(function(){movies=JSON.parse(LS.getItem('shelf.movies')||'[]');render()});
 render();
 </script>
 </body>
