@@ -1,0 +1,9 @@
+Repo-te final structure:
+
+MovieVerse/
+  package.json              (root)
+  capacitor.config.json     (root)
+  README.md                 (already there)
+  www/index.html            (file: index.html -> path www/index.html)
+  .github/workflows/pages.yml     (already done)
+  .github/workflows/android.yml   (file: android.yml -> path .github/workflows/android.yml)
