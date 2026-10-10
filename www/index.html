@@ -336,29 +336,41 @@ $('#copy').onclick=function(){
 };
 $('#set').onclick=function(){$('#key').value=key;$('#sdlg').showModal()};
 $('#ksave').onclick=function(){key=$('#key').value.trim();LS.setItem('shelf.key',key);$('#sdlg').close();uitems=[];if(!$('#up').hidden)loadUp(true)};
+function bstr(l){return l.map(function(m){return JSON.stringify(m)}).join(',')}
+function writeBackup(F,dir,path){
+  var i=0,first=true,N=1500;
+  var put=function(t){var o={path:path,directory:dir,encoding:'utf8',data:t};if(first){first=false;o.recursive=true;return F.writeFile(o)}return F.appendFile(o)};
+  var next=function(){
+    if(i>=movies.length)return put((i===0?'{"movies":[':'')+'],"folders":'+JSON.stringify(folders)+'}');
+    var t=(i===0?'{"movies":[':',')+bstr(movies.slice(i,i+N));i+=N;
+    return put(t).then(next);
+  };
+  return next();
+}
 function exportBackup(){
-  var name='movieverse-backup-'+new Date().toISOString().slice(0,10)+'.json',C=window.Capacitor,P=C&&C.Plugins,F=P&&P.Filesystem;
-  var native=C&&C.isNativePlatform&&C.isNativePlatform(),N=1500,i=0,first=true;
-  var str=function(l){return l.map(function(m){return JSON.stringify(m)}).join(',')};
+  var d=new Date(),z=function(n){return (n<10?'0':'')+n};
+  var name='movieverse-backup-'+d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'_'+z(d.getHours())+'-'+z(d.getMinutes())+'-'+z(d.getSeconds())+'.json';
+  var C=window.Capacitor,P=C&&C.Plugins,F=P&&P.Filesystem,native=C&&C.isNativePlatform&&C.isNativePlatform();
   $('#sdlg').close();
   if(!native){
     var parts=['{"movies":['];
-    for(var j=0;j<movies.length;j+=N)parts.push((j?',':'')+str(movies.slice(j,j+N)));
+    for(var j=0;j<movies.length;j+=1500)parts.push((j?',':'')+bstr(movies.slice(j,j+1500)));
     parts.push('],"folders":'+JSON.stringify(folders)+'}');
     var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(parts,{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();
     toast('Backup downloaded');return;
   }
   if(!F){toast('Backup plugin is missing in this APK build');return}
   toast('Saving backup…');
-  var put=function(t){var o={path:'MovieVerse/'+name,directory:'DOCUMENTS',encoding:'utf8',data:t};if(first){first=false;o.recursive=true;return F.writeFile(o)}return F.appendFile(o)};
-  var next=function(){
-    if(i>=movies.length)return put((i===0?'{"movies":[':'')+'],"folders":'+JSON.stringify(folders)+'}');
-    var t=(i===0?'{"movies":[':',')+str(movies.slice(i,i+N));i+=N;
-    return put(t).then(next);
-  };
-  Promise.resolve(F.requestPermissions?F.requestPermissions():0).catch(function(){}).then(next)
+  Promise.resolve(F.requestPermissions?F.requestPermissions():0).catch(function(){})
+    .then(function(){return writeBackup(F,'DOCUMENTS','MovieVerse/'+name)})
     .then(function(){toast('Saved '+movies.length+' movies: Documents/MovieVerse/'+name)})
-    .catch(function(e){toast('Could not save backup: '+((e&&e.message)||'unknown error'))});
+    .catch(function(){
+      if(!P.Share||!F.getUri){toast('Could not save backup');return}
+      return writeBackup(F,'CACHE',name)
+        .then(function(){return F.getUri({path:name,directory:'CACHE'})})
+        .then(function(r){return P.Share.share({title:'MovieVerse backup',url:r.uri})})
+        .catch(function(e){if(!/cancel/i.test((e&&e.message)||''))toast('Could not save backup')});
+    });
 }
 $('#exp').onclick=exportBackup;
 $('#imp').onclick=function(){$('#file').click()};
