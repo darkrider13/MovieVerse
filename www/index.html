@@ -145,12 +145,14 @@ label{display:block;font-weight:700;margin:12px 0 4px}
     <button class="btn pri" id="ksave">Save key</button>
     <button class="btn" id="exp">Export backup</button>
     <button class="btn" id="imp">Import backup</button>
+    <button class="btn" id="impt">Paste backup text</button>
     <button class="btn" data-close>Close</button>
   </div>
   <input type="file" id="file" accept=".json" hidden>
 </dialog>
 
 <dialog id="mdlg"><h2 id="mt" style="margin-top:0"></h2><p class="note" id="mx"></p><input type="text" id="mi" hidden><div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn" id="mno">Cancel</button><button class="btn pri" id="mok">OK</button></div></dialog>
+<dialog id="bdlg"><h2 id="bt" style="margin-top:0"></h2><p class="note" id="bn"></p><textarea id="bx" rows="8"></textarea><div class="row" style="margin-top:12px"><button class="btn pri" id="bgo">Copy</button><button class="btn" data-close>Close</button></div></dialog>
 <div id="toast"></div>
 <script>
 var $=function(s){return document.querySelector(s)};
@@ -327,32 +329,49 @@ $('#copy').onclick=function(){
 };
 $('#set').onclick=function(){$('#key').value=key;$('#sdlg').showModal()};
 $('#ksave').onclick=function(){key=$('#key').value.trim();LS.setItem('shelf.key',key);$('#sdlg').close();uitems=[];if(!$('#up').hidden)loadUp(true)};
+function textDlg(mode,txt,why){
+  $('#sdlg').close();
+  $('#bt').textContent=mode==='out'?'Your backup':'Paste backup text';
+  $('#bn').textContent=mode==='out'?'Tap Copy, then paste it into Notes, WhatsApp or Drive to keep it safe.'+(why?' ('+why+')':''):'Paste the backup text you copied earlier.';
+  $('#bx').value=txt||'';$('#bx').readOnly=mode==='out';
+  $('#bgo').textContent=mode==='out'?'Copy':'Import';
+  $('#bgo').onclick=function(){
+    if(mode==='out'){$('#bx').select();(navigator.clipboard?navigator.clipboard.writeText($('#bx').value):Promise.reject()).then(function(){toast('Copied')},function(){document.execCommand('copy');toast('Copied')})}
+    else{$('#bdlg').close();importData($('#bx').value)}
+  };
+  $('#bdlg').showModal();
+}
 function exportBackup(){
   var txt=JSON.stringify({movies:movies,folders:folders},null,1),name='movieverse-backup-'+new Date().toISOString().slice(0,10)+'.json';
-  var C=window.Capacitor,P=C&&C.Plugins,F=P&&P.Filesystem;
-  var ok=function(m){$('#sdlg').close();toast(m)};
-  if(C&&C.isNativePlatform&&C.isNativePlatform()&&F){
+  var C=window.Capacitor,P=C&&C.Plugins,native=C&&C.isNativePlatform&&C.isNativePlatform();
+  if(native){
+    var F=P&&P.Filesystem;
+    if(!F){textDlg('out',txt,'Backup plugin is missing in this APK build');return}
     Promise.resolve(F.requestPermissions?F.requestPermissions():0).catch(function(){}).then(function(){
       return F.writeFile({path:'MovieVerse/'+name,data:txt,directory:'DOCUMENTS',encoding:'utf8',recursive:true});
-    }).then(function(){ok('Saved in Documents/MovieVerse/'+name)}).catch(function(){
-      if(!P.Share){ok('Could not save backup');return}
-      F.writeFile({path:name,data:txt,directory:'CACHE',encoding:'utf8'}).then(function(r){return P.Share.share({title:'MovieVerse backup',url:r.uri})}).catch(function(){ok('Could not save backup')});
+    }).then(function(){$('#sdlg').close();toast('Saved: Documents/MovieVerse/'+name)}).catch(function(e){
+      var why=(e&&e.message)||'';
+      if(P.Share)F.writeFile({path:name,data:txt,directory:'CACHE',encoding:'utf8'}).then(function(r){return P.Share.share({title:'MovieVerse backup',url:r.uri})}).catch(function(x){if(!/cancel/i.test((x&&x.message)||''))textDlg('out',txt,why)});
+      else textDlg('out',txt,why);
     });
     return;
   }
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();
-  ok('Backup downloaded');
+  $('#sdlg').close();toast('Backup downloaded');
 }
 $('#exp').onclick=exportBackup;
 $('#imp').onclick=function(){$('#file').click()};
-$('#file').onchange=function(e){
-  e.target.files[0].text().then(function(t){
-    var o=JSON.parse(t),d=Array.isArray(o)?o:o.movies;if(!Array.isArray(d))throw 0;(o.folders||[]).forEach(function(f){if(!folders.some(function(x){return x.id===f.id}))folders.push(f)});saveF();
+function importData(t){
+  try{
+    var o=JSON.parse(t),d=Array.isArray(o)?o:o.movies;if(!Array.isArray(d))throw 0;
+    (o.folders||[]).forEach(function(f){if(!folders.some(function(x){return x.id===f.id}))folders.push(f)});saveF();
     var ids=movies.map(function(m){return m.id});
     d.forEach(function(m){if(m&&m.title&&ids.indexOf(m.id)<0)movies.push(m)});
-    store();render();$('#sdlg').close();
-  }).catch(function(){$('#sdlg').close();toast('That file is not a valid backup.')});
-};
+    store();render();$('#sdlg').close();toast('Backup imported');
+  }catch(x){$('#sdlg').close();toast('That is not a valid backup.')}
+}
+$('#file').onchange=function(e){e.target.files[0].text().then(importData)};
+$('#impt').onclick=function(){textDlg('in','')};
 $('#fsb').onclick=function(e){var b=e.target.closest('[data-s]');if(!b)return;fstat=b.dataset.s;if(fsel&&!folders.some(function(f){return f.id===fsel&&f.status===fstat}))fsel=null;drawSeg()};
 $('#ffol').onclick=function(e){var b=e.target.closest('[data-fo]');if(b){fsel=b.dataset.fo||null;drawSeg()}};
 $('#csug').onclick=function(e){var b=e.target.closest('[data-cs]');if(b)$('#fc').value=b.dataset.cs};
