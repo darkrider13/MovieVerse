@@ -57,6 +57,20 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 .star.on{color:var(--p)}
 .pv{display:flex;gap:12px;align-items:center}
 .pv img{width:60px;height:90px;border-radius:8px;object-fit:cover}
+.segc{display:flex;gap:6px;background:var(--s2);border-radius:12px;padding:4px}
+.segc button{flex:1;border:0;background:none;border-radius:9px;padding:9px 4px;cursor:pointer;color:var(--mut);font-weight:700}
+.segc button[aria-pressed=true]{background:var(--acc);color:var(--onacc)}
+.folders{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:10px 0 4px}
+.fold{display:flex;align-items:center;gap:8px;padding:13px;border:1px solid var(--line);border-radius:14px;background:var(--s);cursor:pointer;text-align:left}
+.fold svg{color:var(--acc);flex:none}
+.fold b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fold small{color:var(--mut)}
+.fold.new{border-style:dashed;color:var(--mut);justify-content:center;font-weight:700}
+.crumb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.crumb b{font-size:20px}.grow{flex:1}
+#mdlg{width:min(90vw,380px)}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90vw}
+#toast.show{opacity:1}
 </style>
 </head>
 <body>
@@ -80,6 +94,7 @@ label{display:block;font-weight:700;margin:12px 0 4px}
       <input type="search" id="q" placeholder="Search my shelf">
       <div class="row" id="chips"></div>
     </div>
+    <div id="fold"></div>
     <div id="list"></div>
   </section>
 
@@ -106,11 +121,11 @@ label{display:block;font-weight:700;margin:12px 0 4px}
     <label for="ft">Title</label><input type="text" id="ft">
     <div class="row" style="align-items:flex-start;flex-wrap:nowrap">
       <div style="flex:1"><label for="fy">Year</label><input type="text" id="fy" inputmode="numeric"></div>
-      <div style="flex:2"><label for="fc">Country</label><input type="text" id="fc" list="cl" placeholder="e.g. South Korea"></div>
+      <div style="flex:2"><label for="fc">Country</label><input type="text" id="fc" placeholder="e.g. South Korea"></div>
     </div>
-    <datalist id="cl"></datalist>
-    <label for="fs">Status</label>
-    <select id="fs"><option value="watched">Watched</option><option value="plan">Plan to watch</option><option value="watching">Watching</option></select>
+    <div class="row" id="csug" style="margin-top:8px"></div>
+    <label>Status</label><div class="segc" id="fsb"></div>
+    <label>Folder</label><div class="row" id="ffol"></div>
     <label>My rating</label><div id="stars"></div>
     <label for="fn">Note</label><textarea id="fn" rows="3" placeholder="Why would you suggest it?"></textarea>
     <div class="row" style="margin-top:16px">
@@ -135,6 +150,8 @@ label{display:block;font-weight:700;margin:12px 0 4px}
   <input type="file" id="file" accept=".json" hidden>
 </dialog>
 
+<dialog id="mdlg"><h2 id="mt" style="margin-top:0"></h2><p class="note" id="mx"></p><input type="text" id="mi" hidden><div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn" id="mno">Cancel</button><button class="btn pri" id="mok">OK</button></div></dialog>
+<div id="toast"></div>
 <script>
 var $=function(s){return document.querySelector(s)};
 var IMG='https://image.tmdb.org/t/p/';
@@ -143,9 +160,25 @@ var movies=JSON.parse(LS.getItem('shelf.movies')||'[]');
 var key=LS.getItem('shelf.key')||'';
 var tab='all',country='all',q='',pick=null,editId=null,rating=0,timer;
 var uc='',upage=1,uitems=[];
+var folders=JSON.parse(LS.getItem('shelf.folders')||'[]'),folder=null,fstat='watched',fsel=null,curStatus='watched',tt;
+var FI='<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
 var SL={watched:'Watched',plan:'Plan to watch',watching:'Watching'};
 var CO=[['','All countries'],['BD','Bangladesh'],['IN','India'],['US','United States'],['KR','South Korea'],['JP','Japan'],['GB','United Kingdom'],['FR','France'],['CN','China'],['TR','Turkey'],['TH','Thailand'],['ES','Spain'],['DE','Germany'],['IT','Italy'],['PK','Pakistan']];
 function store(){LS.setItem('shelf.movies',JSON.stringify(movies))}
+function saveF(){LS.setItem('shelf.folders',JSON.stringify(folders))}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
+function toast(t){var e=$('#toast');e.textContent=t;e.className='show';clearTimeout(tt);tt=setTimeout(function(){e.className=''},2600)}
+function modal(o){return new Promise(function(res){
+  var d=$('#mdlg'),i=$('#mi'),ok=$('#mok');
+  $('#mt').textContent=o.title;$('#mx').textContent=o.text||'';
+  i.hidden=!o.input;i.value=o.value||'';i.placeholder=o.placeholder||'';
+  ok.textContent=o.ok||'OK';ok.className='btn '+(o.danger?'del':'pri');
+  var done=function(v){d.onclose=null;d.close();res(v)};
+  ok.onclick=function(){var v=o.input?i.value.trim():true;if(o.input&&!v){i.focus();return}done(v)};
+  $('#mno').onclick=function(){done(null)};
+  d.onclose=function(){res(null)};
+  d.showModal();if(o.input)i.focus();
+})}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function stars(n){return '★'.repeat(n)+'☆'.repeat(5-n)}
 function tmdb(path,params){
@@ -161,18 +194,29 @@ function img(p,size){return p?'<img src="'+IMG+(size||'w342')+p+'" alt="" loadin
 
 /* ---------- shelf ---------- */
 function render(){
-  var inTab=movies.filter(function(m){return tab==='all'||m.status===tab});
-  var cs={};inTab.forEach(function(m){var c=m.country||'Other';cs[c]=(cs[c]||0)+1});
-  if(country!=='all'&&!cs[country])country='all';
+  var fo=folders.filter(function(f){return f.status===tab});
+  if(folder&&!fo.some(function(f){return f.id===folder}))folder=null;
   var cnt=function(s){return movies.filter(function(m){return m.status===s}).length};
   $('#stat').textContent=cnt('watched')+' watched · '+cnt('plan')+' to watch · '+new Set(movies.map(function(m){return m.country}).filter(Boolean)).size+' countries';
   $('#tabs').innerHTML=['all','watched','plan','watching'].map(function(t){
     return '<button class="pill" data-tab="'+t+'" aria-pressed="'+(tab===t)+'">'+(t==='all'?'All '+movies.length:SL[t]+' '+cnt(t))+'</button>'}).join('');
+  var inTab=movies.filter(function(m){return tab==='all'||(m.status===tab&&(folder?m.folder===folder:!m.folder))});
+  var cs={};inTab.forEach(function(m){var c=m.country||'Other';cs[c]=(cs[c]||0)+1});
+  if(country!=='all'&&!cs[country])country='all';
   var keys=Object.keys(cs).sort();
   $('#chips').innerHTML=keys.length?['<button class="pill" data-c="all" aria-pressed="'+(country==='all')+'">All countries</button>'].concat(keys.map(function(c){return '<button class="pill" data-c="'+esc(c)+'" aria-pressed="'+(country===c)+'">'+esc(c)+' '+cs[c]+'</button>'})).join(''):'';
-  $('#cl').innerHTML=Array.from(new Set(movies.map(function(m){return m.country}).filter(Boolean))).map(function(c){return '<option value="'+esc(c)+'">'}).join('');
+  var h='';
+  if(tab!=='all'){
+    if(folder){
+      var cf=fo.filter(function(f){return f.id===folder})[0];
+      h='<div class="crumb"><button class="pill" data-fa="back">← '+SL[tab]+'</button><b>'+esc(cf.name)+'</b><span class="grow"></span><button class="pill" data-fa="ren">Rename</button><button class="pill" data-fa="del">Delete folder</button></div>';
+    }else{
+      h='<div class="folders">'+fo.map(function(f){var n=movies.filter(function(m){return m.folder===f.id}).length;return '<button class="fold" data-f="'+f.id+'">'+FI+'<b>'+esc(f.name)+'</b><small>'+n+'</small></button>'}).join('')+'<button class="fold new" data-fa="new">+ New folder</button></div>';
+    }
+  }
+  $('#fold').innerHTML=h;
   var list=inTab.filter(function(m){return (country==='all'||(m.country||'Other')===country)&&m.title.toLowerCase().indexOf(q.toLowerCase())>-1}).sort(function(a,b){return b.added-a.added});
-  if(!list.length){$('#list').innerHTML='<div class="empty">'+(movies.length?'No movies match this view.':'Your shelf is empty. Tap Add movie, or browse Upcoming.')+'</div>';return}
+  if(!list.length){$('#list').innerHTML='<div class="empty">'+(folder?'This folder is empty. Tap Add movie to put the first film in it.':movies.length?'No movies match this view.':'Your shelf is empty. Tap Add movie, or browse Upcoming.')+'</div>';return}
   var g={};list.forEach(function(m){var c=m.country||'Other';(g[c]=g[c]||[]).push(m)});
   $('#list').innerHTML=Object.keys(g).sort().map(function(c){
     return '<h2>'+esc(c)+'<small>'+g[c].length+'</small></h2><div class="grid">'+g[c].map(function(m){
@@ -206,15 +250,26 @@ function fmt(d){if(!d)return 'TBA';var a=d.split('-'),M=['Jan','Feb','Mar','Apr'
 
 /* ---------- add / edit ---------- */
 function drawStars(){$('#stars').innerHTML=[1,2,3,4,5].map(function(i){return '<button type="button" class="star '+(i<=rating?'on':'')+'" data-r="'+i+'" aria-label="'+i+' star">★</button>'}).join('')}
+function drawSeg(){
+  $('#fsb').innerHTML=['watched','plan','watching'].map(function(s){return '<button type="button" data-s="'+s+'" aria-pressed="'+(fstat===s)+'">'+SL[s]+'</button>'}).join('');
+  var fo=folders.filter(function(f){return f.status===fstat});
+  $('#ffol').innerHTML=fo.length?[{id:null,name:'No folder'}].concat(fo).map(function(f){return '<button type="button" class="pill" data-fo="'+(f.id||'')+'" aria-pressed="'+((fsel||null)===f.id)+'">'+esc(f.name)+'</button>'}).join(''):'<span class="note">No folders in '+SL[fstat]+' yet. Create one from the shelf.</span>';
+}
+function drawSug(){
+  var all=movies.map(function(m){return m.country}).concat(['India','South Korea','Japan','United States of America','United Kingdom','Bangladesh','France','China']).filter(Boolean);
+  $('#csug').innerHTML=Array.from(new Set(all)).slice(0,8).map(function(c){return '<button type="button" class="pill" data-cs="'+esc(c)+'" aria-pressed="false">'+esc(c)+'</button>'}).join('');
+}
 function showForm(m,isEdit){
   $('#find').hidden=true;$('#form').hidden=false;
   $('#pvimg').innerHTML=m.poster?'<img src="'+IMG+'w185'+m.poster+'" alt="">':'';
   $('#pvt').textContent=m.title||'New movie';
   $('#ft').value=m.title||'';$('#fy').value=m.year||'';$('#fc').value=m.country||'';
-  $('#fs').value=m.status||'watched';$('#fn').value=m.note||'';
+  $('#fn').value=m.note||'';
+  fstat=m.status||'watched';fsel=m.folder||null;drawSeg();drawSug();
   rating=m.rating||0;drawStars();$('#del').hidden=!isEdit;
 }
 function openAdd(){
+  curStatus=tab==='all'?'watched':tab;
   editId=null;pick=null;$('#form').hidden=true;$('#find').hidden=false;$('#qs').value='';
   $('#res').innerHTML=key?'':'<p class="note">Add your TMDB API key in Settings to search with posters. You can still add a movie without a poster.</p>';
   $('#dlg').showModal();
@@ -229,29 +284,29 @@ function search(){
 }
 function choose(id,status,fromUp){
   tmdb('/movie/'+id).then(function(d){
-    pick={tmdbId:d.id,title:d.title,year:(d.release_date||'').slice(0,4),poster:d.poster_path,country:(d.production_countries[0]||{}).name||'',status:status};
+    pick={tmdbId:d.id,title:d.title,year:(d.release_date||'').slice(0,4),poster:d.poster_path,country:(d.production_countries[0]||{}).name||'',status:status,folder:fromUp?null:folder};
     editId=null;showForm(pick,false);
     if(fromUp)$('#dlg').showModal();
-  }).catch(function(e){if(fromUp)alert(e.message);else $('#res').innerHTML='<p class="note">'+esc(e.message)+'</p>'});
+  }).catch(function(e){if(fromUp)toast(e.message);else $('#res').innerHTML='<p class="note">'+esc(e.message)+'</p>'});
 }
 
 /* ---------- events ---------- */
 $('#add').onclick=openAdd;
 $('#qs').oninput=function(){clearTimeout(timer);timer=setTimeout(search,450)};
-$('#res').onclick=function(e){var b=e.target.closest('[data-t]');if(b)choose(b.dataset.t,'watched',false)};
-$('#manual').onclick=function(){pick={title:$('#qs').value.trim(),poster:null};showForm(pick,false)};
+$('#res').onclick=function(e){var b=e.target.closest('[data-t]');if(b)choose(b.dataset.t,curStatus,false)};
+$('#manual').onclick=function(){pick={title:$('#qs').value.trim(),poster:null,status:curStatus,folder:folder};showForm(pick,false)};
 $('#stars').onclick=function(e){var b=e.target.closest('[data-r]');if(!b)return;var r=+b.dataset.r;rating=rating===r?0:r;drawStars()};
 document.addEventListener('click',function(e){var c=e.target.closest('[data-close]');if(c)c.closest('dialog').close()});
 $('#save').onclick=function(){
   var title=$('#ft').value.trim();if(!title){$('#ft').focus();return}
-  var d={title:title,year:$('#fy').value.trim(),country:$('#fc').value.trim(),status:$('#fs').value,note:$('#fn').value.trim(),rating:rating};
+  var d={title:title,year:$('#fy').value.trim(),country:$('#fc').value.trim(),status:fstat,folder:fsel,note:$('#fn').value.trim(),rating:rating};
   if(editId){Object.assign(movies.find(function(m){return m.id===editId}),d)}
   else movies.push(Object.assign(d,{id:Date.now()+Math.random().toString(36).slice(2,6),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,added:Date.now()}));
   store();$('#dlg').close();render();if(!$('#up').hidden)drawUp();
 };
-$('#del').onclick=function(){if(confirm('Delete this movie from your shelf?')){movies=movies.filter(function(m){return m.id!==editId});store();$('#dlg').close();render()}};
+$('#del').onclick=function(){modal({title:'Delete this movie?',text:'It will be removed from your shelf.',ok:'Delete',danger:true}).then(function(y){if(y){movies=movies.filter(function(m){return m.id!==editId});store();$('#dlg').close();render()}})};
 $('#list').onclick=function(e){var c=e.target.closest('[data-id]');if(!c)return;var m=movies.find(function(x){return x.id===c.dataset.id});editId=m.id;pick=m;showForm(m,true);$('#dlg').showModal()};
-$('#tabs').onclick=function(e){var b=e.target.closest('[data-tab]');if(b){tab=b.dataset.tab;render()}};
+$('#tabs').onclick=function(e){var b=e.target.closest('[data-tab]');if(b){tab=b.dataset.tab;folder=null;country='all';render()}};
 $('#chips').onclick=function(e){var b=e.target.closest('[data-c]');if(b){country=b.dataset.c;render()}};
 $('#q').oninput=function(e){q=e.target.value;render()};
 $('#uchips').onclick=function(e){var b=e.target.closest('[data-u]');if(b){uc=b.dataset.u;loadUp(true)}};
@@ -268,19 +323,31 @@ $('#copy').onclick=function(){
   var l=movies.filter(function(m){return (tab==='all'||m.status===tab)&&(country==='all'||(m.country||'Other')===country)});
   var t=l.map(function(m){return m.title+(m.year?' ('+m.year+')':'')+(m.country?' - '+m.country:'')+(m.rating?' - '+stars(m.rating):'')}).join('\n');
   var done=function(){$('#copy').textContent='Copied';setTimeout(function(){$('#copy').textContent='Copy list'},1500)};
-  if(navigator.clipboard)navigator.clipboard.writeText(t||'(empty)').then(done,function(){prompt('Copy your list:',t)});else prompt('Copy your list:',t);
+  if(navigator.clipboard)navigator.clipboard.writeText(t||'(empty)').then(done,function(){toast('Could not copy')});else toast('Could not copy');
 };
 $('#set').onclick=function(){$('#key').value=key;$('#sdlg').showModal()};
 $('#ksave').onclick=function(){key=$('#key').value.trim();LS.setItem('shelf.key',key);$('#sdlg').close();uitems=[];if(!$('#up').hidden)loadUp(true)};
-$('#exp').onclick=function(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(movies,null,1)],{type:'application/json'}));a.download='movieverse-backup.json';a.click()};
+$('#exp').onclick=function(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({movies:movies,folders:folders},null,1)],{type:'application/json'}));a.download='movieverse-backup.json';a.click()};
 $('#imp').onclick=function(){$('#file').click()};
 $('#file').onchange=function(e){
   e.target.files[0].text().then(function(t){
-    var d=JSON.parse(t);if(!Array.isArray(d))throw 0;
+    var o=JSON.parse(t),d=Array.isArray(o)?o:o.movies;if(!Array.isArray(d))throw 0;(o.folders||[]).forEach(function(f){if(!folders.some(function(x){return x.id===f.id}))folders.push(f)});saveF();
     var ids=movies.map(function(m){return m.id});
     d.forEach(function(m){if(m&&m.title&&ids.indexOf(m.id)<0)movies.push(m)});
     store();render();$('#sdlg').close();
-  }).catch(function(){alert('That file is not a valid backup.')});
+  }).catch(function(){$('#sdlg').close();toast('That file is not a valid backup.')});
+};
+$('#fsb').onclick=function(e){var b=e.target.closest('[data-s]');if(!b)return;fstat=b.dataset.s;if(fsel&&!folders.some(function(f){return f.id===fsel&&f.status===fstat}))fsel=null;drawSeg()};
+$('#ffol').onclick=function(e){var b=e.target.closest('[data-fo]');if(b){fsel=b.dataset.fo||null;drawSeg()}};
+$('#csug').onclick=function(e){var b=e.target.closest('[data-cs]');if(b)$('#fc').value=b.dataset.cs};
+$('#fold').onclick=function(e){
+  var f=e.target.closest('[data-f]');if(f){folder=f.dataset.f;country='all';render();return}
+  var a=e.target.closest('[data-fa]');if(!a)return;var k=a.dataset.fa;
+  if(k==='back'){folder=null;render();return}
+  if(k==='new'){modal({title:'New folder in '+SL[tab],input:true,placeholder:'e.g. South Indian',ok:'Create'}).then(function(n){if(n){folders.push({id:uid(),name:n,status:tab});saveF();render()}});return}
+  var cf=folders.filter(function(x){return x.id===folder})[0];
+  if(k==='ren')modal({title:'Rename folder',input:true,value:cf.name,ok:'Save'}).then(function(n){if(n){cf.name=n;saveF();render()}});
+  else modal({title:'Delete "'+cf.name+'"?',text:'The movies stay in '+SL[tab]+'. Only the folder is removed.',ok:'Delete',danger:true}).then(function(y){if(y){movies.forEach(function(m){if(m.folder===cf.id)m.folder=null});folders=folders.filter(function(x){return x!==cf});folder=null;store();saveF();render()}});
 };
 render();
 </script>
