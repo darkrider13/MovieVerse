@@ -327,7 +327,23 @@ $('#copy').onclick=function(){
 };
 $('#set').onclick=function(){$('#key').value=key;$('#sdlg').showModal()};
 $('#ksave').onclick=function(){key=$('#key').value.trim();LS.setItem('shelf.key',key);$('#sdlg').close();uitems=[];if(!$('#up').hidden)loadUp(true)};
-$('#exp').onclick=function(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({movies:movies,folders:folders},null,1)],{type:'application/json'}));a.download='movieverse-backup.json';a.click()};
+function exportBackup(){
+  var txt=JSON.stringify({movies:movies,folders:folders},null,1),name='movieverse-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  var C=window.Capacitor,P=C&&C.Plugins,F=P&&P.Filesystem;
+  var ok=function(m){$('#sdlg').close();toast(m)};
+  if(C&&C.isNativePlatform&&C.isNativePlatform()&&F){
+    Promise.resolve(F.requestPermissions?F.requestPermissions():0).catch(function(){}).then(function(){
+      return F.writeFile({path:'MovieVerse/'+name,data:txt,directory:'DOCUMENTS',encoding:'utf8',recursive:true});
+    }).then(function(){ok('Saved in Documents/MovieVerse/'+name)}).catch(function(){
+      if(!P.Share){ok('Could not save backup');return}
+      F.writeFile({path:name,data:txt,directory:'CACHE',encoding:'utf8'}).then(function(r){return P.Share.share({title:'MovieVerse backup',url:r.uri})}).catch(function(){ok('Could not save backup')});
+    });
+    return;
+  }
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();
+  ok('Backup downloaded');
+}
+$('#exp').onclick=exportBackup;
 $('#imp').onclick=function(){$('#file').click()};
 $('#file').onchange=function(e){
   e.target.files[0].text().then(function(t){
