@@ -1000,7 +1000,7 @@ document.querySelectorAll('dialog').forEach(function(d){
 (function(){var sp=document.getElementById('splash');if(!sp)return;
 var shown=false;
 function hide(){sp.classList.add('hide');setTimeout(function(){sp.remove()},420)}
-function show(){if(shown)return;shown=true;sp.classList.add('fr');setTimeout(hide,Math.max(400,4100-performance.now()))}
+function show(){if(shown)return;shown=true;sp.classList.add('fr');setTimeout(hide,Math.max(400,3100-performance.now()))}
 var f=(document.fonts&&document.fonts.load)?Promise.all([document.fonts.load('16px Kalam'),document.fonts.load('800 30px "Bricolage Grotesque"')]):Promise.resolve();
 Promise.race([f,new Promise(function(r){setTimeout(r,1500)})]).then(show,show);
 setTimeout(show,2000)})();
