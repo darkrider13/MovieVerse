@@ -20,6 +20,39 @@ jobs:
       - run: npm install
       - run: npx cap add android
       - run: npx cap sync android
+      - name: Generate app icons (black background)
+        run: |
+          pip install pillow
+          python3 - <<'PY'
+          from PIL import Image, ImageDraw
+          import os, glob
+          res = 'android/app/src/main/res'
+          src = Image.open('icon-source.png').convert('RGBA')
+          logo = src.crop(src.split()[3].getbbox())
+          big = logo.resize((2048, 2048), Image.LANCZOS)
+          def place(size, frac, black, rnd=False):
+              can = Image.new('RGBA', (size, size), (0, 0, 0, 255) if black else (0, 0, 0, 0))
+              n = int(size * frac)
+              can.alpha_composite(big.resize((n, n), Image.LANCZOS), ((size - n) // 2, (size - n) // 2))
+              if rnd:
+                  m = Image.new('L', (size * 4, size * 4), 0)
+                  ImageDraw.Draw(m).ellipse((0, 0, size * 4 - 1, size * 4 - 1), fill=255)
+                  can.putalpha(m.resize((size, size), Image.LANCZOS))
+              return can
+          for f in glob.glob(res + '/**/ic_launcher*.webp', recursive=True):
+              os.remove(f)
+          for d, (l, f) in {'mdpi': (48, 108), 'hdpi': (72, 162), 'xhdpi': (96, 216), 'xxhdpi': (144, 324), 'xxxhdpi': (192, 432)}.items():
+              p = res + '/mipmap-' + d
+              os.makedirs(p, exist_ok=True)
+              place(l, .70, True).convert('RGB').save(p + '/ic_launcher.png')
+              place(l, .70, True, True).save(p + '/ic_launcher_round.png')
+              place(f, .56, False).save(p + '/ic_launcher_foreground.png')
+          os.makedirs(res + '/values', exist_ok=True)
+          open(res + '/values/ic_launcher_background.xml', 'w').write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#000000</color>\n</resources>\n')
+          os.makedirs(res + '/mipmap-anydpi-v26', exist_ok=True)
+          for n in ('ic_launcher', 'ic_launcher_round'):
+              open(res + '/mipmap-anydpi-v26/' + n + '.xml', 'w').write('<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n    <background android:drawable="@color/ic_launcher_background"/>\n    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n</adaptive-icon>\n')
+          PY
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - name: Publish APK to release
         env:
