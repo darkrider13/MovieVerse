@@ -20,8 +20,17 @@ jobs:
       - run: npm install
       - run: npx cap add android
       - run: npx cap sync android
-      - name: Generate splash screen
-        run: npx --yes @capacitor/assets generate --android --splashBackgroundColor '#0a0b18' --splashBackgroundColorDark '#0a0b18' --iconBackgroundColor '#000000' --iconBackgroundColorDark '#000000'
+      - name: Plain native splash (logo and tagline are shown by the app)
+        run: |
+          res=android/app/src/main/res
+          find $res -path '*/drawable*' -name 'splash*.png' -delete
+          mkdir -p $res/drawable
+          cat > $res/drawable/splash.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+              <solid android:color="#0a0b18"/>
+          </shape>
+          XML
       - name: Generate app icons (black background)
         run: |
           pip install pillow
