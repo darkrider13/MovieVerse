@@ -140,6 +140,25 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 .eye.cp{right:40px}
 .pw.one input{padding-right:42px!important}
 .eye[aria-pressed=true]{color:var(--acc)}
+.apih{display:flex;align-items:center;justify-content:space-between}
+.apiadd{width:30px;height:30px;margin-top:8px;border:0;background:none;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.kx.ph{visibility:hidden;border:0}
+.atabs{position:relative;display:flex;flex-wrap:nowrap;gap:6px;margin-bottom:8px;overflow-x:hidden;scroll-behavior:smooth;scroll-snap-type:x proximity;scrollbar-width:none}
+.atabs .pill:not([data-newapi]){pointer-events:none}
+.atabs::-webkit-scrollbar{display:none}
+.atabs .pill{flex:0 0 calc((100% - 18px)/4);scroll-snap-align:start;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink);font-weight:600;font-size:12.5px;padding:8px 4px}
+.atabs .pill[aria-pressed=true]{color:var(--bg)}
+.atabs .pill[data-newapi]{color:var(--mut);border-style:dashed;font-size:16px;font-weight:800}
+.akb{display:flex;gap:8px;margin-top:8px}
+.akb .btn{flex:1}
+.aks{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.aks::-webkit-scrollbar{display:none}
+.ak{flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always}
+.akl{display:grid;gap:8px;max-height:128px;overflow-y:auto;overscroll-behavior:contain;padding:1px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.kr{display:flex;gap:6px;align-items:stretch}
+.kr .pw{flex:1;min-width:0}
+.kx{flex:none;width:38px;border:1px solid var(--line);background:var(--s2);border-radius:10px;color:#e24b4b;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+
 .srow.ex{margin-top:6px}
 #sdlg .srow.ex .btn{padding:6px 10px;font-size:12px}
 .srow{display:flex;gap:8px;margin-top:16px}
@@ -181,6 +200,9 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 .info:empty{display:none}
 .tile{background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:7px 10px}
 .tile.wide{grid-column:1/-1}
+.tile a{color:var(--acc);text-decoration:none;font-weight:600}
+.tile .xt{display:block;font-weight:500;font-size:12.5px;line-height:1.4}
+.tile .xr{display:inline-block;font-size:11px;font-weight:700;color:var(--mut);margin-right:4px}
 .tile small{display:block;color:var(--mut);font-size:12px}
 .dupb{display:inline-block;background:var(--acc);color:var(--onacc);border-radius:99px;padding:1px 9px;font-size:12px;font-weight:700;margin-top:3px}
 .rs{--p:0%;--star:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cpath d='M13 3l2.9 6.2 6.8.8-5 4.7 1.3 6.7L13 18l-6 3.4 1.3-6.7-5-4.7 6.8-.8z' fill='black' stroke='black' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E");flex:none;width:130px;height:26px;background:linear-gradient(90deg,#ffb52e var(--p),rgba(140,145,175,.32) var(--p));-webkit-mask:var(--star) 0 0/26px 26px repeat-x;mask:var(--star) 0 0/26px 26px repeat-x}
@@ -323,9 +345,10 @@ img{-webkit-user-drag:none;user-drag:none}
   <h2 style="margin-top:0">Settings</h2>
   <label for="nm">Your name</label><input type="text" id="nm" placeholder="Your name" maxlength="30">
   <label>Appearance</label><button class="btn" id="theme" type="button"></button>
-  <label for="key">TMDB API key</label>
-  <div class="pw"><input type="password" id="key" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="button" class="eye cp" data-copy="key" aria-label="Copy key"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><button type="button" class="eye" data-eye="key" aria-label="Show or hide key"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
-  <label for="okey">IMDb API key (Rating)</label><div class="pw"><input type="password" id="okey" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="button" class="eye cp" data-copy="okey" aria-label="Copy key"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><button type="button" class="eye" data-eye="okey" aria-label="Show or hide key"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+  <div class="apih"><label>API keys</label><button type="button" class="apiadd" id="apiadd" aria-label="Add API"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
+  <div class="atabs" id="atabs"></div>
+  <div class="aks" id="aks"></div>
+  <p class="note">Swipe to switch APIs. With more than one key in an API, the next key is used automatically if one hits its limit. Empty keys are ignored.</p>
   <label>Export or import your data</label>
   <div class="srow ex"><button class="btn" id="exp">Export</button><button class="btn" id="imp">Import</button></div>
   <div class="srow" style="margin-top:14px"><button class="btn pri" id="ksave">Save</button></div>
@@ -350,11 +373,26 @@ var uc='',upage=1,uitems=[];
 var folders=JSON.parse(LS.getItem('shelf.folders')||'[]'),folder=null,fstat='watched',fsel=null,curStatus='watched',tt;
 var FI='<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
 var omdb=LS.getItem('shelf.omdb')||'';
+var keys=[],omdbs=[],ki=0,oi=0;
+try{keys=JSON.parse(LS.getItem('shelf.keys'))}catch(e){}
+try{omdbs=JSON.parse(LS.getItem('shelf.omdbs'))}catch(e){}
+if(!Array.isArray(keys))keys=key?[key]:[];
+if(!Array.isArray(omdbs))omdbs=omdb?[omdb]:[];
+function pickKeys(){key=keys[ki]||'';omdb=omdbs[oi]||''}
+var apis=null;
+try{apis=JSON.parse(LS.getItem('shelf.apis'))}catch(e){}
+if(!Array.isArray(apis)){apis=[];
+[['tmdb','TMDB',keys],['omdb','IMDb',omdbs]].forEach(function(d){apis.push({id:d[0],name:d[1],keys:d[2].slice()})})}
+apis=apis.filter(function(a){return !((a.id==='xmdb'||a.id==='watchmode')&&!(a.keys&&a.keys.length))});
+function apiKeys(id){var a=apis.filter(function(x){return x.id===id})[0];return a?a.keys.slice():[]}
+keys=apiKeys('tmdb');omdbs=apiKeys('omdb');
+pickKeys();
 function rcls(n,rt){return isNaN(n)?'':n>=(rt?60:70)?'cg':n>=(rt?40:50)?'cy':'cr'}
 function fmtV(n){if(!n||isNaN(n))return '';return n>=1e6?(n/1e6).toFixed(1).replace(/\.0$/,'')+'M':n>=1e3?Math.round(n/1e3)+'K':String(n)}
-function omdbGet(id){return fetch('https://www.omdbapi.com/?i='+id+'&apikey='+encodeURIComponent(omdb)).then(function(r){return r.json()})}
-function omdbT(t,y){return fetch('https://www.omdbapi.com/?t='+encodeURIComponent(t||'')+(y?'&y='+encodeURIComponent(y):'')+'&type=movie&apikey='+encodeURIComponent(omdb)).then(function(r){return r.json()})}
-function omdbS(t,y){return fetch('https://www.omdbapi.com/?s='+encodeURIComponent(t||'')+(y?'&y='+encodeURIComponent(y):'')+'&type=movie&apikey='+encodeURIComponent(omdb)).then(function(r){return r.json()})}
+function omReq(q,n){n=n||0;return fetch('https://www.omdbapi.com/?'+q+'&apikey='+encodeURIComponent(omdb)).then(function(r){return r.json()}).then(function(j){if(limitHit(j)&&omdbs.length>1&&n<omdbs.length-1){oi=(oi+1)%omdbs.length;pickKeys();return omReq(q,n+1)}return j})}
+function omdbGet(id){return omReq('i='+id)}
+function omdbT(t,y){return omReq('t='+encodeURIComponent(t||'')+(y?'&y='+encodeURIComponent(y):'')+'&type=movie')}
+function omdbS(t,y){return omReq('s='+encodeURIComponent(t||'')+(y?'&y='+encodeURIComponent(y):'')+'&type=movie')}
 function limitHit(j){return !!(j&&j.Response==='False'&&/limit|invalid api/i.test(j.Error||''))}
 /* resolves {imdb,rt,vc} (fields may be empty) or null when OMDb could not be reached / limit hit */
 function lookupO(id,title,year){
@@ -386,6 +424,59 @@ function parseO(j){
 function unrel(m){return !!(m&&m.rel&&m.rel>new Date().toISOString().slice(0,10))}
 var soOpen=false;
 function slOf(d){return (d.seasons||[]).filter(function(x){return x.season_number>0}).map(function(x){return [x.season_number,x.episode_count||0]})}
+var XI_={},XC={};
+function apiGet(id,mk,n){n=n||0;var ks=apiKeys(id);if(!ks.length)return Promise.reject(new Error('nokey'));var i=(XI_[id]||0)%ks.length;
+  return fetch(mk(ks[i])).then(function(r){
+    if((r.status===401||r.status===402||r.status===403||r.status===429)&&ks.length>1&&n<ks.length-1){XI_[id]=(i+1)%ks.length;return apiGet(id,mk,n+1)}
+    if(!r.ok){var e=new Error('HTTP '+r.status);e.status=r.status;throw e}
+    return r.json()})}
+function xv(o,ks){for(var i=0;i<ks.length;i++){var v=ks[i].split('.').reduce(function(a,k){return a&&a[k]!=null?a[k]:undefined},o);if(v!=null&&v!==''&&typeof v!=='object')return v}return null}
+function xlink(u,t){return /^https:\/\//.test(u||'')?'<a href="'+esc(u)+'" target="_blank" rel="noopener">'+esc(t)+'</a>':esc(t)}
+function wmRegions(){var l=((navigator.language||'en-US').split('-')[1]||'').toUpperCase(),r=[];if(/^[A-Z]{2}$/.test(l))r.push(l);if(r.indexOf('US')<0)r.push('US');return r.join(',')}
+function wmH(list){
+  if(!Array.isArray(list)||!list.length)return '';
+  var by={},TL={sub:'Stream',free:'Free',rent:'Rent',buy:'Buy',tve:'TV'},h='';
+  list.forEach(function(x){var r=x.region||'US',t=x.type||'other';by[r]=by[r]||{};by[r][t]=by[r][t]||{};by[r][t][x.name]=x.web_url||''});
+  Object.keys(by).forEach(function(r){
+    var parts=Object.keys(by[r]).map(function(t){return esc(TL[t]||t)+': '+Object.keys(by[r][t]).map(function(n){return xlink(by[r][t][n],n)}).join(', ')});
+    h+='<span class="xt" style="margin-top:3px"><span class="xr">'+esc(r)+'</span>'+parts.join(' · ')+'</span>'});
+  return '<div class="tile wide"><small>Where to watch · Watchmode</small><b>'+h+'</b></div>'}
+function xmH(a){
+  var d=a[0],v=a[1],c=a[2],r=a[3],h='';
+  if(d){var rt=parseFloat(xv(d,['rating','imdb_rating','ratings.rating','rating.value','aggregate_rating.value','aggregateRating.ratingValue'])),vc=xv(d,['vote_count','votes','ratings.vote_count','rating.vote_count','aggregate_rating.vote_count']);
+    if(!isNaN(rt))h+='<div class="tile"><small>XMDb rating</small><b><span class="'+rcls(rt*10)+'">'+esc(rt)+'</span></b></div>';
+    if(vc!=null&&!isNaN(+vc))h+='<div class="tile"><small>XMDb votes</small><b>'+esc(fmtV(+vc))+'</b></div>'}
+  if(v){var tr=v.latest_trailer||(v.videos||[]).filter(function(x){return /trailer/i.test(x.type||'')})[0]||(v.videos||[])[0],tu=tr&&(typeof tr==='string'?tr:tr.url);
+    if(tu)h+='<div class="tile wide"><small>Trailer · XMDb</small><b>'+xlink(tu,(tr&&tr.name)||'Watch trailer')+'</b></div>'}
+  var cl=(c&&c.connections)||[];
+  if(cl.length){h+='<div class="tile wide"><small>Related titles · XMDb</small><b>'+cl.slice(0,8).map(function(x){var t=x.associated_title||{};return '<span class="xt">'+esc(x.category_name||x.category||'')+': '+esc(t.title||'')+(t.year?' ('+esc(t.year)+')':'')+'</span>'}).join('')+'</b></div>'}
+  var rv=r&&(r.reviews||[])[0];
+  if(rv&&(rv.text||rv.summary)){var tx=String(rv.text||'');if(tx.length>220)tx=tx.slice(0,220).replace(/\s+\S*$/,'')+'…';
+    h+='<div class="tile wide"><small>Top review · XMDb</small><b><span class="xt">'+(rv.summary?esc(rv.summary)+' · ':'')+esc(rv.author||'')+(rv.rating?' · '+esc(rv.rating)+'/10':'')+'</span><span class="xt" style="color:var(--mut)">'+esc(tx)+'</span></b></div>'}
+  return h}
+var EXT={
+  watchmode:{n:'Watchmode',get:function(m){
+    var reg=wmRegions(),src=function(t,k){return 'https://api.watchmode.com/v1/title/'+encodeURIComponent(t)+'/sources/?apiKey='+encodeURIComponent(k)+'&regions='+reg};
+    return apiGet('watchmode',function(k){return src(m.imdbId,k)}).catch(function(e){
+      if(e.status!==404)throw e;
+      return apiGet('watchmode',function(k){return 'https://api.watchmode.com/v1/search/?apiKey='+encodeURIComponent(k)+'&search_field=imdb_id&search_value='+encodeURIComponent(m.imdbId)}).then(function(j){var t=(j.title_results||[])[0];return t?apiGet('watchmode',function(k){return src(t.id,k)}):[]})
+    }).then(wmH)}},
+  xmdb:{n:'XMDb',get:function(m){
+    var B='https://xmdbapi.com/api/v1/',id=encodeURIComponent(m.imdbId),q=function(path){return apiGet('xmdb',function(k){return B+path+(path.indexOf('?')>-1?'&':'?')+'apiKey='+encodeURIComponent(k)}).catch(function(){return null})};
+    return Promise.all([q('movies/'+id),q('videos/'+id+'?limit=5'),q('connections/'+id+'?category=followed_by,follows,remake_of,remade_as,spin_off,spin_off_from&first=12'),q('reviews/'+id+'?max_pages=1&sort_by=HELPFULNESS_SCORE')]).then(xmH)}}
+};
+function exLoad(m){
+  if(!m||!/^tt\d+$/.test(m.imdbId||''))return;
+  Object.keys(EXT).forEach(function(id){
+    if(!apiKeys(id).length)return;
+    var k=id+'|'+m.imdbId;if(XC[k])return;
+    XC[k]={st:'load',h:''};
+    EXT[id].get(m).then(function(h){XC[k]={st:'ok',h:h||''}},function(){delete XC[k]}).then(function(){if(pick===m&&$('#dlg').open&&!$('#form').hidden)$('#info').innerHTML=infoH(m)})})}
+function exH(m){
+  if(!m||!m.imdbId)return '';var h='';
+  Object.keys(EXT).forEach(function(id){if(!apiKeys(id).length)return;var c=XC[id+'|'+m.imdbId];if(!c)return;
+    h+=c.st==='load'?'<div class="tile wide"><small>'+EXT[id].n+'</small><b><span class="sh"></span></b></div>':c.h});
+  return h}
 function infoH(m){
   var t=[],ld=!!m._ld&&!unrel(m),rv=(unrel(m)||ld)?null:(m.imdb?['IMDb',m.imdb]:(m.tr?['TMDB',m.tr]:null)),SH='<span class="sh"></span>';
   if(m.lang)t.push(['Language',esc(m.lang)]);
@@ -397,7 +488,7 @@ function infoH(m){
   var h=t.map(function(x){return '<div class="tile"'+(x[2]||'')+'><small>'+x[0]+'</small><b>'+x[1]+'</b></div>'}).join('');
   if(soOpen&&m.tmdbId<0&&m.sl&&m.sl.length)h+='<div class="tile wide"><small>Episodes per season</small><b>'+m.sl.map(function(x){return 'Season '+x[0]+' · '+x[1]+' episode'+(x[1]===1?'':'s')}).join('<br>')+'</b></div>';
   if(m.genres&&m.genres.length)h+='<div class="tile wide"><small>Genre</small><b>'+esc(m.genres.join(', '))+'</b></div>';
-  return h+relTiles(m)}
+  return h+relTiles(m)+exH(m)}
 function needsAny(m){return needsE(m)||needsOtt(m)}
 function needsE(m){return !!(omdb&&key&&m.tmdbId&&(m.rt===undefined||(!m.imdb&&Date.now()-(m.chk||0)>2592e5)))}
 function enrich(m,force){
@@ -473,11 +564,13 @@ var CSH={'united states of america':'USA','united states':'USA','usa':'USA','uni
 function shortC(n){n=String(n||'').trim();return CSH[n.toLowerCase()]||n}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function stars(n){return '★'.repeat(n)+'☆'.repeat(5-n)}
-function tmdb(path,params){
+function tmdb(path,params,n){
+  n=n||0;
   var u=new URL('https://api.themoviedb.org/3'+path),h={};
   if(key.length>40)h.Authorization='Bearer '+key;else u.searchParams.set('api_key',key);
   for(var k in (params||{}))u.searchParams.set(k,params[k]);
   return fetch(u.toString(),{headers:h}).then(function(r){
+    if((r.status===401||r.status===429)&&keys.length>1&&n<keys.length-1){ki=(ki+1)%keys.length;pickKeys();return tmdb(path,params,n+1)}
     if(!r.ok)throw new Error(r.status==401?('That API key was not accepted.'+(key.length<=40&&key.length!==32?' A TMDB API key has 32 characters, yours has '+key.length+'. Copy it again from themoviedb.org > Settings > API.':' Check it on themoviedb.org > Settings > API.')):'TMDB error '+r.status);
     return r.json();
   });
@@ -718,7 +811,7 @@ function showForm(m,isEdit,dup,keepSeg){
   $('#pvt').textContent=m.title||'New movie';setOv(m);
   ['#ft','#fy','#fc'].forEach(function(k){$(k).readOnly=lock;$(k).classList.toggle('ro',lock)});
   $('#ft').value=m.title||'';$('#fy').value=m.year||'';$('#fc').value=shortC(m.country);
-  soOpen=false;$('#info').innerHTML=infoH(m);
+  soOpen=false;$('#info').innerHTML=infoH(m);exLoad(m);
   $('#dupn').hidden=!dup;if(dup)$('#dupn').innerHTML='<span class="dupb">Already added · '+esc(SL[m.status]||m.status)+'</span>';
   fstat=m.status||'watched';fsel=m.folder||null;drawSeg(keepSeg);
   $('#fr').value=(sc(m)||0).toFixed(2);updRs();$('#del').hidden=!isEdit;
@@ -765,7 +858,7 @@ function choose(id,status,fromUp,fold){
       if(id<0){pick.seasons=d.number_of_seasons||0;pick.eps=d.number_of_episodes||0;pick.sl=slOf(d)}
       editId=null;pick._ld=!!(omdb&&!unrel(pick));showForm(pick,false,false,true);
       {var p0=pick;$('#save').textContent=fromUp?'Add':'Save';$('#save').disabled=false;dg.classList.remove('busy');if(!dg.open)dg.showModal();
-        var fin2=function(){delete p0._ld;if(pick===p0&&dg.open&&!$('#form').hidden)$('#info').innerHTML=infoH(p0)};if(omdb&&!unrel(p0))enrich(p0).then(fin2,fin2);else delete p0._ld}
+        var fin2=function(){delete p0._ld;if(pick===p0&&dg.open&&!$('#form').hidden){$('#info').innerHTML=infoH(p0);exLoad(p0)}};if(omdb&&!unrel(p0))enrich(p0).then(fin2,fin2);else delete p0._ld}
     };
     done(null);
   }).catch(function(e){dg.classList.remove('busy');$('#save').disabled=false;if(tok!==choose.t)return;if(fromUp){if(dg.open)dg.close();toast(e.message)}else{$('#form').hidden=true;$('#find').hidden=false;$('#res').innerHTML='<p class="note">'+esc(e.message)+'</p>'}});
@@ -878,10 +971,46 @@ function copyTxt(t,c,onfail){
 document.addEventListener('click',function(e){var c=e.target.closest('[data-copy]');if(!c)return;var inp=$('#'+c.dataset.copy),t=inp.value;if(!t)return;
   copyTxt(t,c,function(){inp.type='text';var eb=document.querySelector('[data-eye="'+c.dataset.copy+'"]');if(eb)eb.setAttribute('aria-pressed','true');inp.focus();inp.select()})});
 document.addEventListener('click',function(e){var b=e.target.closest('[data-eye]');if(!b)return;var i=$('#'+b.dataset.eye),show=i.type==='password';i.type=show?'text':'password';b.setAttribute('aria-pressed',show)});
-$('#set').onclick=function(){['key','okey'].forEach(function(id){$('#'+id).type='password'});document.querySelectorAll('[data-eye]').forEach(function(b){b.setAttribute('aria-pressed','false')});$('#key').value=key;$('#okey').value=omdb;$('#nm').value=uname;themeBtn();$('#sdlg').showModal()};
+var CPI='<button type="button" class="eye cp" aria-label="Copy key"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>',EYI='<button type="button" class="eye" aria-pressed="false" aria-label="Show or hide key"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></button>',XI='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>';
+var sapis=[],cur=0;
+function drawL(i){
+  $('#akl'+i).innerHTML=sapis[i].keys.map(function(v,j){return '<div class="kr"><div class="pw"><input type="password" value="'+esc(v)+'" data-ki="'+i+'.'+j+'" placeholder="'+esc(sapis[i].name)+' key '+(j+1)+'" autocomplete="off" autocapitalize="off" spellcheck="false">'+CPI+EYI+'</div>'+(j===0?'<button type="button" class="kx" data-delapi="'+i+'" aria-label="Delete this API">'+XI+'</button>':'<span class="kx ph"></span>')+'</div>'}).join('');
+}
+function drawA(){
+  $('#atabs').innerHTML=sapis.map(function(a,i){return '<button type="button" class="pill" data-at="'+i+'" aria-pressed="'+(i===cur)+'">'+esc(a.name)+'</button>'}).join('');
+  $('#aks').innerHTML=sapis.map(function(a,i){return '<div class="ak"><div class="akl" id="akl'+i+'"></div><div class="akb"><button type="button" class="btn" data-add="'+i+'">+ Add key</button>'+'</div></div>'}).join('')||'<p class="note" style="margin:18px 0">No API yet. Tap + to add one.</p>';
+  sapis.forEach(function(a,i){drawL(i)});
+  var k=$('#aks');k.style.scrollBehavior='auto';k.scrollLeft=cur*k.clientWidth;k.style.scrollBehavior='';
+  centerTab();
+}
+function centerTab(){var t=$('#atabs'),b=t.querySelector('[data-at="'+cur+'"]');if(!b)return;var l=t.scrollLeft;if(b.offsetLeft<l||b.offsetLeft+b.offsetWidth>l+t.clientWidth+1)t.scrollLeft=b.offsetLeft}
+function setTab(n){if(n===cur)return;cur=n;document.querySelectorAll('#atabs [data-at]').forEach(function(b){b.setAttribute('aria-pressed',String(+b.dataset.at===n))});centerTab()}
+$('#aks').addEventListener('scroll',function(){if(!sapis.length)return;var w=this.clientWidth||1;setTab(Math.min(sapis.length-1,Math.round(this.scrollLeft/w)))});
+var APIIDS={tmdb:'tmdb',imdb:'omdb',omdb:'omdb',xmdb:'xmdb',watchmode:'watchmode'};
+$('#apiadd').onclick=function(){
+  if(sapis.length>=20){toast('Up to 20 APIs');return}
+  modal({title:'New API',text:'Name it, then add its keys. XMDB and Watchmode add extra info to movie details.',input:true,placeholder:'e.g. Trakt',ok:'Add'}).then(function(n){
+    if(!n)return;n=n.slice(0,24);var id=APIIDS[n.toLowerCase()]||('c'+uid());
+    if(sapis.some(function(x){return x.id===id||x.name.toLowerCase()===n.toLowerCase()})){toast('That API is already added');return}
+    sapis.push({id:id,name:n,keys:['']});cur=sapis.length-1;drawA()})
+};
+$('#aks').addEventListener('input',function(e){var k=e.target.dataset.ki;if(!k)return;k=k.split('.');sapis[+k[0]].keys[+k[1]]=e.target.value});
+$('#aks').addEventListener('click',function(e){
+  var a=e.target.closest('[data-add]');
+  if(a){var t=+a.dataset.add;if(sapis[t].keys.length>=10){toast('Up to 10 keys');return}sapis[t].keys.push('');drawL(t);var l=$('#akl'+t);l.scrollTop=l.scrollHeight;var ins=l.querySelectorAll('input');ins[ins.length-1].focus();return}
+  var x=e.target.closest('[data-kx]');
+  if(x){var q=x.dataset.kx.split('.'),i=+q[0];sapis[i].keys.splice(+q[1],1);if(!sapis[i].keys.length)sapis[i].keys.push('');drawL(i);return}
+  var d=e.target.closest('[data-delapi]');
+  if(d){var di=+d.dataset.delapi,nm=sapis[di].name;modal({title:'Remove "'+nm+'"?',text:'Its keys are removed too.',ok:'Remove',danger:true}).then(function(y){if(y){sapis.splice(di,1);cur=Math.max(0,Math.min(cur,sapis.length-1));drawA()}});return}
+  var w=e.target.closest('.pw'),inp=w&&w.querySelector('input');if(!inp)return;
+  var c=e.target.closest('.cp');
+  if(c){var t2=inp.value;if(!t2)return;copyTxt(t2,c,function(){inp.type='text';var eb=w.querySelector('.eye:not(.cp)');if(eb)eb.setAttribute('aria-pressed','true');inp.focus();inp.select()});return}
+  var b=e.target.closest('.eye');if(b){var show=inp.type==='password';inp.type=show?'text':'password';b.setAttribute('aria-pressed',String(show))}
+});
+$('#set').onclick=function(){sapis=JSON.parse(JSON.stringify(apis));sapis.forEach(function(a){if(!a.keys.length)a.keys=['']});cur=0;drawA();$('#nm').value=uname;themeBtn();$('#sdlg').showModal();drawA()};
 $('#nm').oninput=function(){uname=this.value.trim();LS.setItem('shelf.name',uname);$('#uname').textContent=uname||'User'};
 $('#theme').onclick=function(){setTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')};
-$('#ksave').onclick=function(){key=$('#key').value.replace(/["'\s]/g,'');LS.setItem('shelf.key',key);omdb=$('#okey').value.trim();LS.setItem('shelf.omdb',omdb);$('#sdlg').close();uitems=[];if(!$('#up').hidden)loadUp(true);backfill()};
+$('#ksave').onclick=function(){apis=sapis.map(function(a){var o={id:a.id,name:a.name,keys:a.keys.map(function(v){return a.id==='tmdb'?v.replace(/["'\s]/g,''):v.trim()}).filter(Boolean)};if(a.custom)o.custom=1;return o});keys=apiKeys('tmdb');omdbs=apiKeys('omdb');ki=0;oi=0;pickKeys();LS.setItem('shelf.apis',JSON.stringify(apis));LS.setItem('shelf.keys',JSON.stringify(keys));LS.setItem('shelf.omdbs',JSON.stringify(omdbs));LS.setItem('shelf.key',key);LS.setItem('shelf.omdb',omdb);$('#sdlg').close();uitems=[];if(!$('#up').hidden)loadUp(true);backfill()};
 function bstr(l){return l.map(function(m){return JSON.stringify(m)}).join(',')}
 function writeBackup(F,dir,path){
   var i=0,first=true,N=1500;
