@@ -31,6 +31,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .seg button{border:0;background:none;padding:7px 14px;border-radius:9px;cursor:pointer;color:var(--mut);font-weight:700}
 .seg button[aria-pressed=true]{background:var(--acc);color:var(--onacc)}
 .btn{border:1px solid var(--line);background:var(--s);border-radius:10px;padding:8px 13px;cursor:pointer}
+.btn:disabled{opacity:.4;pointer-events:none}
 .btn.pri{background:var(--acc);border-color:var(--acc);color:var(--onacc);font-weight:700}
 .btn.del{color:#e24b4b}
 input,select,textarea,dialog,[tabindex]{-webkit-tap-highlight-color:transparent}
@@ -93,6 +94,9 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 .crumb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
 .crumb b{font-size:20px}.grow{flex:1}
 #mdlg{width:min(90vw,380px)}
+#mdlg h2,#sfdlg h2,#fdlg h2,#sdlg h2,#find h2{text-align:center;padding:0 40px}
+#mdlg .note,#sfdlg .note,#fdlg .note,#sdlg .note,#find .note{text-align:center}
+.fopts>.note{display:block;width:100%;grid-column:1/-1;text-align:center}
 .xb{position:absolute;top:12px;right:12px;z-index:50;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--s2);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;margin:0}
 #dlg{font-size:13px;padding:16px;overflow:hidden}
 .xw{position:relative;height:0;z-index:60;overflow:visible}
@@ -329,7 +333,7 @@ img{-webkit-user-drag:none;user-drag:none}
   </div>
 </dialog>
 
-<dialog id="mdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="mt" style="margin-top:0"></h2><p class="note" id="mx"></p><input type="text" id="mi" hidden><div id="mc" hidden></div><div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn del" id="mdl" hidden style="margin-right:auto">Delete</button><button class="btn" id="mno">Cancel</button><button class="btn pri" id="mok">OK</button></div></dialog>
+<dialog id="mdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="mt" style="margin-top:0"></h2><p class="note" id="mx"></p><input type="text" id="mi" hidden><div id="mc" hidden></div><div class="row" style="margin-top:14px;justify-content:center"><button class="btn del" id="mdl" hidden>Delete</button><button class="btn pri" id="mok">OK</button></div></dialog>
 <dialog id="fdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="ft2" style="margin-top:0"></h2><input type="search" id="fsr" placeholder="Search country" hidden><div class="fopts" id="fo"></div><div class="row" style="margin-top:14px;justify-content:space-between"><button class="btn" id="fclr">Reset</button><button class="btn pri" id="fok">Done</button></div></dialog>
 <dialog id="sfdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="sft" style="margin-top:0"></h2><div class="fopts" id="sfo"></div><div class="row" style="margin-top:14px;justify-content:space-between"><button class="btn" id="sfclr">Reset</button><button class="btn pri" id="sfok">Done</button></div></dialog>
 
@@ -461,9 +465,7 @@ function modal(o){return new Promise(function(res){
   ok.textContent=o.ok||'OK';ok.className='btn '+(o.danger?'del':'pri');
   var done=function(v){d.onclose=null;d.close();res(v)};
   ok.onclick=function(){var v=o.input?i.value.trim():true;if(o.input&&!v){i.focus();return}done(o.colors?{n:v,c:selC}:v)};
-  var dl=$('#mdl');dl.hidden=!o.del;dl.onclick=function(){done({del:1})};
-  $('#mno').hidden=!!o.nocancel;
-  $('#mno').onclick=function(){done(null)};
+  var dl=$('#mdl');dl.hidden=!o.del;dl.parentNode.style.justifyContent=o.del?'space-between':'center';dl.onclick=function(){done({del:1})};
   d.onclose=function(){res(null)};
   d.showModal();
 })}
@@ -552,6 +554,7 @@ function drawFilters(){
 }
 function optList(){return fk==='c'?COUNTRIES:fk==='g'?GENRES:YEARS}
 function drawOpts(reset){
+  $('#fclr').disabled=fk==='y'?!ftmp[0]:!ftmp.length;
   var q=$('#fsr').value.toLowerCase(),sc0=reset===true?0:$('#fo').scrollTop;
   $('#fo').className='fopts rows3 '+(fk==='y'?'g3':'g2');
   $('#fo').innerHTML=optList().filter(function(o){return !q||o[1].toLowerCase().indexOf(q)>-1}).map(function(o){
@@ -931,6 +934,7 @@ $('#fsb').onclick=function(e){var b=e.target.closest('[data-s]');if(!b)return;fs
 $('#ffol').onclick=function(e){var b=e.target.closest('[data-fo]');if(b){fsel=fsel===b.dataset.fo?null:b.dataset.fo;drawSeg(true)}};
 function sfOpts(){
   var o=[];
+  $('#sfclr').disabled=fkey==='g'?!ff.g.length:(fkey==='s'?ff.s==='new':!ff[fkey]);
   $('#sfo').className='fopts'+(fkey==='r'?' g5':fkey==='y'?' g3 rows3':fkey==='g'?' g2 rows3':' g2');
   if(fkey==='g'){var set={};movies.filter(function(m){return m.folder===folder}).forEach(function(m){(m.genres||[]).forEach(function(x){set[x]=1})});
     var gl=Object.keys(set).sort();
