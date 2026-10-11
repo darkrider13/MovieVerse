@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a0b18">
 <title>MovieVerse</title>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Kalam:wght@400&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0a0b18;--bot:#07080e;--nav:#0a0b18;--dlg:rgba(22,24,46,.40);--s:rgba(255,255,255,.07);--s2:rgba(255,255,255,.1);--ink:#f1f2fc;--mut:#a3a9c9;--line:rgba(255,255,255,.15);--acc:#ff1a1a;--onacc:#fff;--w:#00b800;--p:#e8a33d;--n:#9a7bff;--g:radial-gradient(60% 40% at 12% 0%,rgba(255,26,26,.30),transparent 70%),radial-gradient(55% 45% at 100% 32%,rgba(60,90,255,.30),transparent 70%),linear-gradient(to top,var(--bot) 0,transparent 30%)}
 :root[data-theme=light]{--bg:#eceefb;--bot:#e0e3f5;--nav:#eceefb;--dlg:rgba(255,255,255,.45);--s:rgba(255,255,255,.55);--s2:rgba(255,255,255,.7);--ink:#161830;--mut:#575d82;--line:rgba(20,24,70,.14);--acc:#e00000;--w:#009a00;--p:#a96600;--n:#6a46d9;--g:radial-gradient(60% 40% at 12% 0%,rgba(255,60,60,.22),transparent 70%),radial-gradient(55% 45% at 100% 32%,rgba(90,120,255,.25),transparent 70%),linear-gradient(to top,var(--bot) 0,transparent 30%)}
@@ -16,6 +16,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 .nav-in{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .brand{font-size:24px;font-weight:800;letter-spacing:-.03em;margin-right:auto}
 .brand i{color:var(--acc);font-style:normal}
+.brand .tg,.hero .utag{display:block;font-family:'Kalam','Segoe Print','Bradley Hand',cursive;font-style:normal;font-weight:400;letter-spacing:.02em;color:var(--mut)}
+.brand .tg{font-size:clamp(10.5px,3vw,14px);line-height:1.1;margin-top:0;white-space:nowrap}
+.nav-in{flex-wrap:nowrap}
+.brand{min-width:0}
+.hero .utag{font-size:14px;line-height:1.2;margin-bottom:1px}
+.hero h1#uname{padding-left:18px}
 .seg{display:flex;background:var(--s);border:1px solid var(--line);border-radius:12px;padding:3px}
 .seg button{border:0;background:none;padding:7px 14px;border-radius:9px;cursor:pointer;color:var(--mut);font-weight:700}
 .seg button[aria-pressed=true]{background:var(--acc);color:var(--onacc)}
@@ -205,13 +211,17 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 #adlg h2{padding-right:40px}
 #adlg .dsc{max-height:60vh}
 .fb.on{border-color:var(--acc);color:var(--acc);font-weight:700}
+#ufil{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:6px}
+#ufil .fb,#ufil .pill{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;padding:5px 10px;line-height:1.2}
+#ufil .fb{border-radius:9px}
+#ufil .pill{flex-shrink:0}
 .ov{color:var(--mut);font-size:14px;margin:12px 0 0;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
 </style>
 <script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("shelf.theme")||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"));document.querySelector("meta[name=theme-color]").content=document.documentElement.getAttribute("data-theme")==="dark"?"#0a0b18":"#eceefb"}catch(e){}</script>
 </head>
 <body>
 <div class="nav"><div class="nav-in">
-  <div class="brand" id="brand">Movie<i>Verse</i></div>
+  <div class="brand" id="brand">Movie<i>Verse</i><span class="tg">Every story starts with a movie</span></div>
   <button class="btn" id="upb">Upcoming</button>
   <button class="btn ic" id="set" aria-label="Settings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 </div></div>
@@ -219,7 +229,7 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 <div class="wrap">
   <section id="shelf">
     <div class="hero row" style="justify-content:space-between">
-      <div><h1 id="uname">My shelf</h1></div>
+      <div><span class="utag">Welcome</span><h1 id="uname">User</h1></div>
       <div class="row"><button class="btn pri" id="add">Add movie</button></div>
     </div>
     <div class="bar">
@@ -447,7 +457,7 @@ function render(){
   var fo=folders.filter(function(f){return f.status===tab});
   if(folder&&!fo.some(function(f){return f.id===folder}))folder=null;
   var cnt=function(s){return movies.filter(function(m){return m.status===s}).length};
-  $('#uname').textContent=uname||'My shelf';
+  $('#uname').textContent=uname||'User';
   var tabs=$('#tabs'),tsl=tabs.scrollLeft;
   tabs.innerHTML=['all'].concat(statuses.map(function(x){return x.id})).map(function(t){return '<button class="pill" data-tab="'+t+'" aria-pressed="'+(tab===t)+'">'+(t==='all'?'All':esc(SL[t]))+'</button>'}).join('')+'<button class="pill" data-addst="1" aria-label="Add status" style="font-weight:800">＋</button>';
   tabs.scrollLeft=tsl;
@@ -507,8 +517,8 @@ function drawFilters(){
   $('#ufil').innerHTML=fl.map(function(x){return '<button class="btn fb'+(x[2]?' on':'')+'" data-fk="'+x[0]+'">'+esc(x[1])+' ▾</button>'}).join('')+((ucs.length||ugs.length||(umode==='soon'&&uy))?'<button class="pill" data-fk="x">Clear all</button>':'');
 }
 function optList(){return fk==='c'?COUNTRIES:fk==='g'?GENRES:YEARS}
-function drawOpts(){
-  var q=$('#fsr').value.toLowerCase(),sc0=$('#fo').scrollTop;
+function drawOpts(reset){
+  var q=$('#fsr').value.toLowerCase(),sc0=reset===true?0:$('#fo').scrollTop;
   $('#fo').className='fopts rows3 '+(fk==='y'?'g3':'g2');
   $('#fo').innerHTML=optList().filter(function(o){return !q||o[1].toLowerCase().indexOf(q)>-1}).map(function(o){
     return '<button type="button" class="pill" data-o="'+o[0]+'" aria-pressed="'+(ftmp.indexOf(o[0])>-1)+'">'+esc(o[1])+'</button>'}).join('');
@@ -517,7 +527,7 @@ function drawOpts(){
 function openFilter(k){
   fk=k;ftmp=k==='c'?ucs.slice():k==='g'?ugs.slice():[uy];
   $('#ft2').textContent=k==='c'?'Choose countries':k==='g'?'Choose genres':'Choose year';
-  $('#fsr').hidden=k!=='c';$('#fsr').value='';drawOpts();$('#fdlg').showModal();
+  $('#fsr').hidden=k!=='c';$('#fsr').value='';$('#fo').scrollTop=0;drawOpts(true);$('#fdlg').showModal();$('#fo').scrollTop=0;
 }
 function ottInfo(d){
   var rd=(d.release_dates||{}).results||[],best=null,bo=null,oc0=(d.origin_country||[])[0];
@@ -590,7 +600,7 @@ function ctryLoad(list){
 }
 function checkMore(){
   var m=$('#more');
-  if(!m||m.hidden||uload||uerr||$('#up').hidden||!key)return;
+  if(!m||m.hidden||uload||uerr||$('#up').hidden||!key||document.querySelector('dialog[open]'))return;
   if(m.getBoundingClientRect().top<innerHeight+700){upage++;loadUp(false)}
 }
 document.addEventListener('scroll',checkMore,{capture:true,passive:true});
@@ -787,7 +797,7 @@ $('#tabs').onclick=function(e){
 $('#q').oninput=function(e){q=e.target.value;lim=60;clearTimeout(qt);qt=setTimeout(render,250)};
 $('#umode').onclick=function(e){var b=e.target.closest('[data-um]');if(!b||b.dataset.um===umode)return;umode=b.dataset.um;loadUp(true)};
 $('#ufil').onclick=function(e){var b=e.target.closest('[data-fk]');if(!b)return;if(b.dataset.fk==='x'){ucs=[];ugs=[];uy='';loadUp(true)}else openFilter(b.dataset.fk)};
-$('#fsr').oninput=drawOpts;
+$('#fsr').oninput=function(){drawOpts(true)};
 $('#fo').onclick=function(e){var o=e.target.closest('[data-o]');if(!o)return;var v=o.dataset.o,i=ftmp.indexOf(v);
   if(fk==='y')ftmp=(ftmp[0]===v)?['']:[v];else if(i>-1)ftmp.splice(i,1);else ftmp.push(v);drawOpts()};
 $('#fclr').onclick=function(){ftmp=fk==='y'?['']:[];drawOpts()};
@@ -811,7 +821,7 @@ document.addEventListener('click',function(e){var c=e.target.closest('[data-copy
   copyTxt(t,c,function(){inp.type='text';var eb=document.querySelector('[data-eye="'+c.dataset.copy+'"]');if(eb)eb.setAttribute('aria-pressed','true');inp.focus();inp.select()})});
 document.addEventListener('click',function(e){var b=e.target.closest('[data-eye]');if(!b)return;var i=$('#'+b.dataset.eye),show=i.type==='password';i.type=show?'text':'password';b.setAttribute('aria-pressed',show)});
 $('#set').onclick=function(){['key','okey'].forEach(function(id){$('#'+id).type='password'});document.querySelectorAll('[data-eye]').forEach(function(b){b.setAttribute('aria-pressed','false')});$('#key').value=key;$('#okey').value=omdb;$('#nm').value=uname;themeBtn();$('#sdlg').showModal()};
-$('#nm').oninput=function(){uname=this.value.trim();LS.setItem('shelf.name',uname);$('#uname').textContent=uname||'My shelf'};
+$('#nm').oninput=function(){uname=this.value.trim();LS.setItem('shelf.name',uname);$('#uname').textContent=uname||'User'};
 $('#theme').onclick=function(){setTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')};
 $('#ksave').onclick=function(){key=$('#key').value.replace(/["'\s]/g,'');LS.setItem('shelf.key',key);omdb=$('#okey').value.trim();LS.setItem('shelf.omdb',omdb);$('#sdlg').close();uitems=[];if(!$('#up').hidden)loadUp(true);backfill()};
 function bstr(l){return l.map(function(m){return JSON.stringify(m)}).join(',')}
@@ -888,7 +898,7 @@ $('#fold').onclick=function(e){
   var fq=e.target.closest('[data-ff]');
   if(fq){var k0=fq.dataset.ff;
     if(k0==='x'){ff={g:[],r:'',y:'',s:'new'};lim=60;render();return}
-    fkey=k0;$('#sft').textContent={g:'Genre',r:'My rating',y:'Year',s:'Sort by'}[k0];sfOpts();$('#sfdlg').showModal();return}
+    fkey=k0;$('#sft').textContent={g:'Genre',r:'My rating',y:'Year',s:'Sort by'}[k0];$('#sfo').scrollTop=0;sfOpts();$('#sfdlg').showModal();$('#sfo').scrollTop=0;return}
   var sa=e.target.closest('[data-sa]');
   if(sa){var st=statuses.filter(function(x){return x.id===tab})[0];
     if(sa.dataset.sa==='ren')modal({title:'Rename status',input:true,value:st.name,ok:'Save'}).then(function(n){if(n){st.name=n;saveS();rebuildSL();render()}});
