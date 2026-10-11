@@ -20,6 +20,8 @@ jobs:
       - run: npm install
       - run: npx cap add android
       - run: npx cap sync android
+      - name: Generate splash screen
+        run: npx --yes @capacitor/assets generate --android --splashBackgroundColor '#0a0b18' --splashBackgroundColorDark '#0a0b18' --iconBackgroundColor '#000000' --iconBackgroundColorDark '#000000'
       - name: Generate app icons (black background)
         run: |
           pip install pillow
