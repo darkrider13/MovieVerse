@@ -22,6 +22,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .btn{border:1px solid var(--line);background:var(--s);border-radius:10px;padding:8px 13px;cursor:pointer}
 .btn.pri{background:var(--acc);border-color:var(--acc);color:var(--onacc);font-weight:700}
 .btn.del{color:#e24b4b}
+input,select,textarea,dialog,[tabindex]{-webkit-tap-highlight-color:transparent}
+input:focus,input:focus-visible,select:focus,select:focus-visible,textarea:focus,textarea:focus-visible,dialog:focus,dialog:focus-visible{outline:none!important;box-shadow:none!important}
+input:focus,select:focus,textarea:focus{border-color:var(--mut)}
 .btn:focus-visible,.card:focus-visible,.pill:focus-visible,.seg button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .wrap{max-width:1100px;margin:0 auto;padding:16px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -59,7 +62,9 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 .pv{display:flex;gap:12px;align-items:flex-start}
 .pv>div:last-child{min-width:0}
 .pv img,#pvimg{flex:none}
-.ov2{--lh:19px;color:var(--mut);font-size:13px;line-height:var(--lh);margin:6px 0 0;max-height:calc(var(--lh)*3);overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--line) transparent;padding-right:6px}
+.ov2{--lh:19px;color:var(--mut);font-size:13px;line-height:var(--lh);margin:6px 0 0;padding-right:6px;cursor:pointer}
+.ov2 .ovi{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.ov2.open .ovi{display:block;-webkit-line-clamp:unset;max-height:calc(var(--lh)*9);overflow-y:auto;overscroll-behavior:contain}
 #dlg .ov2{--lh:17px;font-size:12px}
 .ovi{position:relative}
 .ovi i{position:absolute;left:0;width:1px;height:1px;scroll-snap-align:start}
@@ -146,6 +151,7 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90vw}
 #toast.show{opacity:1}
 html{background:var(--bg)}
+body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:env(safe-area-inset-bottom,0px);background:var(--bg);z-index:40;pointer-events:none}
 body::before{content:"";position:fixed;top:0;left:0;right:0;bottom:0;background:var(--g);z-index:-1;pointer-events:none}
 .hero,.fold,.seg,.btn,.pill,.hit{-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 dialog{background:var(--dlg);-webkit-backdrop-filter:blur(26px) saturate(1.5);backdrop-filter:blur(26px) saturate(1.5);border:1px solid rgba(255,255,255,.22);box-shadow:0 14px 44px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.2)}
@@ -252,7 +258,7 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
     <p class="note" id="dupn" hidden></p>
     <div class="row" style="align-items:flex-start;flex-wrap:nowrap">
       <div style="flex:1"><label for="fy">Year</label><input type="text" id="fy" inputmode="numeric"></div>
-      <div style="flex:1"><label for="fc">Country</label><input type="text" id="fc" placeholder="e.g. South Korea"></div>
+      <div style="flex:1"><label for="fc">Country</label><input type="text" id="fc" placeholder="Country"></div>
     </div>
     <div class="info" id="info"></div>
     <label>Status</label><div class="segc" id="fsb"></div>
@@ -272,7 +278,7 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
   <button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   <div class="dsc">
   <h2 style="margin-top:0">Settings</h2>
-  <label for="nm">Your name</label><input type="text" id="nm" placeholder="e.g. Rahul" maxlength="30">
+  <label for="nm">Your name</label><input type="text" id="nm" placeholder="Your name" maxlength="30">
   <label>Appearance</label><button class="btn" id="theme" type="button"></button>
   <label for="key">TMDB API key</label>
   <div class="pw"><input type="password" id="key" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="button" class="eye cp" data-copy="key" aria-label="Copy key"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><button type="button" class="eye" data-eye="key" aria-label="Show or hide key"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
@@ -393,8 +399,10 @@ function saveS(){LS.setItem('shelf.statuses',JSON.stringify(statuses))}
 (function(){if(LS.getItem('shelf.st5'))return;var add=[['upcoming','Upcoming'],['favourite','Favourite']];add.forEach(function(a){if(!statuses.some(function(x){return x.id===a[0]}))statuses.push({id:a[0],name:a[1]})});saveS();LS.setItem('shelf.st5','1')})();rebuildSL();
 function scol(id){var c={watched:'var(--w)',plan:'var(--p)',watching:'var(--n)',upcoming:'#2f9fd6',favourite:'#e84fb0'}[id];if(c)return c;var k=0;statuses.forEach(function(x,i){if(x.id===id)k=i});return PAL[k%PAL.length]}
 var SUN='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',MOON='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
-function paintBar(){var C=window.Capacitor,S=C&&C.Plugins&&C.Plugins.StatusBar;if(!S)return;var d=document.documentElement.getAttribute('data-theme')==='dark';
-  try{S.setOverlaysWebView({overlay:false});S.setBackgroundColor({color:d?'#0a0b18':'#eceefb'});S.setStyle({style:d?'DARK':'LIGHT'})}catch(e){}}
+function paintBar(){var C=window.Capacitor,P=C&&C.Plugins;if(!P)return;var d=document.documentElement.getAttribute('data-theme')==='dark',c=d?'#0a0b18':'#eceefb';
+  try{if(P.StatusBar){P.StatusBar.setOverlaysWebView({overlay:false});P.StatusBar.setBackgroundColor({color:c});P.StatusBar.setStyle({style:d?'DARK':'LIGHT'})}}catch(e){}
+  try{if(P.NavigationBar&&P.NavigationBar.setNavigationBarColor)P.NavigationBar.setNavigationBarColor({color:c,darkButtons:!d})}catch(e){}
+  try{if(P.SystemBars&&P.SystemBars.setStyle)P.SystemBars.setStyle({style:d?'DARK':'LIGHT'})}catch(e){}}
 function themeBtn(){var t=document.documentElement.getAttribute('data-theme');$('#theme').innerHTML=t==='dark'?MOON+' Dark mode':SUN+' Light mode';document.querySelector('meta[name=theme-color]').content=t==='dark'?'#0a0b18':'#eceefb';paintBar()}
 function setTheme(t){document.documentElement.setAttribute('data-theme',t);LS.setItem('shelf.theme',t);themeBtn()}
 var CO=[['','All countries'],['BD','Bangladesh'],['IN','India'],['US','United States'],['KR','South Korea'],['JP','Japan'],['GB','United Kingdom'],['FR','France'],['CN','China'],['TR','Turkey'],['TH','Thailand'],['ES','Spain'],['DE','Germany'],['IT','Italy'],['PK','Pakistan']];
@@ -429,7 +437,7 @@ function tmdb(path,params){
   if(key.length>40)h.Authorization='Bearer '+key;else u.searchParams.set('api_key',key);
   for(var k in (params||{}))u.searchParams.set(k,params[k]);
   return fetch(u.toString(),{headers:h}).then(function(r){
-    if(!r.ok)throw new Error(r.status==401?'That API key was not accepted.':'TMDB error '+r.status);
+    if(!r.ok)throw new Error(r.status==401?('That API key was not accepted.'+(key.length<=40&&key.length!==32?' A TMDB API key has 32 characters, yours has '+key.length+'. Copy it again from themoviedb.org > Settings > API.':' Check it on themoviedb.org > Settings > API.')):'TMDB error '+r.status);
     return r.json();
   });
 }
@@ -618,7 +626,7 @@ function drawSeg(keep){
   var fo=folders.filter(function(f){return f.status===fstat});
   $('#ffol').innerHTML=fo.length?fo.map(function(f){return '<button type="button" class="pill" data-fo="'+f.id+'" aria-pressed="'+(fsel===f.id)+'">'+esc(f.name)+'</button>'}).join(''):'<span class="note">No folders in '+SL[fstat]+' yet. Create one from the shelf.</span>';
 }
-function ovFit(el){
+function ovFit(el){return;
   if(!el||!el.isConnected||!el.offsetWidth||!el.firstChild)return;
   var inn=el.firstChild,lh=parseFloat(getComputedStyle(el).lineHeight);if(!lh)return;
   [].slice.call(inn.querySelectorAll('i')).forEach(function(x){x.remove()});
@@ -629,6 +637,7 @@ function ovFit(el){
 }
 function ovSet(el,t){
   if(!el)return;
+  el.classList.remove('open');el.onclick=function(){el.classList.toggle('open')};
   el.textContent='';el.scrollTop=0;el.hidden=!t;
   if(!t)return;
   var inn=document.createElement('div');inn.className='ovi';inn.appendChild(document.createTextNode(t));el.appendChild(inn);
@@ -773,7 +782,7 @@ var dr=null,noClick=0;
 })();
 $('#tabs').onclick=function(e){
   if(Date.now()-noClick<400){return}
-  if(e.target.closest('[data-addst]')){modal({title:'New status',input:true,placeholder:'e.g. On hold',ok:'Add',nocancel:true}).then(function(n){if(n){var id='s'+uid();statuses.push({id:id,name:n});saveS();rebuildSL();tab=id;folder=null;lim=60;render()}});return}
+  if(e.target.closest('[data-addst]')){modal({title:'New status',input:true,placeholder:'Status name',ok:'Add',nocancel:true}).then(function(n){if(n){var id='s'+uid();statuses.push({id:id,name:n});saveS();rebuildSL();tab=id;folder=null;lim=60;render()}});return}
   var b=e.target.closest('[data-tab]');if(b&&b.dataset.tab===tab&&tab!=='all'){editStatus();return}
   if(b){tab=b.dataset.tab;folder=null;country='all';lim=60;render()}};
 $('#q').oninput=function(e){q=e.target.value;lim=60;clearTimeout(qt);qt=setTimeout(render,250)};
@@ -805,7 +814,7 @@ document.addEventListener('click',function(e){var b=e.target.closest('[data-eye]
 $('#set').onclick=function(){['key','okey'].forEach(function(id){$('#'+id).type='password'});document.querySelectorAll('[data-eye]').forEach(function(b){b.setAttribute('aria-pressed','false')});$('#key').value=key;$('#okey').value=omdb;$('#nm').value=uname;themeBtn();$('#sdlg').showModal()};
 $('#nm').oninput=function(){uname=this.value.trim();LS.setItem('shelf.name',uname);$('#uname').textContent=uname||'My shelf'};
 $('#theme').onclick=function(){setTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')};
-$('#ksave').onclick=function(){key=$('#key').value.trim();LS.setItem('shelf.key',key);omdb=$('#okey').value.trim();LS.setItem('shelf.omdb',omdb);$('#sdlg').close();uitems=[];if(!$('#up').hidden)loadUp(true);backfill()};
+$('#ksave').onclick=function(){key=$('#key').value.replace(/["'\s]/g,'');LS.setItem('shelf.key',key);omdb=$('#okey').value.trim();LS.setItem('shelf.omdb',omdb);$('#sdlg').close();uitems=[];if(!$('#up').hidden)loadUp(true);backfill()};
 function bstr(l){return l.map(function(m){return JSON.stringify(m)}).join(',')}
 function writeBackup(F,dir,path){
   var i=0,first=true,N=1500;
@@ -891,7 +900,7 @@ $('#fold').onclick=function(e){
   var f=e.target.closest('[data-f]');if(f){folder=f.dataset.f;country='all';lim=60;render();return}
   var a=e.target.closest('[data-fa]');if(!a)return;var k=a.dataset.fa;
   if(k==='back'){folder=null;lim=60;render();return}
-  if(k==='new'){modal({title:'New folder in '+SL[tab],input:true,placeholder:'e.g. South Indian',colors:true,color:FPAL[folders.length%FPAL.length],ok:'Create'}).then(function(r){if(r){folders.push({id:uid(),name:r.n,status:tab,color:r.c});saveF();render()}});return}
+  if(k==='new'){modal({title:'New folder in '+SL[tab],input:true,placeholder:'Folder name',colors:true,color:FPAL[folders.length%FPAL.length],ok:'Create'}).then(function(r){if(r){folders.push({id:uid(),name:r.n,status:tab,color:r.c});saveF();render()}});return}
   var cf=folders.filter(function(x){return x.id===folder})[0];
   if(k==='ren')modal({title:'Edit folder',input:true,value:cf.name,colors:true,color:cf.color,ok:'Save'}).then(function(r){if(r){cf.name=r.n;cf.color=r.c;saveF();render()}});
   else modal({title:'Delete "'+cf.name+'"?',text:'The movies stay in '+SL[tab]+'. Only the folder is removed.',ok:'Delete',danger:true}).then(function(y){if(y){var ch=movies.filter(function(m){return m.folder===cf.id});ch.forEach(function(m){m.folder=null});putMany(ch);folders=folders.filter(function(x){return x!==cf});folder=null;saveF();render()}});
