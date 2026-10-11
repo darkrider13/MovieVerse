@@ -156,7 +156,7 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 .ffil{display:flex;align-items:center;gap:6px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;padding:2px 0 10px;margin-bottom:4px}
 .ffil::-webkit-scrollbar{display:none}
 .ffil .ficon{flex:none;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:var(--mut)}
-.ffil .pill{flex:none;white-space:nowrap;color:var(--ink);font-weight:600;font-size:12.5px;padding:6px 11px}
+.ffil .pill{flex:1 1 auto;min-width:max-content;text-align:center;white-space:nowrap;color:var(--ink);font-weight:600;font-size:clamp(11px,3.3vw,14px);padding:11px 6px}
 .ffil .pill.on{background:var(--acc);border-color:var(--acc);color:var(--onacc)}
 #sfo .pill{color:var(--ink)}
 #sfo .pill[aria-pressed=true]{color:var(--bg)}
@@ -221,10 +221,6 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 #adlg h2{padding-right:40px}
 #adlg .dsc{max-height:60vh}
 .fb.on{border-color:var(--acc);color:var(--acc);font-weight:700}
-#ufil{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:6px}
-#ufil .fb,#ufil .pill{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;padding:9px 10px;line-height:1.2}
-#ufil .fb{border-radius:9px}
-#ufil .pill{flex-shrink:0}
 .ov{color:var(--mut);font-size:14px;margin:12px 0 0;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
 
 /* header: sized so brand and buttons never touch */
@@ -277,7 +273,7 @@ img{-webkit-user-drag:none;user-drag:none}
   <section id="up" hidden>
     <div class="hero"><h1>Upcoming movies</h1><p>Releases still to come, and films in cinemas that have no OTT release yet.</p></div>
     <div class="row" id="umode" style="margin-bottom:10px"></div>
-    <div class="row" id="ufil" style="margin-bottom:6px"></div>
+    <div class="ffil" id="ufil" style="margin-bottom:6px"></div>
     <div id="ulist"></div>
     <div class="row" style="justify-content:center;margin:18px 0"><button class="btn" id="more" hidden>Loading more…</button></div>
   </section>
@@ -334,8 +330,8 @@ img{-webkit-user-drag:none;user-drag:none}
 </dialog>
 
 <dialog id="mdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="mt" style="margin-top:0"></h2><p class="note" id="mx"></p><input type="text" id="mi" hidden><div id="mc" hidden></div><div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn del" id="mdl" hidden style="margin-right:auto">Delete</button><button class="btn" id="mno">Cancel</button><button class="btn pri" id="mok">OK</button></div></dialog>
-<dialog id="fdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="ft2" style="margin-top:0"></h2><input type="search" id="fsr" placeholder="Search country" hidden><div class="fopts" id="fo"></div><div class="row" style="margin-top:14px;justify-content:space-between"><button class="btn" id="fclr">Clear</button><button class="btn pri" id="fok">Done</button></div></dialog>
-<dialog id="sfdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="sft" style="margin-top:0"></h2><div class="fopts" id="sfo"></div><div class="row" style="margin-top:14px;justify-content:space-between"><button class="btn" id="sfclr">Clear</button><button class="btn pri" id="sfok">Done</button></div></dialog>
+<dialog id="fdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="ft2" style="margin-top:0"></h2><input type="search" id="fsr" placeholder="Search country" hidden><div class="fopts" id="fo"></div><div class="row" style="margin-top:14px;justify-content:space-between"><button class="btn" id="fclr">Reset</button><button class="btn pri" id="fok">Done</button></div></dialog>
+<dialog id="sfdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="sft" style="margin-top:0"></h2><div class="fopts" id="sfo"></div><div class="row" style="margin-top:14px;justify-content:space-between"><button class="btn" id="sfclr">Reset</button><button class="btn pri" id="sfok">Done</button></div></dialog>
 
 
 <div id="toast"></div>
@@ -552,7 +548,7 @@ function drawFilters(){
   var cn=!ucs.length?'All countries':ucs.length===1?cLabel(ucs[0]):ucs.slice(0,2).map(cCode).join(', ')+(ucs.length>2?'…':'');
   var gn=ugs.length?'Genres':'All genres',yn=uy||'Any year';
   var fl=[['c',cn,ucs.length],['g',gn,ugs.length]];if(umode==='soon')fl.push(['y',yn,uy]);
-  $('#ufil').innerHTML=fl.map(function(x){return '<button class="btn fb'+(x[2]?' on':'')+'" data-fk="'+x[0]+'">'+esc(x[1])+' ▾</button>'}).join('')+((ucs.length||ugs.length||(umode==='soon'&&uy))?'<button class="pill" data-fk="x">Clear all</button>':'');
+  $('#ufil').innerHTML=fl.map(function(x){return '<button type="button" class="pill'+(x[2]?' on':'')+'" data-fk="'+x[0]+'">'+esc(x[1])+' ▾</button>'}).join('')+((ucs.length||ugs.length||(umode==='soon'&&uy))?'<button class="pill" data-fk="x">Reset</button>':'');
 }
 function optList(){return fk==='c'?COUNTRIES:fk==='g'?GENRES:YEARS}
 function drawOpts(reset){
