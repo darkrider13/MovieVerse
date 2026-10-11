@@ -225,14 +225,14 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 #ufil .pill{flex-shrink:0}
 .ov{color:var(--mut);font-size:14px;margin:12px 0 0;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
 
-/* compact header so brand fits beside Upcoming + Settings */
-.nav-in{gap:6px}
-.brand{font-size:21px;gap:6px}
-.brand .blogo{width:28px;height:28px}
-.brand .tg{font-size:clamp(8.5px,2.5vw,12px)}
-.nav-in .btn{padding:6px 10px;font-size:13px;border-radius:9px;flex:none}
-.nav-in .btn.ic{padding:6px 8px}
-.nav-in .btn.ic svg{width:18px;height:18px}
+/* header: sized so brand and buttons never touch */
+.nav-in{gap:8px}
+.brand{font-size:22px;gap:6px;padding-right:8px}
+.brand .blogo{width:31px;height:31px}
+.brand .tg{font-size:clamp(9px,2.9vw,12px)}
+.nav-in .btn{padding:7px 11px;font-size:14px;border-radius:10px;flex:none}
+.nav-in .btn.ic{padding:7px 9px}
+.nav-in .btn.ic svg{width:20px;height:20px}
 </style>
 <script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("shelf.theme")||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"));document.querySelector("meta[name=theme-color]").content=document.documentElement.getAttribute("data-theme")==="dark"?"#0a0b18":"#eceefb"}catch(e){}</script>
 </head>
@@ -580,19 +580,23 @@ function loadUp(reset){
   if(!key){$('#ulist').innerHTML='<div class="empty">Add your TMDB API key in Settings to see upcoming movies.</div>';$('#more').hidden=true;return}
   var gen=reset?(++ugen):ugen;uload=true;uerr=false;
   if(reset)$('#ulist').innerHTML='<div class="empty">Loading…</div>';
-  var p={'primary_release_date.gte':today(),include_adult:'false',page:upage,sort_by:(ucs.length||uy)?'primary_release_date.asc':'popularity.desc'};
+  var p={'primary_release_date.gte':today(),include_adult:'false',page:upage,sort_by:'popularity.desc'};
   if(umode==='cin'){p['primary_release_date.gte']=new Date(Date.now()-75*864e5).toISOString().slice(0,10);p['primary_release_date.lte']=today();p.with_release_type='2|3';p.sort_by='popularity.desc'}
   else if(uy){p['primary_release_date.lte']=uy+'-12-31';if(+uy>CY)p['primary_release_date.gte']=uy+'-01-01'}
   if(ucs.length)p.with_origin_country=ucs.join('|');
   if(ugs.length)p.with_genres=ugs.join('|');
-  tmdb('/discover/movie',p).then(function(d){
+  var pgs=reset?[1,2,3,4]:[upage];if(reset)upage=4;
+  Promise.all(pgs.map(function(pg){var q={};for(var k in p)q[k]=p[k];q.page=pg;return tmdb('/discover/movie',q)})).then(function(rs){
+    var d={results:[],total_pages:rs[0].total_pages},seen={};
+    uitems.forEach(function(m){seen[m.id]=1});
+    rs.forEach(function(r){r.results.forEach(function(m){if(!seen[m.id]){seen[m.id]=1;d.results.push(m)}})});
     if(gen!==ugen)return;
     var got0=d.results.filter(function(m){return m.poster_path});
     $('#more').hidden=upage>=d.total_pages;
     return (ucs.length?ctryLoad(got0):Promise.resolve(got0)).then(function(got){
       if(gen!==ugen)return;
-      if(umode!=='cin'){uitems=uitems.concat(got);drawUp();return}
-      return cinLoad(got).then(function(l){if(gen!==ugen)return;uitems=uitems.concat(l);drawUp()});
+      if(umode!=='cin'){addUp(got);return}
+      return cinLoad(got).then(function(l){if(gen!==ugen)return;addUp(l)});
     });
   }).catch(function(e){if(gen!==ugen)return;uerr=true;if(reset||!uitems.length)$('#ulist').innerHTML='<div class="empty">'+esc(e.message)+'</div>';else{upage--;toast(e.message)}})
   .then(function(){if(gen===ugen){uload=false;setTimeout(checkMore,60)}});
@@ -631,6 +635,15 @@ function cinLoad(list){
         (dcache[x.id]?Promise.resolve(dcache[x.id]):tmdb('/movie/'+x.id,{append_to_response:'release_dates,watch/providers'}).then(function(d){return dcache[x.id]=applyRel({},d)}).catch(function(){return null}))
         .then(function(o){x._o=o;if(!o||ottState(o)!=='live')out.push(x);run--;next()})})(list[i++])}
     })()})}
+/* popular movies are picked by TMDB, each loaded batch is sorted by date and appended below what is already shown, so nothing jumps while scrolling */
+function sortBatch(b){var d=umode==='cin'?-1:1;return b.slice().sort(function(a,c){var x=a.release_date||'9999',y=c.release_date||'9999';return x===y?(c.popularity||0)-(a.popularity||0):(x<y?-d:d)})}
+function upCard(m,on){return '<button class="card" data-up="'+m.id+'"><div class="poster">'+img(m.poster_path)+'<span class="tag s-up">'+(on.indexOf(m.id)>-1?'On shelf':esc(upTag(m)))+'</span><div class="cap"><b>'+esc(m.title)+'</b><span>'+esc((m.release_date||'').slice(0,4))+'</span></div></div></button>'}
+function addUp(batch){
+  batch=sortBatch(batch);var start=uitems.length;uitems=uitems.concat(batch);
+  var g=start?document.querySelector('#ulist .grid'):null;
+  if(!g){drawUp();return}
+  var on=movies.map(function(m){return m.tmdbId});
+  g.insertAdjacentHTML('beforeend',batch.map(function(m){return upCard(m,on)}).join(''))}
 function upTag(m){
   if(umode!=='cin')return fmt(m.release_date);
   var o=m._o;if(!o||ottState(o)==='tba')return 'Upcoming';
@@ -638,8 +651,7 @@ function upTag(m){
 function drawUp(){
   if(!uitems.length){$('#ulist').innerHTML='<div class="empty">'+(umode==='cin'?'No in-cinema movies waiting for OTT match these filters.':'No upcoming movies match these filters.')+'</div>';return}
   var on=movies.map(function(m){return m.tmdbId});
-  $('#ulist').innerHTML='<div class="grid">'+uitems.map(function(m){
-    return '<button class="card" data-up="'+m.id+'"><div class="poster">'+img(m.poster_path)+'<span class="tag s-up">'+(on.indexOf(m.id)>-1?'On shelf':esc(upTag(m)))+'</span><div class="cap"><b>'+esc(m.title)+'</b><span>'+esc((m.release_date||'').slice(0,4))+'</span></div></div></button>'}).join('')+'</div>';
+  $('#ulist').innerHTML='<div class="grid">'+uitems.map(function(m){return upCard(m,on)}).join('')+'</div>';
 }
 function fmt(d){if(!d)return 'TBA';var a=d.split('-'),M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return a[2]+' '+M[a[1]-1]+' '+a[0]}
 
