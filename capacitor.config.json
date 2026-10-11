@@ -1,1 +1,8 @@
-{ "appId": "com.trackerxx.movieverse", "appName": "MovieVerse", "webDir": "www" }
+{
+  "appId": "com.trackerxx.movieverse",
+  "appName": "MovieVerse",
+  "webDir": "www",
+  "plugins": {
+    "StatusBar": { "backgroundColor": "#0a0b18", "style": "DARK", "overlaysWebView": false }
+  }
+}
