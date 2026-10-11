@@ -3,6 +3,13 @@
   "appName": "MovieVerse",
   "webDir": "www",
   "plugins": {
-    "StatusBar": { "backgroundColor": "#0a0b18", "style": "DARK", "overlaysWebView": false }
+    "StatusBar": {
+      "backgroundColor": "#0a0b18",
+      "style": "DARK",
+      "overlaysWebView": false
+    }
+  },
+  "android": {
+    "backgroundColor": "#07080e"
   }
 }
