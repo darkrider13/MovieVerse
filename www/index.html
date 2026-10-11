@@ -236,7 +236,7 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 .nav-in .btn.ic svg{width:20px;height:20px}
 
 /* app-open splash: logo shows at once, name + tagline fade in when fonts are ready */
-#splash{position:fixed;inset:0;z-index:99999;background:#0a0b18;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .5s ease}
+#splash{position:fixed;inset:0;z-index:99999;background:#0a0b18;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .4s ease}
 #splash.hide{opacity:0;pointer-events:none}
 #splash img{width:112px;height:112px;display:block;background:#0a0b18;border:0;outline:0}
 #splash .sn{font-family:'Bricolage Grotesque',system-ui,-apple-system,Roboto,sans-serif;font-weight:800;font-size:30px;letter-spacing:-.03em;color:#f1f2fc;line-height:1}
@@ -609,7 +609,7 @@ function loadUp(reset){
     if(gen!==ugen)return;
     var got0=d.results.filter(function(m){return m.poster_path});
     $('#more').hidden=upage>=d.total_pages;
-    return (ucs.length?ctryLoad(got0):Promise.resolve(got0)).then(function(got){
+    return (ucs.length&&umode!=='cin'?ctryLoad(got0):Promise.resolve(got0)).then(function(got){
       if(gen!==ugen)return;
       if(umode!=='cin'){addUp(got);return}
       return cinLoad(got).then(function(l){if(gen!==ugen)return;addUp(l)});
@@ -647,9 +647,9 @@ function cinLoad(list){
   return new Promise(function(res){
     (function next(){
       if(i>=list.length&&run===0){out.sort(function(a,b){return a._i-b._i});res(out);return}
-      while(run<5&&i<list.length){(function(x){run++;
-        (dcache[x.id]?Promise.resolve(dcache[x.id]):tmdb('/movie/'+x.id,{append_to_response:'release_dates,watch/providers'}).then(function(d){return dcache[x.id]=applyRel({},d)}).catch(function(){return null}))
-        .then(function(o){x._o=o;if(!o||ottState(o)!=='live')out.push(x);run--;next()})})(list[i++])}
+      while(run<16&&i<list.length){(function(x){run++;
+        (dcache[x.id]?Promise.resolve(dcache[x.id]):tmdb('/movie/'+x.id,{append_to_response:'release_dates,watch/providers'}).then(function(d){var o=applyRel({},d);o.cc=effC(d.origin_country,d.production_countries);ccache[x.id]=o.cc;return dcache[x.id]=o}).catch(function(){return null}))
+        .then(function(o){x._o=o;var okC=!ucs.length||(o&&ucs.indexOf(o.cc)>-1);if(okC&&(!o||ottState(o)!=='live'))out.push(x);run--;next()})})(list[i++])}
     })()})}
 /* popular movies are picked by TMDB, each loaded batch is sorted by date and appended below what is already shown, so nothing jumps while scrolling */
 function sortBatch(b){
@@ -999,8 +999,8 @@ document.querySelectorAll('dialog').forEach(function(d){
 <script>
 (function(){var sp=document.getElementById('splash');if(!sp)return;
 var shown=false;
-function hide(){sp.classList.add('hide');setTimeout(function(){sp.remove()},600)}
-function show(){if(shown)return;shown=true;sp.classList.add('fr');setTimeout(hide,1100)}
+function hide(){sp.classList.add('hide');setTimeout(function(){sp.remove()},420)}
+function show(){if(shown)return;shown=true;sp.classList.add('fr');setTimeout(hide,Math.max(400,4100-performance.now()))}
 var f=(document.fonts&&document.fonts.load)?Promise.all([document.fonts.load('16px Kalam'),document.fonts.load('800 30px "Bricolage Grotesque"')]):Promise.resolve();
 Promise.race([f,new Promise(function(r){setTimeout(r,1500)})]).then(show,show);
 setTimeout(show,2000)})();
