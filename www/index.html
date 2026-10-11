@@ -5,18 +5,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a0b18">
 <title>MovieVerse</title>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Kalam:wght@400&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Kalam:wght@400&display=swap" rel="stylesheet"></noscript>
+
 <style>
+
 :root{--bg:#0a0b18;--bot:#07080e;--nav:#0a0b18;--dlg:rgba(22,24,46,.40);--s:rgba(255,255,255,.07);--s2:rgba(255,255,255,.1);--ink:#f1f2fc;--mut:#a3a9c9;--line:rgba(255,255,255,.15);--acc:#ff1a1a;--onacc:#fff;--w:#00b800;--p:#e8a33d;--n:#9a7bff;--g:radial-gradient(60% 40% at 12% 0%,rgba(255,26,26,.30),transparent 70%),radial-gradient(55% 45% at 100% 32%,rgba(60,90,255,.30),transparent 70%),linear-gradient(to top,var(--bot) 0,transparent 30%)}
 :root[data-theme=light]{--bg:#eceefb;--bot:#e0e3f5;--nav:#eceefb;--dlg:rgba(255,255,255,.45);--s:rgba(255,255,255,.55);--s2:rgba(255,255,255,.7);--ink:#161830;--mut:#575d82;--line:rgba(20,24,70,.14);--acc:#e00000;--w:#009a00;--p:#a96600;--n:#6a46d9;--g:radial-gradient(60% 40% at 12% 0%,rgba(255,60,60,.22),transparent 70%),radial-gradient(55% 45% at 100% 32%,rgba(90,120,255,.25),transparent 70%),linear-gradient(to top,var(--bot) 0,transparent 30%)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 'Bricolage Grotesque',system-ui,-apple-system,Roboto,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
 button,input,select,textarea{font:inherit;color:inherit}
 .nav{position:sticky;top:0;z-index:5;background:var(--nav);border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top)) 16px 10px}
 .nav-in{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .brand{font-size:24px;font-weight:800;letter-spacing:-.03em;margin-right:auto}
 .brand i{color:var(--acc);font-style:normal}
-.brand .tg,.hero .utag{display:block;font-family:'Kalam','Segoe Print','Bradley Hand',cursive;font-style:normal;font-weight:400;letter-spacing:.02em;color:var(--mut)}
+.brand .tg,.hero .utag{display:block;font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-style:normal;font-weight:400;letter-spacing:.02em;color:var(--mut)}
 .brand .tg{font-size:clamp(10.5px,3vw,14px);line-height:1.1;margin-top:0;white-space:nowrap}
 .nav-in{flex-wrap:nowrap}
 .brand{min-width:0}
@@ -25,7 +26,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .brand .bt{min-width:0}
 .brand .bn{display:block}
 .hero .utag{font-size:14px;line-height:1.2;margin-bottom:1px}
-.hero h1#uname{padding-left:18px}
+.hero h1#uname{padding-left:0}
 .seg{display:flex;background:var(--s);border:1px solid var(--line);border-radius:12px;padding:3px}
 .seg button{border:0;background:none;padding:7px 14px;border-radius:9px;cursor:pointer;color:var(--mut);font-weight:700}
 .seg button[aria-pressed=true]{background:var(--acc);color:var(--onacc)}
@@ -239,11 +240,15 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 #splash{position:fixed;inset:0;z-index:99999;background:#0a0b18;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .4s ease}
 #splash.hide{opacity:0;pointer-events:none}
 #splash img{width:112px;height:112px;display:block;background:#0a0b18;border:0;outline:0}
-#splash .sn{font-family:'Bricolage Grotesque',system-ui,-apple-system,Roboto,sans-serif;font-weight:800;font-size:30px;letter-spacing:-.03em;color:#f1f2fc;line-height:1}
+#splash .sn{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-weight:800;font-size:30px;letter-spacing:-.03em;color:#f1f2fc;line-height:1}
 #splash .sn i{color:#ff1a1a;font-style:normal}
-#splash .st{font-family:'Kalam','Segoe Print','Bradley Hand',cursive;font-weight:400;letter-spacing:.02em;color:#a3a9c9;font-size:16px;line-height:1.2;text-align:center;padding:0 24px}
+#splash .st{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-weight:400;letter-spacing:.02em;color:#a3a9c9;font-size:16px;line-height:1.2;text-align:center;padding:0 24px}
 #splash .sn,#splash .st{opacity:0;transition:opacity .45s ease}
 #splash.fr .sn,#splash.fr .st{opacity:1}
+/* text cannot be selected or copied, except typing in fields and the dedicated copy buttons */
+html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea{-webkit-user-select:text;user-select:text}
+img{-webkit-user-drag:none;user-drag:none}
 </style>
 <script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("shelf.theme")||"dark");document.querySelector("meta[name=theme-color]").content=document.documentElement.getAttribute("data-theme")==="dark"?"#0a0b18":"#eceefb"}catch(e){}</script>
 </head>
@@ -861,6 +866,7 @@ function showView(v){$('#shelf').hidden=v!=='shelf';$('#up').hidden=v!=='up';$('
 $('#upb').onclick=function(){showView($('#up').hidden?'up':'shelf')};
 $('#brand').onclick=function(){showView('shelf')};
 function copyTxt(t,c,onfail){
+  window.__ac=1;setTimeout(function(){window.__ac=0},1500);
   var ic=c.dataset.ic||(c.dataset.ic=c.innerHTML);
   var flash=function(good){c.innerHTML=good?'<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#00b800" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>':'<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#e24b4b" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';setTimeout(function(){c.innerHTML=ic},1400)};
   var legacy=function(){
@@ -998,12 +1004,16 @@ document.querySelectorAll('dialog').forEach(function(d){
 </script>
 <script>
 (function(){var sp=document.getElementById('splash');if(!sp)return;
-var shown=false;
-function hide(){sp.classList.add('hide');setTimeout(function(){sp.remove()},420)}
-function show(){if(shown)return;shown=true;sp.classList.add('fr');setTimeout(hide,Math.max(400,3100-performance.now()))}
-var f=(document.fonts&&document.fonts.load)?Promise.all([document.fonts.load('16px Kalam'),document.fonts.load('800 30px "Bricolage Grotesque"')]):Promise.resolve();
-Promise.race([f,new Promise(function(r){setTimeout(r,1500)})]).then(show,show);
-setTimeout(show,2000)})();
+sp.classList.add('fr');
+setTimeout(function(){sp.classList.add('hide');setTimeout(function(){sp.remove()},420)},Math.max(400,3100-performance.now()))})();
+</script>
+<script>
+/* block copy/cut everywhere unless it comes from a dedicated copy button */
+(function(){var no=function(e){if(!window.__ac)e.preventDefault()};
+['copy','cut'].forEach(function(n){document.addEventListener(n,no,true)});
+document.addEventListener('contextmenu',function(e){e.preventDefault()},true);
+document.addEventListener('dragstart',function(e){e.preventDefault()},true);
+document.addEventListener('selectstart',function(e){var t=e.target;if(t&&t.nodeType===3)t=t.parentNode;if(!(t&&t.closest&&t.closest('input,textarea')))e.preventDefault()},true)})();
 </script>
 </body>
 </html>
