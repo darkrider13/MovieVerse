@@ -104,6 +104,7 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 .xb,.xw .xb{width:28px;height:28px;background:none;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;border-radius:8px;color:var(--ink)}
 .xb svg{width:14px;height:14px}
 .dsc{padding:4px;margin:-4px;overflow-y:auto;max-height:calc(90vh - 36px);overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.dsc{--fb:0px;-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fb)),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fb)),transparent)}
 #dlg .dsc,#sdlg .dsc{max-height:calc(90vh - 32px)}
 #dlg .pv,#find h2,#sdlg h2,#mdlg h2,#fdlg h2,#sfdlg h2{padding-right:40px}
 #dlg h2{font-size:16px;margin:0 0 6px}
@@ -463,8 +464,133 @@ function infoH(m){
   var h=t.map(function(x){return '<div class="tile'+(x[3]?' wide':'')+'"'+(x[2]||'')+'><small>'+x[0]+'</small><b>'+x[1]+'</b></div>'}).join('');
   if(soOpen&&m.tmdbId<0&&m.sl&&m.sl.length)h+='<div class="tile wide"><small>Episodes per season</small><b>'+m.sl.map(function(x){return 'Season '+x[0]+' · '+x[1]+' episode'+(x[1]===1?'':'s')}).join('<br>')+'</b></div>';
   if(m.genres&&m.genres.length)h+='<div class="tile wide"><small>Genre</small><b>'+esc(m.genres.join(', '))+'</b></div>';
-  return h+relTiles(m)}
-function needsAny(m){return needsE(m)||needsOtt(m)}
+  setPvt(m);return h+relTiles(m)+boxTiles(m)}
+function moneyF(n,c){
+  var sy={USD:'$',EUR:'€',GBP:'£',INR:'₹',BDT:'৳',AUD:'A$',CAD:'C$'}[c];if(sy===undefined)sy=c?c+' ':'';
+  if(c==='INR'||c==='BDT'){if(n>=1e7)return sy+(n/1e7).toFixed(n>=1e9?0:1).replace(/\.0$/,'')+' Cr';if(n>=1e5)return sy+(n/1e5).toFixed(1).replace(/\.0$/,'')+' L'}
+  if(n>=1e9)return sy+(n/1e9).toFixed(2).replace(/\.?0+$/,'')+'B';
+  if(n>=1e6)return sy+(n/1e6).toFixed(n>=1e8?0:1).replace(/\.0$/,'')+'M';
+  if(n>=1e3)return sy+Math.round(n/1e3)+'K';
+  return sy+Math.round(n)}
+/* box office: XMDb budget + worldwide gross first, TMDB as fallback (never mixes the two sources) */
+function boxOf(m){
+  if(!m||!m.tmdbId||m.tmdbId<0||unrel(m))return null;
+  /* box office comes only from Wikipedia (budget and collection from the same infobox, same currency); nothing is shown when it is not found */
+  var p=(m.wbud>0&&m.wrev>0)?{b:m.wbud,r:m.wrev,c:m.wcur||'',src:'Wikipedia'}:null;
+  if(!p)return null;
+  var x=p.r/p.b,age=m.rel?(Date.now()-new Date(m.rel+'T00:00:00').getTime())/864e5:999,v,col;
+  if(age<21){v='Running';col='var(--mut)'}
+  else if(x>=3){v='Blockbuster';col='var(--w)'}
+  else if(x>=2){v='Hit';col='var(--w)'}
+  else if(x>=1){v='Average';col='#f5c518'}
+  else{v='Flop';col='#ff4d4d'}
+  p.x=x;p.v=v;p.col=col;return p}
+function setPvt(m){
+  var el=document.getElementById('pvt');if(!el||!m)return;
+  el.textContent=m.title?m.title+(m.year?' ('+m.year+')':''):'New movie';
+  var p=boxOf(m);if(p){var sp=document.createElement('span');sp.textContent=p.v;sp.style.cssText='color:'+p.col+';white-space:nowrap;margin-left:6px;font-size:.72em;font-weight:700;vertical-align:middle';el.appendChild(sp)}}
+function boxTiles(m){
+  var p=boxOf(m);if(!p)return '';
+  return '<div class="tile"><small>Budget</small><b>'+esc(moneyF(p.b,p.c))+'</b></div><div class="tile"><small>Collection · '+p.src+'</small><b>'+esc(moneyF(p.r,p.c))+'</b></div>'}
+/* ===== Wikipedia box office: budget + box office from the film's infobox (editor-maintained, keeps the real currency) ===== */
+function isInd(m){return /india|bangladesh/i.test(String(m&&m.country||''))||/^(hindi|tamil|telugu|malayalam|kannada|bengali|bangla|marathi|punjabi|gujarati|odia|bhojpuri|assamese)$/i.test(String(m&&m.lang||''))}
+function wkCur(sy){var t=sy.toLowerCase();if(t==='₹'||/^rs|^inr/.test(t))return 'INR';if(t==='৳'||/^(bdt|tk)/.test(t))return 'BDT';if(t==='£')return 'GBP';if(t==='€')return 'EUR';if(t==='a$')return 'AUD';if(t==='ca$')return 'CAD';return 'USD'}
+/* "₹3.5–5 crore", "US$12 million", "৳15 crore" -> [{c:'INR',v:42500000}, ...] (a range becomes its midpoint) */
+function wkAmts(txt){
+  var re=/(CA\$|A\$|US\$|\$|₹|Rs\.?|INR|৳|BDT|Tk\.?|£|€)\s*([0-9][0-9,]*(?:\.[0-9]+)?)(?:\s*[–—-]\s*(?:CA\$|A\$|US\$|\$|₹|Rs\.?|৳|£|€)?\s*([0-9][0-9,]*(?:\.[0-9]+)?))?\s*(crore|lakh|million|billion|thousand|cr\b|bn\b)?/gi,
+      MU={crore:1e7,cr:1e7,lakh:1e5,million:1e6,billion:1e9,bn:1e9,thousand:1e3},out=[],r;
+  txt=String(txt||'');
+  while((r=re.exec(txt))){
+    var a=parseFloat(r[2].replace(/,/g,'')),b=r[3]?parseFloat(r[3].replace(/,/g,'')):a,mu=MU[(r[4]||'').toLowerCase()]||1,v=(a+b)/2*mu;
+    if(v>0)out.push({c:wkCur(r[1]),v:v})}
+  return out}
+/* budget and box office must be in the same currency (first matching one wins), otherwise nothing is shown */
+function wkPair(bt,gt){
+  var B=wkAmts(bt),G=wkAmts(gt),i,j;
+  for(i=0;i<B.length;i++)for(j=0;j<G.length;j++)if(B[i].c===G[j].c)return {b:B[i].v,r:G[j].v,c:B[i].c};
+  return null}
+function wkApi(q,base){
+  var ac=window.AbortController?new AbortController():null,tm=ac?setTimeout(function(){ac.abort()},9000):0;
+  return fetch((base||'https://en.wikipedia.org/w/api.php')+'?'+Object.keys(q).map(function(k){return k+'='+encodeURIComponent(q[k])}).join('&')+'&format=json&formatversion=2&origin=*',ac?{signal:ac.signal}:undefined)
+    .then(function(r){clearTimeout(tm);if(!r.ok)throw new Error('wiki '+r.status);return r.json()},function(e){clearTimeout(tm);throw e})}
+function wkNorm(t){return String(t||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'')}
+function wkInfobox(html){
+  var doc=new DOMParser().parseFromString(html,'text/html'),tb=doc.querySelector('table.infobox');if(!tb)return null;
+  Array.prototype.forEach.call(tb.querySelectorAll('sup,.reference,style'),function(n){n.remove()});
+  var o={};
+  Array.prototype.forEach.call(tb.querySelectorAll('tr'),function(tr){
+    var th=tr.querySelector('th'),td=tr.querySelector('td');if(!th||!td)return;
+    var k=th.textContent.replace(/\s+/g,' ').trim().toLowerCase();
+    if(!(k in o))o[k]=td.textContent.replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim()});
+  return o}
+/* reads one page's infobox: {page,bud,gross}, or null when the page is missing or is not this film (title must be exactly the movie title, ignoring a trailing "(2022 film)" part, and the release year must be listed in the infobox) */
+function wkQid(pr){
+  if(!pr)return '';
+  if(Array.isArray(pr)){var x=pr.filter(function(e){return e&&e.name==='wikibase_item'})[0];return x?String(x.value||x['*']||''):''}
+  return String(pr.wikibase_item||'')}
+function wkSame(pt,t){return wkNorm(String(pt||'').replace(/\s*\([^)]*\)\s*$/,''))===wkNorm(t)}
+function wkCheck(page,t,y){
+  return wkApi({action:'parse',page:page,prop:'text|properties',section:0,redirects:1,disableeditsection:1,disablelimitreport:1}).then(function(p){
+    if(!p.parse||!wkSame(p.parse.title,t))return null;
+    var ib=wkInfobox(p.parse.text||'');if(!ib)return null;
+    var rd=ib['release date']||ib['release dates']||ib['released']||'',ys=(rd.match(/\b(?:19|20)\d\d\b/g)||[]).map(Number);
+    if(ys.indexOf(y)<0)return null;
+    return {page:p.parse.title,bud:ib.budget||'',gross:ib['box office']||'',q:wkQid(p.parse.properties)}})}
+var wkMem={},wkVM={};
+/* Wikidata cross-check: when the page's Wikidata item lists an IMDb id or TMDB id, one of them must be this movie's. No ids listed = nothing to compare, the title + year check stands.
+   The item id normally arrives with the page itself; if it did not, it is looked up so the check is never skipped by accident. */
+function wkVerify(c,m){
+  var k=c.page+'|'+m.tmdbId;if(wkVM[k])return wkVM[k];
+  var WD='https://www.wikidata.org/w/api.php';
+  var getQ=c.q?Promise.resolve(c.q):wkApi({action:'query',prop:'pageprops',titles:c.page,ppprop:'wikibase_item',redirects:1}).then(function(j){var pg=((j.query||{}).pages||[])[0];return (pg&&pg.pageprops&&pg.pageprops.wikibase_item)||''});
+  var pr=getQ.then(function(q){
+    if(!q)return true;
+    var get=function(pp){return wkApi({action:'wbgetclaims',entity:q,property:pp},WD).then(function(w){return ((w.claims||{})[pp]||[]).map(function(x){var d=x.mainsnak&&x.mainsnak.datavalue;return d?String(d.value):''}).filter(Boolean)})};
+    return Promise.all([m.imdbId?get('P345'):Promise.resolve([]),m.tmdbId>0?get('P4947'):Promise.resolve([])]).then(function(a){
+      var ex=false,ok=false;
+      if(m.imdbId&&a[0].length){ex=true;if(a[0].indexOf(m.imdbId)>=0)ok=true}
+      if(m.tmdbId>0&&a[1].length){ex=true;if(a[1].indexOf(String(m.tmdbId))>=0)ok=true}
+      return ex?ok:true})});
+  wkVM[k]=pr;pr.catch(function(){delete wkVM[k]});
+  return pr}
+/* accuracy first, speed second: the usual page name and the search candidates are checked at the same time (title + year, then Wikidata). If the usual page name passes everything it is used straight away, which is the same page the slower path would have picked first. */
+function wkFind(m){
+  var t=m.title,y=+m.year;if(!t||!y)return Promise.resolve(null);
+  var k=wkNorm(t)+y+'.'+m.tmdbId;if(wkMem[k])return wkMem[k];
+  var chk=function(page){return wkCheck(page,t,y).then(function(c){return c?wkVerify(c,m).then(function(ok){return {c:c,ok:ok}}):{n:1}}).catch(function(){return {e:1}})};
+  var g=chk(t+' ('+y+' film)');
+  var s=wkApi({action:'query',list:'search',srsearch:t+' '+y+' film',srlimit:5,srnamespace:0}).then(function(j){
+    var hits=((j.query||{}).search||[]).filter(function(h){return wkSame(h.title,t)}).slice(0,3);
+    return Promise.all(hits.map(function(h){return chk(h.title)}))});
+  s.catch(function(){});
+  var res=g.then(function(x){
+    if(x.c&&x.ok)return x.c;
+    return s.then(function(a){
+      var all=[x].concat(a),i;
+      for(i=0;i<all.length;i++)if(all[i].c&&all[i].ok)return all[i].c;
+      if(all.some(function(z){return z.e}))throw new Error('wiki');
+      return null})});
+  wkMem[k]=res;res.catch(function(){delete wkMem[k]});
+  return res}
+function needsWiki(m){
+  if(!m||!m.tmdbId||m.tmdbId<0||!m.rel||!m.ottChk||unrel(m)||!m.title||!+m.year)return false;
+  if(Date.now()-(m.wkt||0)<36e5)return false;
+  if(m.wkc===undefined||m.wkv!==3)return true;
+  var age=(Date.now()-new Date(m.rel+'T00:00:00').getTime())/864e5;
+  return age<150&&Date.now()-m.wkc>6048e5}
+function wkChain(m){
+  if(needsWiki(m))return Promise.all([enrichOtt(m),enrichWiki(m)]).then(function(x){return x[0]||x[1]});
+  return enrichOtt(m).then(function(r){return enrichWiki(m).then(function(w){return r||w})})}
+function enrichWiki(m){
+  if(!needsWiki(m))return Promise.resolve(false);
+  m.wkt=Date.now();
+  return wkFind(m).then(function(r){
+    m.wkc=Date.now();m.wkv=3;
+    var pr=r&&wkPair(r.bud,r.gross);
+    if(pr){m.wbud=pr.b;m.wrev=pr.r;m.wcur=pr.c;m.wpg=r.page}
+    else{delete m.wbud;delete m.wrev;delete m.wcur;delete m.wpg}
+    return true}).catch(function(){return false})}
+function needsAny(m){return needsE(m)||needsOtt(m)||needsWiki(m)}
 /* XMDb: optional second source for the IMDb rating (used only when OMDb has none and an XMDb key is added in Settings) */
 function xmParse(j){
   if(!j||typeof j!=='object')return null;
@@ -473,9 +599,10 @@ function xmParse(j){
   if(r&&typeof r==='object'){v=v||r.vote_count||r.votes||r.voteCount||r.votes_count;r=r.aggregate_rating||r.aggregateRating||r.rating||r.value||r.average}
   if(r==null&&d.ratings&&typeof d.ratings==='object'){var q=d.ratings;r=q.aggregate_rating||q.rating||q.imdb||q.value;v=v||q.vote_count||q.votes}
   if(r==null)r=d.imdb_rating||d.imdbRating||d.aggregate_rating;
-  r=parseFloat(r);if(!(r>0))return null;
-  var vn=parseInt(String(v||'').replace(/[^0-9]/g,''),10);
-  return {imdb:r.toFixed(1),vc:vn?fmtV(vn):''}}
+  r=parseFloat(r);
+  var out={imdb:'',vc:''};
+  if(r>0){var vn=parseInt(String(v||'').replace(/[^0-9]/g,''),10);out.imdb=r.toFixed(1);out.vc=vn?fmtV(vn):''}
+  return out.imdb?out:null}
 /* XMDb key rotation: remembers the working key (xi). Any failure except 404 (movie not found) or a limit message in a 200 body moves to the next key. */
 function xmLimit(j){if(!j||typeof j!=='object')return false;var s=j.error||j.message||j.detail||j.msg||'';if(typeof s==='object')try{s=JSON.stringify(s)}catch(e){s=''}return /limit|quota|exceed|too many|rate|credit|subscription|unauthor|forbidden|invalid/i.test(String(s))&&!xmParse(j)}
 function xmGet(id,ks,n){
@@ -508,12 +635,13 @@ function enrich(m,force){
 var bfBusy=false;
 function backfill(){
   if(bfBusy||!key||!db)return;
-  var todo=movies.filter(needsAny).slice(0,25),ch=[],i=0;
+  var todo=movies.filter(needsAny).slice(0,25),ch=[],i=0,live=Math.min(6,todo.length);
   if(!todo.length)return;bfBusy=true;
-  (function next(){
-    if(i>=todo.length){bfBusy=false;if(ch.length){putMany(ch);render()}return}
-    var m=todo[i++];Promise.all([enrich(m),enrichOtt(m)]).then(function(x){if(x[0]||x[1])ch.push(m);setTimeout(next,150)})
-  })()}
+  function worker(){
+    if(i>=todo.length){if(--live===0){bfBusy=false;if(ch.length){putMany(ch);render()}}return}
+    var m=todo[i++];
+    Promise.all([enrich(m),wkChain(m)]).catch(function(){return [false,false]}).then(function(x){if(x[0]||x[1])ch.push(m);setTimeout(worker,20)})}
+  for(var k=0,n=live;k<n;k++)worker()}
 /* rating priority: XMDb -> OMDb -> TMDB (XMDb and OMDb both shown with the IMDb label) */
 function rr(m){return m.xm?['IMDb',m.xm]:(m.imdb?['IMDb',m.imdb]:(m.tr?['TMDB',m.tr]:null))}
 function fmtTs(t){var d=new Date(t);return d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getFullYear()}
@@ -925,9 +1053,9 @@ function choose(id,status,fromUp,fold){
       pick={tmdbId:d.id,title:d.title,year:(d.release_date||'').slice(0,4),poster:d.poster_path,country:shortC(c.name),lang:lang,genres:(d.genres||[]).map(function(g){return g.name}),imdb:imdb||'',rt:o?o.rt:undefined,vc:(o&&o.vc)||fmtV(d.vote_count),imdbId:imdbId||'',chk:o?Date.now():0,tr:d.vote_average?d.vote_average.toFixed(1):'',status:status,folder:fromUp?(fold||null):folder};
       applyRel(pick,d);
       if(id<0){pick.runtime=tvRt(d);pick.seasons=d.number_of_seasons||0;pick.eps=d.number_of_episodes||0;pick.sl=slOf(d);pick.kind=tvKind(d)}
-      editId=null;pick._ld=!!(omdb&&!unrel(pick));showForm(pick,false,false,true);
+      editId=null;pick._ld=!!((omdb||apiKeys('xmdb').some(Boolean))&&!unrel(pick));showForm(pick,false,false,true);
       {var p0=pick;$('#save').textContent=fromUp?'Add':'Save';$('#save').disabled=false;dg.classList.remove('busy');if(!dg.open)dg.showModal();
-        var fin2=function(){delete p0._ld;if(pick===p0&&dg.open&&!$('#form').hidden){$('#info').innerHTML=infoH(p0)}};if(omdb&&!unrel(p0))enrich(p0).then(fin2,fin2);else delete p0._ld}
+        var fin2=function(){delete p0._ld;if(pick===p0&&dg.open&&!$('#form').hidden){$('#info').innerHTML=infoH(p0)}};var wkp=function(){return enrichWiki(p0).then(function(){if(pick===p0&&dg.open&&!$('#form').hidden){$('#info').innerHTML=infoH(p0)}},function(){})};if((omdb||apiKeys('xmdb').some(Boolean))&&!unrel(p0))enrich(p0).then(fin2,fin2).then(wkp);else{delete p0._ld;wkp()}}
     };
     done(null);
   }).catch(function(e){dg.classList.remove('busy');$('#save').disabled=false;if(tok!==choose.t)return;if(fromUp){if(dg.open)dg.close();toast(e.message)}else{$('#form').hidden=true;$('#find').hidden=false;$('#res').innerHTML='<p class="note">'+esc(e.message)+'</p>'}});
@@ -950,7 +1078,7 @@ $('#save').onclick=function(){
   var d={title:title,year:$('#fy').value.trim(),country:$('#fc').value.trim(),status:fstat,folder:fsel,score:sv,rating:sv/2};
   var mv;
   if(editId){mv=movies.filter(function(m){return m.id===editId})[0];if(mv.status!==d.status||(mv.folder||null)!==(d.folder||null))delete mv.ord;Object.assign(mv,d)}
-  else{mv=Object.assign(d,{id:uid(),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,lang:pick&&pick.lang,genres:pick&&pick.genres,imdb:pick&&pick.imdb,tr:pick&&pick.tr,rt:pick&&pick.rt,vc:pick&&pick.vc,imdbId:pick&&pick.imdbId,chk:pick&&pick.chk,rel:pick&&pick.rel,ottDate:pick&&pick.ottDate,ottC:pick&&pick.ottC,ott:pick&&pick.ott,ottChk:pick&&pick.ottChk,runtime:pick&&pick.runtime,xm:pick&&pick.xm,xvc:pick&&pick.xvc,ov:pick&&pick.ov,seasons:pick&&pick.seasons,eps:pick&&pick.eps,sl:pick&&pick.sl,kind:pick&&pick.kind,added:Date.now()});movies.push(mv)}
+  else{mv=Object.assign(d,{id:uid(),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,lang:pick&&pick.lang,genres:pick&&pick.genres,imdb:pick&&pick.imdb,tr:pick&&pick.tr,rt:pick&&pick.rt,vc:pick&&pick.vc,imdbId:pick&&pick.imdbId,chk:pick&&pick.chk,rel:pick&&pick.rel,ottDate:pick&&pick.ottDate,ottC:pick&&pick.ottC,ott:pick&&pick.ott,ottChk:pick&&pick.ottChk,runtime:pick&&pick.runtime,xm:pick&&pick.xm,xvc:pick&&pick.xvc,wbud:pick&&pick.wbud,wrev:pick&&pick.wrev,wcur:pick&&pick.wcur,wpg:pick&&pick.wpg,wkc:pick&&pick.wkc,wkv:pick&&pick.wkv,wkt:pick&&pick.wkt,ov:pick&&pick.ov,seasons:pick&&pick.seasons,eps:pick&&pick.eps,sl:pick&&pick.sl,kind:pick&&pick.kind,added:Date.now()});movies.push(mv)}
   putMany([mv]);$('#dlg').close();render();if(!$('#up').hidden)drawUp();
 };
 $('#del').onclick=function(){modal({title:'Delete this movie?',text:'It will be removed from your library.',ok:'Delete',danger:true}).then(function(y){if(y){var did=editId;movies=movies.filter(function(m){return m.id!==did});delOne(did);$('#dlg').close();render()}})};
@@ -1020,7 +1148,7 @@ var cdr=null,noClickC=0,ordCtx=null;
   document.addEventListener('mouseup',end);
   L.addEventListener('contextmenu',function(e){if(e.target.closest('.card'))e.preventDefault()});
 })();
-$('#list').onclick=function(e){if(Date.now()-noClickC<400)return;if(e.target.closest('#smore')){lim+=60;render();return}var c=e.target.closest('[data-id]');if(!c)return;var m=movies.find(function(x){return x.id===c.dataset.id});editId=m.id;pick=m;m._ld=needsE(m)&&!unrel(m);showForm(m,true);$('#dlg').showModal();var fin=function(x){delete m._ld;var ch=x&&(x[0]||x[1]);if(ch)putMany([m]);if(editId===m.id&&!$('#form').hidden){$('#info').innerHTML=infoH(m);if(ch)setOv(m)}if(ch)render()};Promise.all([enrich(m),enrichOtt(m)]).then(fin,function(){fin(null)})};
+$('#list').onclick=function(e){if(Date.now()-noClickC<400)return;if(e.target.closest('#smore')){lim+=60;render();return}var c=e.target.closest('[data-id]');if(!c)return;var m=movies.find(function(x){return x.id===c.dataset.id});editId=m.id;pick=m;m._ld=needsE(m)&&!unrel(m);showForm(m,true);$('#dlg').showModal();var fin=function(x){delete m._ld;var ch=x&&(x[0]||x[1]);if(ch)putMany([m]);if(editId===m.id&&!$('#form').hidden){$('#info').innerHTML=infoH(m);if(ch)setOv(m)}if(ch)render()};Promise.all([enrich(m),wkChain(m)]).then(fin,function(){fin(null)})};
 function editStatus(){
   var st=statuses.filter(function(x){return x.id===tab})[0];if(!st)return;
   modal({title:'Edit status',input:true,value:st.name,ok:'Save',del:true,nocancel:true}).then(function(n){
@@ -1305,6 +1433,13 @@ document.querySelectorAll('dialog').forEach(function(d){
   var x=d.querySelector(':scope>.xb'),c=d.querySelector(':scope>.dsc');
   if(x&&c){var w=document.createElement('div');w.className='xw';w.appendChild(x);c.insertBefore(w,c.firstChild)}
 });
+/* soft fade at the bottom edge of scrolling dialogs while there is more content below */
+document.querySelectorAll('.dsc').forEach(function(c){
+  var upd=function(){var r=c.scrollHeight-c.scrollTop-c.clientHeight;c.style.setProperty('--fb',Math.max(0,Math.min(34,r))+'px')};
+  c.addEventListener('scroll',upd,{passive:true});
+  window.addEventListener('resize',upd);
+  if(window.ResizeObserver){var ro=new ResizeObserver(upd);ro.observe(c);Array.prototype.forEach.call(c.children,function(k){ro.observe(k)})}
+  upd()});
 </script>
 <script>
 (function(){var sp=document.getElementById('splash');if(!sp)return;
