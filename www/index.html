@@ -566,46 +566,43 @@ function render(){
   tabs.scrollLeft=tsl;
   var act=tabs.querySelector('[aria-pressed=true]');
   if(act&&(act.offsetLeft<tsl||act.offsetLeft+act.offsetWidth>tsl+tabs.clientWidth+1))tabs.scrollLeft=act.offsetLeft;
-  var inTab=movies.filter(function(m){return tab==='all'||(m.status===tab&&(folder?m.folder===folder:!m.folder))});
+  var fctx=tab+':'+(folder||'');if(ffor!==fctx){ff={g:[],r:'',y:'',s:'new'};ffor=fctx}
+  var anyF=!!(ff.g.length||ff.r||ff.y||ff.s!=='new'),flat=tab!=='all'&&!folder&&anyF;
+  var inTab=movies.filter(function(m){return tab==='all'||(m.status===tab&&(folder?m.folder===folder:(flat?true:!m.folder)))});
   var h='';
+  var fRow=function(){var sl=SORTS.filter(function(x){return x[0]===ff.s})[0][1];
+    var fp=function(k,t,on){return '<button type="button" class="pill'+(on?' on':'')+'" data-ff="'+k+'">'+esc(t)+' ▾</button>'};
+    return '<div class="ffil">'+fp('g','Genre',ff.g.length)+fp('r',ff.r?(ff.r==='0'?'Unrated':'Rating '+ff.r+'+'):'Rating',ff.r)+fp('y',ff.y||'Year',ff.y)+fp('s','Sort',ff.s!=='new')+(anyF?'<button type="button" class="pill" data-ff="x">Reset</button>':'')+'</div>'};
   if(tab!=='all'){
     if(folder){
       var cf=fo.filter(function(f){return f.id===folder})[0];
-      if(ffor!==folder){ff={g:[],r:'',y:'',s:'new'};ffor=folder}
-      var anyF=ff.g.length||ff.r||ff.y||ff.s!=='new',sl=SORTS.filter(function(x){return x[0]===ff.s})[0][1];
-      var fp=function(k,t,on){return '<button type="button" class="pill'+(on?' on':'')+'" data-ff="'+k+'">'+esc(t)+' ▾</button>'};
-      h='<div class="crumb2" style="--fc:'+(cf.color||'var(--acc)')+'"><button class="pill ic" data-fa="back" aria-label="Back to '+esc(SL[tab])+'">←</button><button class="pill fname" data-fa="ren" aria-label="Rename folder">'+FI+'<span>'+esc(cf.name)+'</span></button><span class="grow"></span><button class="pill ic del" data-fa="del" aria-label="Delete folder">'+TRASH+'</button></div>'
-        +'<div class="ffil">'
-        +fp('g','Genre',ff.g.length)
-        +fp('r',ff.r?(ff.r==='0'?'Unrated':'Rating '+ff.r+'+'):'Rating',ff.r)
-        +fp('y',ff.y||'Year',ff.y)
-        +fp('s','Sort',ff.s!=='new')
-        +(anyF?'<button type="button" class="pill" data-ff="x">Reset</button>':'')+'</div>';
+      h='<div class="crumb2" style="--fc:'+(cf.color||'var(--acc)')+'"><button class="pill ic" data-fa="back" aria-label="Back to '+esc(SL[tab])+'">←</button><button class="pill fname" data-fa="ren" aria-label="Rename folder">'+FI+'<span>'+esc(cf.name)+'</span></button><span class="grow"></span><button class="pill ic del" data-fa="del" aria-label="Delete folder">'+TRASH+'</button></div>'+fRow();
     }else{
-      h='<div class="folders">'+fo.map(function(f){var n=movies.filter(function(m){return m.folder===f.id}).length;return '<button class="fold" data-f="'+f.id+'" style="'+fst(f)+'">'+FI+'<b>'+esc(f.name)+'</b><small>'+n+'</small></button>'}).join('')+'<button class="fold new" data-fa="new">+ New folder</button></div>';
+      h=fRow()+(flat?'':'<div class="folders">'+fo.map(function(f){var n=movies.filter(function(m){return m.folder===f.id}).length;return '<button class="fold" data-f="'+f.id+'" style="'+fst(f)+'">'+FI+'<b>'+esc(f.name)+'</b><small>'+n+'</small></button>'}).join('')+'<button class="fold new" data-fa="new">+ New folder</button></div>');
     }
   }
   $('#fold').innerHTML=h;
   var list=inTab.filter(function(m){return (country==='all'||(m.country||'Other')===country)&&m.title.toLowerCase().indexOf(q.toLowerCase())>-1});
   var yr=function(m){return parseInt(m.year,10)||0};
-  if(folder){
+  if(folder||flat){
     list=list.filter(function(m){
       if(ff.g.length&&!(m.genres||[]).some(function(x){return ff.g.indexOf(x)>-1}))return false;
-      if(ff.r==='0'&&sc(m)!==0)return false;
-      if(ff.r&&ff.r!=='0'&&sc(m)<+ff.r)return false;
+      var rv0=tab==='watched'?sc(m):(parseFloat((rr(m)||[])[1])||0);
+      if(ff.r==='0'&&rv0!==0)return false;
+      if(ff.r&&ff.r!=='0'&&rv0<+ff.r)return false;
       if(ff.y&&String(m.year)!==ff.y)return false;
       return true});
   }
   var cmp={new:function(a,b){var ao=a.ord,bo=b.ord;if(ao==null&&bo==null)return b.added-a.added;if(ao==null)return -1;if(bo==null)return 1;return ao-bo},old:function(a,b){return a.added-b.added},
     rh:function(a,b){return sc(b)-sc(a)||b.added-a.added},rl:function(a,b){return sc(a)-sc(b)||b.added-a.added},
     yn:function(a,b){return yr(b)-yr(a)||b.added-a.added},yo:function(a,b){return yr(a)-yr(b)||b.added-a.added},
-    az:function(a,b){return a.title.localeCompare(b.title)},za:function(a,b){return b.title.localeCompare(a.title)}}[folder?ff.s:'new'];
+    az:function(a,b){return a.title.localeCompare(b.title)},za:function(a,b){return b.title.localeCompare(a.title)}}[tab!=='all'?ff.s:'new'];
   if(tab==='all'){var RK={watching:0,upcoming:1,plan:2,favourite:3,watched:4},rk=function(m){if(RK[m.status]!=null)return RK[m.status];var k=0;statuses.forEach(function(x,i){if(x.id===m.status)k=i});return 5+k};list.sort(function(a,b){return rk(a)-rk(b)||cmp(a,b)})}
   else list.sort(cmp);
-  ordCtx=(tab!=='all'&&(!folder||ff.s==='new'))?inTab.slice().sort(cmp).map(function(m){return m.id}):null;
+  ordCtx=(tab!=='all'&&!flat&&(!folder||ff.s==='new'))?inTab.slice().sort(cmp).map(function(m){return m.id}):null;
   var total=list.length;list=list.slice(0,lim);
   var qc=$('#qcnt');if(qc)qc.textContent=fmtK(inTab.length);
-  if(!list.length){$('#list').innerHTML='<div class="empty">'+(folder?(inTab.length?'No movies match these filters.':'This folder is empty. Tap Add to Collection to put the first film in it.'):movies.length?'No movies match this view.':'Your shelf is empty. Tap Add to Collection, or browse Coming Soon.')+'</div>';return}
+  if(!list.length){$('#list').innerHTML='<div class="empty">'+(flat?'No movies match these filters.':folder?(inTab.length?'No movies match these filters.':'This folder is empty. Tap Add to Collection to put the first film in it.'):movies.length?'No movies match this view.':'Your shelf is empty. Tap Add to Collection, or browse Coming Soon.')+'</div>';return}
   var cardH=function(m){
       return '<button class="card" data-id="'+m.id+'"><div class="poster">'+img(m.poster)+'<span class="tag" style="background:'+scol(m.status)+'">'+esc(SL[m.status]||m.status)+'</span>'+'<div class="rbox">'+(rr(m)?'<span class="rate"><small>'+rr(m)[0]+'</small> <span class="'+rcls(parseFloat(rr(m)[1])*10)+'">'+esc(rr(m)[1])+'</span></span>':'')+'</div>'+'<div class="cap"><div><b>'+esc(m.title)+'</b><span>'+esc(m.year)+(m.tmdbId<0?' · '+'TV':'')+'</span></div>'+(sc(m)?'<i class="mine">★ '+sc(m)+'</i>':'')+'</div></div></button>'};
   var more=(total>lim?'<div class="row" style="justify-content:center;margin:18px 0"><button class="btn" id="smore">Show more ('+(total-lim)+' left)</button></div>':'');
@@ -1202,16 +1199,17 @@ function importData(t){
 $('#file').onchange=function(e){e.target.files[0].text().then(importData)};
 $('#fsb').onclick=function(e){var b=e.target.closest('[data-s]');if(!b)return;fstat=b.dataset.s;if(fsel&&!folders.some(function(f){return f.id===fsel&&f.status===fstat}))fsel=null;drawSeg(true)};
 $('#ffol').onclick=function(e){var b=e.target.closest('[data-fo]');if(b){fsel=fsel===b.dataset.fo?null:b.dataset.fo;drawSeg(true)}};
+function fpool(){return movies.filter(function(m){return m.status===tab&&(folder?m.folder===folder:true)})}
 function sfOpts(){
   var o=[];
   $('#sfclr').disabled=fkey==='g'?!ff.g.length:(fkey==='s'?ff.s==='new':!ff[fkey]);
   $('#sfo').className='fopts'+(fkey==='r'?' g5':fkey==='y'?' g3 rows3':fkey==='g'?' g2 rows3':' g2');
-  if(fkey==='g'){var set={};movies.filter(function(m){return m.folder===folder}).forEach(function(m){(m.genres||[]).forEach(function(x){set[x]=1})});
+  if(fkey==='g'){var set={};fpool().forEach(function(m){(m.genres||[]).forEach(function(x){set[x]=1})});
     var gl=Object.keys(set).sort();
     $('#sfo').innerHTML=gl.length?gl.map(function(x){return '<button type="button" class="pill" data-v="'+esc(x)+'" aria-pressed="'+(ff.g.indexOf(x)>-1)+'">'+esc(x)+'</button>'}).join(''):'<span class="note">No genres yet. Movies added from search come with genres.</span>';return}
   if(fkey==='r')o=RATS;
   if(fkey==='s')o=SORTS;
-  if(fkey==='y'){var ys={};movies.filter(function(m){return m.folder===folder&&m.year}).forEach(function(m){ys[m.year]=1});
+  if(fkey==='y'){var ys={};fpool().filter(function(m){return m.year}).forEach(function(m){ys[m.year]=1});
     o=Object.keys(ys).sort().reverse().map(function(y){return [y,y]})}
   var cur=ff[fkey];
   $('#sfo').innerHTML=o.map(function(x){return '<button type="button" class="pill" data-v="'+esc(x[0])+'" aria-pressed="'+(cur===x[0])+'">'+esc(x[1])+'</button>'}).join('');
@@ -1227,7 +1225,7 @@ $('#fold').onclick=function(e){
   var fq=e.target.closest('[data-ff]');
   if(fq){var k0=fq.dataset.ff;
     if(k0==='x'){ff={g:[],r:'',y:'',s:'new'};lim=60;render();return}
-    fkey=k0;$('#sft').textContent={g:'Genre',r:'My rating',y:'Year',s:'Sort by'}[k0];$('#sfo').scrollTop=0;sfOpts();$('#sfdlg').showModal();$('#sfo').scrollTop=0;return}
+    fkey=k0;$('#sft').textContent={g:'Genre',r:'Rating',y:'Year',s:'Sort by'}[k0];$('#sfo').scrollTop=0;sfOpts();$('#sfdlg').showModal();$('#sfo').scrollTop=0;return}
   var sa=e.target.closest('[data-sa]');
   if(sa){var st=statuses.filter(function(x){return x.id===tab})[0];
     if(sa.dataset.sa==='ren')modal({title:'Rename status',input:true,value:st.name,ok:'Save'}).then(function(n){if(n){st.name=n;saveS();rebuildSL();render()}});
