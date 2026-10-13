@@ -617,8 +617,8 @@ function apiC(){var o=[];ucs.forEach(function(c){c=c==='IN-BN'?'IN':c;if(o.index
 function cCode(code){return CSHORT[code]||code}
 function cLabel(code){var f=COUNTRIES.filter(function(c){return c[0]===code})[0],n=f?f[1]:code;return n.length>5?(CSHORT[code]||code):n}
 function drawFilters(){
-  $('#usq').placeholder=umode==='cin'?'Search Coming Soon (OTT)':'Search Coming Soon (Theaters)';
-  $('#umode').innerHTML=[['soon','Coming Soon (Theaters)'],['cin','Coming Soon (OTT)']].map(function(x){return '<button class="pill" data-um="'+x[0]+'" aria-pressed="'+(umode===x[0])+'">'+x[1]+'</button>'}).join('');
+  $('#usq').placeholder=umode==='cin'?'Search On OTT':'Search In Cinemas';
+  $('#umode').innerHTML=[['soon','In Cinemas'],['cin','On OTT']].map(function(x){return '<button class="pill" data-um="'+x[0]+'" aria-pressed="'+(umode===x[0])+'">'+x[1]+'</button>'}).join('');
   var cn=!ucs.length?'All countries':ucs.length===1?cLabel(ucs[0]):ucs.slice(0,2).map(cCode).join(', ')+(ucs.length>2?'…':'');
   var gn=ugs.length?'Genres':'All genres',yn=uy||'Any year';
   var fl=[['c',cn,ucs.length],['g',gn,ugs.length]];if(umode==='soon')fl.push(['y',yn,uy]);if(umode==='cin')fl.unshift(['t',utype==='tv'?'TV Series':'Movie',0]);
@@ -691,7 +691,7 @@ function usearch(){
     return Promise.all([umode==='cin'?cinLoad(mv,true):Promise.resolve(mv),tvLoad(tv)]).then(function(r){
       if(g!==usgen)return;
       ures=r[0].concat(r[1]).sort(function(x,y){return y.popularity-x.popularity});
-      if(!ures.length){$('#ulist').innerHTML='<div class="empty">Nothing found in '+(umode==='cin'?'Coming Soon (OTT)':'Coming Soon (Theaters)')+' for "'+esc(t)+'".</div>';return}
+      if(!ures.length){$('#ulist').innerHTML='<div class="empty">Nothing found in '+(umode==='cin'?'On OTT':'In Cinemas')+' for "'+esc(t)+'".</div>';return}
       var on=movies.map(function(m){return m.tmdbId});
       $('#ulist').innerHTML='<div class="grid">'+ures.map(function(m){return upCard(m,on)}).join('')+'</div>'})
   }).catch(function(e){if(g===usgen)$('#ulist').innerHTML='<div class="empty">'+esc(e.message)+'</div>'})
