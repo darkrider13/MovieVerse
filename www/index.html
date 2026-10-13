@@ -588,7 +588,8 @@ function render(){
     rh:function(a,b){return sc(b)-sc(a)||b.added-a.added},rl:function(a,b){return sc(a)-sc(b)||b.added-a.added},
     yn:function(a,b){return yr(b)-yr(a)||b.added-a.added},yo:function(a,b){return yr(a)-yr(b)||b.added-a.added},
     az:function(a,b){return a.title.localeCompare(b.title)},za:function(a,b){return b.title.localeCompare(a.title)}}[folder?ff.s:'new'];
-  list.sort(cmp);
+  if(tab==='all'){var RK={watching:0,upcoming:1,plan:2,favourite:3,watched:4},rk=function(m){if(RK[m.status]!=null)return RK[m.status];var k=0;statuses.forEach(function(x,i){if(x.id===m.status)k=i});return 5+k};list.sort(function(a,b){return rk(a)-rk(b)||cmp(a,b)})}
+  else list.sort(cmp);
   ordCtx=(tab!=='all'&&(!folder||ff.s==='new'))?inTab.slice().sort(cmp).map(function(m){return m.id}):null;
   var total=list.length;list=list.slice(0,lim);
   var qc=$('#qcnt');if(qc)qc.textContent=fmtK(inTab.length);
