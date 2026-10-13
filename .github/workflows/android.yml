@@ -31,6 +31,28 @@ jobs:
               <solid android:color="#0a0b18"/>
           </shape>
           XML
+      - name: Hide native WebView scrollbars
+        run: |
+          f=$(find android/app/src/main/java -name MainActivity.java | head -n1)
+          pkg=$(grep -m1 '^package ' "$f" | sed 's/package //; s/;//')
+          cat > "$f" <<JAVA
+          package $pkg;
+
+          import android.view.View;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onStart() {
+                  super.onStart();
+                  if (getBridge() != null && getBridge().getWebView() != null) {
+                      View w = getBridge().getWebView();
+                      w.setVerticalScrollBarEnabled(false);
+                      w.setHorizontalScrollBarEnabled(false);
+                  }
+              }
+          }
+          JAVA
       - name: Generate app icons (black background)
         run: |
           pip install pillow
