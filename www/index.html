@@ -449,7 +449,8 @@ function infoH(m){
   if(rv)t.push(['Rating',esc(rv[0])+' <span class="'+rcls(parseFloat(rv[1])*10)+'">'+esc(rv[1])+'</span>']);
   if(m.vc&&!unrel(m)&&!ld)t.push(['Votes',esc(m.vc)]);
   if(m.rt&&!unrel(m)&&!ld)t.push(['Rotten Tomatoes','<span class="'+rcls(parseInt(m.rt,10),1)+'">'+esc(m.rt)+'</span>']);
-  var h=t.map(function(x){return '<div class="tile"'+(x[2]||'')+'><small>'+x[0]+'</small><b>'+x[1]+'</b></div>'}).join('');
+  if(m.tmdbId<0&&m.ottChk){var od1=m.rel?fmt(m.rel)+(m.rel>today()?' (coming soon)':''):'Not announced yet';t.push(['OTT release',esc(od1),'',t.length%2===0])}
+  var h=t.map(function(x){return '<div class="tile'+(x[3]?' wide':'')+'"'+(x[2]||'')+'><small>'+x[0]+'</small><b>'+x[1]+'</b></div>'}).join('');
   if(soOpen&&m.tmdbId<0&&m.sl&&m.sl.length)h+='<div class="tile wide"><small>Episodes per season</small><b>'+m.sl.map(function(x){return 'Season '+x[0]+' · '+x[1]+' episode'+(x[1]===1?'':'s')}).join('<br>')+'</b></div>';
   if(m.genres&&m.genres.length)h+='<div class="tile wide"><small>Genre</small><b>'+esc(m.genres.join(', '))+'</b></div>';
   return h+relTiles(m)}
@@ -656,10 +657,13 @@ function ottState(m){if(m.ott&&m.ott.length)return 'live';if(m.ottDate&&m.ottDat
 function tp(id){return id<0?'/tv/'+(-id):'/movie/'+id}
 function needsOtt(m){return !!(key&&m.tmdbId>0&&(!m.ottChk||m.ov===undefined||(ottState(m)!=='live'&&Date.now()-m.ottChk>864e5)))}
 function enrichOtt(m){
-  if(m.tmdbId<0){if(!key||(m.seasons!=null&&m.sl&&m.kind))return Promise.resolve(false);return tmdb(tp(m.tmdbId)).then(function(d){m.kind=tvKind(d);m.seasons=d.number_of_seasons||0;m.eps=d.number_of_episodes||0;m.sl=slOf(d);return true}).catch(function(){return false})}
+  if(m.tmdbId<0){if(!key||(m.seasons!=null&&m.sl&&m.kind&&m.ottChk))return Promise.resolve(false);return tmdb(tp(m.tmdbId),{append_to_response:'watch/providers'}).then(function(d){m.rel=d.first_air_date||m.rel||'';m.ott=tvProv(d);m.ottChk=Date.now();m.kind=tvKind(d);m.seasons=d.number_of_seasons||0;m.eps=d.number_of_episodes||0;m.sl=slOf(d);return true}).catch(function(){return false})}
   if(!needsOtt(m))return Promise.resolve(false);
   return tmdb('/movie/'+m.tmdbId,{append_to_response:'release_dates,watch/providers'}).then(function(d){applyRel(m,d);return true}).catch(function(){return false})}
+function tvProv(d){var wp=(d['watch/providers']||{}).results||{},oc=(d.origin_country||[])[0],pk=wp[oc]&&wp[oc].flatrate?wp[oc].flatrate:null,n=[];if(!pk)Object.keys(wp).forEach(function(k){if(!pk&&wp[k].flatrate)pk=wp[k].flatrate});(pk||[]).forEach(function(x){if(n.length<4)n.push(x.provider_name)});return n}
 function relTiles(m){
+  if(m.tmdbId<0){
+    return ''}
   if(!m.tmdbId||!m.ottChk)return '';
   var st=ottState(m),T=function(a,b,w){return '<div class="tile'+(w?' wide':'')+'"><small>'+a+'</small><b>'+esc(b)+'</b></div>'};
   var cin=m.rel?fmt(m.rel)+(m.rel>today()?' (coming soon)':''):'Not announced yet';
