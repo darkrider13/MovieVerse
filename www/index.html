@@ -343,7 +343,8 @@ img{-webkit-user-drag:none;user-drag:none}
     <div class="pw one"><input type="text" id="ft"><button class="eye" id="cpy" type="button" aria-label="Copy title and year"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>
     <p class="note" id="dupn" hidden></p>
     <div class="row" style="align-items:flex-start;flex-wrap:nowrap">
-      <div style="flex:1"><label for="fy">Year</label><input type="text" id="fy" inputmode="numeric"></div>
+      <div style="flex:1" id="yrbox"><label for="fy">Year</label><input type="text" id="fy" inputmode="numeric"></div>
+      <div style="flex:1" id="durbox" hidden><label for="fd">Duration</label><input type="text" id="fd" class="ro" readonly></div>
       <div style="flex:1"><label for="fc">Country</label><input type="text" id="fc" placeholder="Country"></div>
     </div>
     <div class="info" id="info"></div>
@@ -654,13 +655,14 @@ function ottInfo(d){
 }
 var dcache={},umode='soon',uload=false,ugen=0,uerr=false;
 function today(){return new Date().toISOString().slice(0,10)}
-function applyRel(m,d){var r=ottInfo(d);m.rel=d.release_date||'';m.ottDate=r.date?r.date.t:'';m.ottC=r.date?r.date.c:'';m.ott=r.names;m.ottChk=Date.now();m.ov=d.overview||'';return m}
+function tvRt(d){return (d.episode_run_time&&d.episode_run_time[0])||(d.last_episode_to_air&&d.last_episode_to_air.runtime)||(d.next_episode_to_air&&d.next_episode_to_air.runtime)||0}
+function applyRel(m,d){var r=ottInfo(d);m.runtime=d.runtime||0;m.rel=d.release_date||'';m.ottDate=r.date?r.date.t:'';m.ottC=r.date?r.date.c:'';m.ott=r.names;m.ottChk=Date.now();m.ov=d.overview||'';return m}
 /* live = streaming now, soon = OTT date announced, tba = nothing announced yet */
 function ottState(m){if(m.ott&&m.ott.length)return 'live';if(m.ottDate&&m.ottDate<=today())return 'live';return m.ottDate?'soon':'tba'}
 function tp(id){return id<0?'/tv/'+(-id):'/movie/'+id}
-function needsOtt(m){return !!(key&&m.tmdbId>0&&(!m.ottChk||m.ov===undefined||(ottState(m)!=='live'&&Date.now()-m.ottChk>864e5)))}
+function needsOtt(m){return !!(key&&m.tmdbId>0&&(!m.ottChk||m.ov===undefined||m.runtime===undefined||(ottState(m)!=='live'&&Date.now()-m.ottChk>864e5)))}
 function enrichOtt(m){
-  if(m.tmdbId<0){if(!key||(m.seasons!=null&&m.sl&&m.kind&&m.ottChk))return Promise.resolve(false);return tmdb(tp(m.tmdbId),{append_to_response:'watch/providers'}).then(function(d){m.rel=d.first_air_date||m.rel||'';m.ott=tvProv(d);m.ottChk=Date.now();m.kind=tvKind(d);m.seasons=d.number_of_seasons||0;m.eps=d.number_of_episodes||0;m.sl=slOf(d);return true}).catch(function(){return false})}
+  if(m.tmdbId<0){if(!key||(m.seasons!=null&&m.sl&&m.kind&&m.ottChk&&m.runtime!==undefined))return Promise.resolve(false);return tmdb(tp(m.tmdbId),{append_to_response:'watch/providers'}).then(function(d){m.rel=d.first_air_date||m.rel||'';m.ott=tvProv(d);m.ottChk=Date.now();m.runtime=tvRt(d);m.kind=tvKind(d);m.seasons=d.number_of_seasons||0;m.eps=d.number_of_episodes||0;m.sl=slOf(d);return true}).catch(function(){return false})}
   if(!needsOtt(m))return Promise.resolve(false);
   return tmdb('/movie/'+m.tmdbId,{append_to_response:'release_dates,watch/providers'}).then(function(d){applyRel(m,d);return true}).catch(function(){return false})}
 function tvProv(d){var wp=(d['watch/providers']||{}).results||{},oc=(d.origin_country||[])[0],pk=wp[oc]&&wp[oc].flatrate?wp[oc].flatrate:null,n=[];if(!pk)Object.keys(wp).forEach(function(k){if(!pk&&wp[k].flatrate)pk=wp[k].flatrate});(pk||[]).forEach(function(x){if(n.length<4)n.push(x.provider_name)});return n}
@@ -835,13 +837,14 @@ function ovSet(el,t){
   var inn=document.createElement('div');inn.className='ovi';inn.appendChild(document.createTextNode(t));el.appendChild(inn);
   ovFit(el);setTimeout(function(){ovFit(el)},80);setTimeout(function(){ovFit(el)},350)}
 window.addEventListener('resize',function(){document.querySelectorAll('.ov2').forEach(ovFit)});
-function setOv(m){ovSet($('#pvov'),m.ov||'')}
+function fmtRt(m){var r=m.runtime;if(r===undefined)return '';if(!r)return 'Not available';var h=Math.floor(r/60),mi=r%60,t=(h?h+'h':'')+(h&&mi?' ':'')+(mi?mi+'m':'');return t+(m.tmdbId<0?' / episode':'')}
+function setOv(m){ovSet($('#pvov'),m.ov||'');var fd=$('#fd');if(fd)fd.value=fmtRt(m)}
 function showForm(m,isEdit,dup,keepSeg){
   var lock=!!m.tmdbId;
   $('.dsc').scrollTop=0;
   $('#find').hidden=true;$('#form').hidden=false;
   $('#pvimg').innerHTML=m.poster?'<img src="'+IMG+'w185'+m.poster+'" alt="">':'';
-  $('#pvt').textContent=m.title||'New movie';setOv(m);
+  $('#pvt').textContent=m.title?m.title+(m.year?' ('+m.year+')':''):'New movie';setOv(m);$('#yrbox').hidden=!!m.tmdbId;$('#durbox').hidden=!m.tmdbId;
   ['#ft','#fy','#fc'].forEach(function(k){$(k).readOnly=lock;$(k).classList.toggle('ro',lock)});
   $('#ft').value=m.title||'';$('#fy').value=m.year||'';$('#fc').value=shortC(m.country);
   soOpen=false;$('#info').innerHTML=infoH(m);
@@ -888,7 +891,7 @@ function choose(id,status,fromUp,fold){
     var done=function(o){var imdb=o?o.imdb:'';
       pick={tmdbId:d.id,title:d.title,year:(d.release_date||'').slice(0,4),poster:d.poster_path,country:shortC(c.name),lang:lang,genres:(d.genres||[]).map(function(g){return g.name}),imdb:imdb||'',rt:o?o.rt:undefined,vc:(o&&o.vc)||fmtV(d.vote_count),imdbId:imdbId||'',chk:o?Date.now():0,tr:d.vote_average?d.vote_average.toFixed(1):'',status:status,folder:fromUp?(fold||null):folder};
       applyRel(pick,d);
-      if(id<0){pick.seasons=d.number_of_seasons||0;pick.eps=d.number_of_episodes||0;pick.sl=slOf(d);pick.kind=tvKind(d)}
+      if(id<0){pick.runtime=tvRt(d);pick.seasons=d.number_of_seasons||0;pick.eps=d.number_of_episodes||0;pick.sl=slOf(d);pick.kind=tvKind(d)}
       editId=null;pick._ld=!!(omdb&&!unrel(pick));showForm(pick,false,false,true);
       {var p0=pick;$('#save').textContent=fromUp?'Add':'Save';$('#save').disabled=false;dg.classList.remove('busy');if(!dg.open)dg.showModal();
         var fin2=function(){delete p0._ld;if(pick===p0&&dg.open&&!$('#form').hidden){$('#info').innerHTML=infoH(p0)}};if(omdb&&!unrel(p0))enrich(p0).then(fin2,fin2);else delete p0._ld}
@@ -914,7 +917,7 @@ $('#save').onclick=function(){
   var d={title:title,year:$('#fy').value.trim(),country:$('#fc').value.trim(),status:fstat,folder:fsel,score:sv,rating:sv/2};
   var mv;
   if(editId){mv=movies.filter(function(m){return m.id===editId})[0];if(mv.status!==d.status||(mv.folder||null)!==(d.folder||null))delete mv.ord;Object.assign(mv,d)}
-  else{mv=Object.assign(d,{id:uid(),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,lang:pick&&pick.lang,genres:pick&&pick.genres,imdb:pick&&pick.imdb,tr:pick&&pick.tr,rt:pick&&pick.rt,vc:pick&&pick.vc,imdbId:pick&&pick.imdbId,chk:pick&&pick.chk,rel:pick&&pick.rel,ottDate:pick&&pick.ottDate,ottC:pick&&pick.ottC,ott:pick&&pick.ott,ottChk:pick&&pick.ottChk,ov:pick&&pick.ov,seasons:pick&&pick.seasons,eps:pick&&pick.eps,sl:pick&&pick.sl,kind:pick&&pick.kind,added:Date.now()});movies.push(mv)}
+  else{mv=Object.assign(d,{id:uid(),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,lang:pick&&pick.lang,genres:pick&&pick.genres,imdb:pick&&pick.imdb,tr:pick&&pick.tr,rt:pick&&pick.rt,vc:pick&&pick.vc,imdbId:pick&&pick.imdbId,chk:pick&&pick.chk,rel:pick&&pick.rel,ottDate:pick&&pick.ottDate,ottC:pick&&pick.ottC,ott:pick&&pick.ott,ottChk:pick&&pick.ottChk,runtime:pick&&pick.runtime,ov:pick&&pick.ov,seasons:pick&&pick.seasons,eps:pick&&pick.eps,sl:pick&&pick.sl,kind:pick&&pick.kind,added:Date.now()});movies.push(mv)}
   putMany([mv]);$('#dlg').close();render();if(!$('#up').hidden)drawUp();
 };
 $('#del').onclick=function(){modal({title:'Delete this movie?',text:'It will be removed from your shelf.',ok:'Delete',danger:true}).then(function(y){if(y){var did=editId;movies=movies.filter(function(m){return m.id!==did});delOne(did);$('#dlg').close();render()}})};
