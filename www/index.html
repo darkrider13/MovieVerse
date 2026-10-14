@@ -35,6 +35,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .btn.pri{background:var(--acc);border-color:var(--acc);color:var(--onacc);font-weight:700}
 .btn.del{color:#e24b4b}
 .btn.red{background:#ff0000;border-color:#ff0000;color:#fff;font-weight:700}
+html{overscroll-behavior-y:contain}
+.card.upd .poster::before{content:'';position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:5}
+.card.upd .poster::after{content:'';position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;z-index:6;animation:ptrs .7s linear infinite}
+@keyframes ptrs{to{transform:rotate(360deg)}}
 #okdlg{width:min(86vw,340px);text-align:center}
 #okdlg .okc{width:68px;height:68px;border-radius:50%;background:#16a34a;margin:6px auto 12px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 8px rgba(22,163,74,.18)}
 #okdlg .okc svg{width:36px;height:36px}
@@ -203,7 +207,7 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 .ffil .pill.on{background:var(--acc);border-color:var(--acc);color:var(--onacc)}
 #sfo .pill{color:var(--ink)}
 #sfo .pill[aria-pressed=true]{color:var(--bg)}
-#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90vw}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#000;color:#fff;border:1px solid rgba(255,255,255,.18);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90vw}
 #toast.show{opacity:1}
 html{background:var(--bg)}
 body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:env(safe-area-inset-bottom,0px);background:var(--bot);z-index:40;pointer-events:none}
@@ -306,6 +310,10 @@ img{-webkit-user-drag:none;user-drag:none}
 @keyframes blkb{0%,100%{border-color:rgba(255,70,70,.15)}50%{border-color:#ff4646}}
 @keyframes blkg{0%,100%{border-color:rgba(255,70,70,.2);box-shadow:0 0 0 0 rgba(255,70,70,0)}50%{border-color:#ff4646;box-shadow:0 0 10px 1px rgba(255,70,70,.45)}}
 #set.on{animation:blkg 2.2s ease-in-out infinite}
+@keyframes pulsep{0%,100%{transform:scale(1)}50%{transform:scale(.92)}}
+.card.chg:not(.upd) .poster{animation:pulsep 1.6s ease-in-out infinite;will-change:transform}
+@keyframes tileg{0%,100%{color:var(--mut);text-shadow:0 0 0 rgba(60,220,120,0)}50%{color:#6ee7a0;text-shadow:0 0 8px rgba(60,220,120,.6)}}
+.tile.chgt small{animation:tileg 2.2s ease-in-out infinite}
 #exp.on{animation:blkg 2.2s ease-in-out infinite}
 #upb{white-space:nowrap;font-size:12.5px;height:34px;padding:0 11px;border-radius:9px;flex:0 0 auto;display:inline-flex;align-items:center}
 #set{height:34px;width:34px;padding:0;border-radius:9px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center}
@@ -482,7 +490,7 @@ function infoH(m){
   if(m.vc&&rr(m)&&!unrel(m)&&!ld)t.push(['Votes',esc(m.vc)]);
   if(m.rt&&!unrel(m)&&!ld)t.push(['Rotten Tomatoes','<span class="'+rcls(parseInt(m.rt,10),1)+'">'+esc(m.rt)+'</span>']);
   if(m.tmdbId<0&&m.ottChk){var od1=m.rel?fmt(m.rel)+(m.rel>today()?' (coming soon)':''):'Not announced yet';t.push(['OTT release',esc(od1),'',t.length%2===0])}
-  var h=t.map(function(x){return '<div class="tile'+(x[3]?' wide':'')+'"'+(x[2]||'')+'><small>'+x[0]+'</small><b>'+x[1]+'</b></div>'}).join('');
+  var h=t.map(function(x){return '<div class="tile'+(x[3]?' wide':'')+cfc(m,x[0])+'"'+(x[2]||'')+'><small>'+x[0]+'</small><b>'+x[1]+'</b></div>'}).join('');
   if(soOpen&&m.tmdbId<0&&m.sl&&m.sl.length)h+='<div class="tile wide"><small>Episodes per season</small><b>'+m.sl.map(function(x){return 'Season '+x[0]+' · '+x[1]+' episode'+(x[1]===1?'':'s')}).join('<br>')+'</b></div>';
   if(m.genres&&m.genres.length)h+='<div class="tile wide"><small>Genre</small><b>'+esc(m.genres.join(', '))+'</b></div>';
   setPvt(m);return h+relTiles(m)+boxTiles(m)}
@@ -513,7 +521,7 @@ function setPvt(m){
   var p=boxOf(m);if(p){var sp=document.createElement('span');sp.textContent=p.v;sp.style.cssText='color:'+p.col+';white-space:nowrap;margin-left:6px;font-size:.72em;font-weight:700;vertical-align:middle';el.appendChild(sp)}}
 function boxTiles(m){
   var p=boxOf(m);if(!p)return '';
-  return '<div class="tile"><small>Budget</small><b>'+esc(moneyF(p.b,p.c))+'</b></div><div class="tile"><small>Collection · '+p.src+'</small><b>'+esc(moneyF(p.r,p.c))+'</b></div>'}
+  return '<div class="tile'+cfc(m,'Budget')+'"><small>Budget</small><b>'+esc(moneyF(p.b,p.c))+'</b></div><div class="tile'+cfc(m,'Collection')+'"><small>Collection · '+p.src+'</small><b>'+esc(moneyF(p.r,p.c))+'</b></div>'}
 /* ===== Wikipedia box office: budget + box office from the film's infobox (editor-maintained, keeps the real currency) ===== */
 function isInd(m){return /india|bangladesh/i.test(String(m&&m.country||''))||/^(hindi|tamil|telugu|malayalam|kannada|bengali|bangla|marathi|punjabi|gujarati|odia|bhojpuri|assamese)$/i.test(String(m&&m.lang||''))}
 function wkCur(sy){var t=sy.toLowerCase();if(t==='₹'||/^rs|^inr/.test(t))return 'INR';if(t==='৳'||/^(bdt|tk)/.test(t))return 'BDT';if(t==='£')return 'GBP';if(t==='€')return 'EUR';if(t==='a$')return 'AUD';if(t==='ca$')return 'CAD';return 'USD'}
@@ -594,8 +602,9 @@ function wkFind(m){
       return null})});
   wkMem[k]=res;res.catch(function(){delete wkMem[k]});
   return res}
+function wikiOK(m){return !!(m&&m.tmdbId>0&&m.rel&&m.ottChk&&!unrel(m)&&m.title&&+m.year)}
 function needsWiki(m){
-  if(!m||!m.tmdbId||m.tmdbId<0||!m.rel||!m.ottChk||unrel(m)||!m.title||!+m.year)return false;
+  if(!wikiOK(m))return false;
   if(Date.now()-(m.wkt||0)<36e5)return false;
   if(m.wkc===undefined||m.wkv!==3)return true;
   var age=(Date.now()-new Date(m.rel+'T00:00:00').getTime())/864e5;
@@ -603,8 +612,8 @@ function needsWiki(m){
 function wkChain(m){
   if(needsWiki(m))return Promise.all([enrichOtt(m),enrichWiki(m)]).then(function(x){return x[0]||x[1]});
   return enrichOtt(m).then(function(r){return enrichWiki(m).then(function(w){return r||w})})}
-function enrichWiki(m){
-  if(!needsWiki(m))return Promise.resolve(false);
+function enrichWiki(m,force){
+  if(force?!wikiOK(m):!needsWiki(m))return Promise.resolve(false);
   m.wkt=Date.now();
   return wkFind(m).then(function(r){
     m.wkc=Date.now();m.wkv=3;
@@ -636,6 +645,16 @@ function xmGet(id,ks,n){
     return r.json().then(function(j){if(xmLimit(j))return next();xi=i;return xmParse(j)},function(){return next()})
   }).catch(function(){return next()})}
 function xmLookup(id){var ks=apiKeys('xmdb').filter(Boolean);if(!id||!ks.length)return Promise.resolve(null);return xmGet(id,ks,0)}
+function todayL(){var d=new Date(),z=function(n){return (n<10?'0':'')+n};return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())}
+/* hot = new/upcoming title (this year or later, or not released yet) that is still unreleased on OTT or within 30 days after its OTT release: only these are refreshed by pull-down on the home screen */
+function hot(m){
+  if(!m||!m.tmdbId)return false;
+  var y=+m.year||0;
+  if(!(y>=new Date().getFullYear()||unrel(m)||m.status==='upcoming'))return false;
+  if(ottState(m)!=='live')return true;
+  var st=(m.ottDate&&m.ottDate<=today())?new Date(m.ottDate+'T00:00:00').getTime():m.liveSince;
+  if(!st){m.liveSince=Date.now();return true}
+  return Date.now()-st<=30*864e5}
 function needsE(m){return !!((omdb||apiKeys('xmdb').some(Boolean))&&key&&m.tmdbId&&(m.rt===undefined||(apiKeys('xmdb').some(Boolean)&&!m.xmc)||(!m.imdb&&!m.xm&&Date.now()-(m.chk||0)>((+m.year||0)>=new Date().getFullYear()-1?216e5:2592e5))))}
 function enrich(m,force){
   if(!force&&!needsE(m))return Promise.resolve(false);
@@ -656,7 +675,7 @@ function enrich(m,force){
   }).catch(function(){return false})}
 var bfBusy=false;
 function backfill(){
-  if(bfBusy||!key||!db)return;
+  if(bfBusy||!key)return;
   var todo=movies.filter(needsAny).slice(0,25),ch=[],i=0,live=Math.min(6,todo.length);
   if(!todo.length)return;bfBusy=true;
   function worker(){
@@ -697,7 +716,8 @@ function themeBtn(){var t=document.documentElement.getAttribute('data-theme');$(
 function setTheme(t){document.documentElement.setAttribute('data-theme',t);LS.setItem('library.theme',t);themeBtn()}
 var CO=[['','All countries'],['BD','Bangladesh'],['IN','India'],['US','United States'],['KR','South Korea'],['JP','Japan'],['GB','United Kingdom'],['FR','France'],['CN','China'],['TR','Turkey'],['TH','Thailand'],['ES','Spain'],['DE','Germany'],['IT','Italy'],['PK','Pakistan']];
 function idb(){return new Promise(function(res,rej){var r=indexedDB.open('movieverse',1);r.onupgradeneeded=function(){r.result.createObjectStore('m',{keyPath:'id'})};r.onsuccess=function(){res(r.result)};r.onerror=function(){rej(r.error)}})}
-function tx(fn){return new Promise(function(res,rej){var t=db.transaction('m','readwrite');fn(t.objectStore('m'));t.oncomplete=res;t.onerror=function(){rej(t.error)}})}
+function tx(fn){if(!db)return new Promise(function(res,rej){setTimeout(function(){try{LS.setItem('library.movies',JSON.stringify(movies));res()}catch(e){rej(e)}},0)}); /* no IndexedDB here (e.g. opened from a content:// file): keep the library in localStorage instead */
+  return new Promise(function(res,rej){var t=db.transaction('m','readwrite');fn(t.objectStore('m'));t.oncomplete=res;t.onerror=function(){rej(t.error)}})}
 function putMany(l){return tx(function(st){l.forEach(function(m){st.put(m)})})}
 function delOne(id){return tx(function(st){st.delete(id)})}
 function loadAll(){return new Promise(function(res,rej){var q=db.transaction('m').objectStore('m').getAll();q.onsuccess=function(){res(q.result)};q.onerror=function(){rej(q.error)}})}
@@ -708,7 +728,7 @@ function paintDirty(){var on=isDirty();$('#set').classList.toggle('on',on);$('#e
 function setDirty(v){if(v===false){try{LS.setItem('library.bk',String(bkT||Date.now()))}catch(e){}}paintDirty()}
 function initBk(){if(LS.getItem('library.bkv2')!==null)return;try{LS.setItem('library.bk',String(Date.now()));LS.setItem('library.bkv2','1');LS.removeItem('library.dirty')}catch(e){}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
-function toast(t){var e=$('#toast');e.textContent=t;e.className='show';clearTimeout(tt);tt=setTimeout(function(){e.className=''},2600)}
+function toast(t,ms){var e=$('#toast');e.textContent=t;e.className='show';clearTimeout(tt);tt=setTimeout(function(){e.className=''},ms||2600)}
 function okDlg(title,text,path){var d=$('#okdlg');$('#okt').textContent=title;$('#okx').textContent=text||'';var p=$('#okp');p.hidden=!path;p.textContent=path||'';$('#okb').onclick=function(){d.close()};if(d.open)d.close();d.showModal()}
 function modal(o){return new Promise(function(res){
   var d=$('#mdlg'),i=$('#mi'),ok=$('#mok');
@@ -740,6 +760,8 @@ function tmdb(path,params,n){
 function img(p,size){return p?'<img src="'+IMG+(size||'w342')+p+'" alt="" loading="lazy" decoding="async">':''}
 
 /* ---------- library ---------- */
+var updSet={},chgSet={},chgF={},lastOpen=null;
+function cfc(m,l){var f=m&&chgF[m.id];return f&&f[String(l).split(' · ')[0]]?' chgt':''}
 function render(){
   if((cdr&&cdr.on)||(dr&&dr.on))return;
   paintDirty();
@@ -791,7 +813,7 @@ function render(){
   var qc=$('#qcnt');if(qc)qc.textContent=fmtK(inTab.length);
   if(!list.length){$('#list').innerHTML='<div class="empty">'+(flat?'No movies match these filters.':folder?(inTab.length?'No movies match these filters.':'This folder is empty. Tap Add to Library to put the first film in it.'):movies.length?'No movies match this view.':'Your library is empty. Tap Add to Library, or browse Coming Soon.')+'</div>';return}
   var cardH=function(m){
-      return '<button class="card" data-id="'+m.id+'"><div class="poster">'+img(m.poster)+'<span class="tag" style="background:'+scol(m.status)+'">'+esc(SL[m.status]||m.status)+'</span>'+'<div class="rbox">'+(rr(m)?'<span class="rate"><small>'+rr(m)[0]+'</small> <span class="'+rcls(parseFloat(rr(m)[1])*10)+'">'+esc(rr(m)[1])+'</span></span>':'<span class="rate"><small>IMDb</small> <span class="na">N/A</span></span>')+'</div>'+'<div class="cap"><div><b>'+esc(m.title)+'</b><span>'+esc(m.year)+(m.tmdbId<0?' · '+'TV':'')+'</span></div>'+(sc(m)?'<i class="mine">★ '+sc(m)+'</i>':'')+'</div></div></button>'};
+      return '<button class="card'+(updSet[m.id]?' upd':'')+(chgSet[m.id]?' chg':'')+'" data-id="'+m.id+'"><div class="poster">'+img(m.poster)+'<span class="tag" style="background:'+scol(m.status)+'">'+esc(SL[m.status]||m.status)+'</span>'+'<div class="rbox">'+(rr(m)?'<span class="rate"><small>'+rr(m)[0]+'</small> <span class="'+rcls(parseFloat(rr(m)[1])*10)+'">'+esc(rr(m)[1])+'</span></span>':'<span class="rate"><small>IMDb</small> <span class="na">N/A</span></span>')+'</div>'+'<div class="cap"><div><b>'+esc(m.title)+'</b><span>'+esc(m.year)+(m.tmdbId<0?' · '+'TV':'')+'</span></div>'+(sc(m)?'<i class="mine">★ '+sc(m)+'</i>':'')+'</div></div></button>'};
   var more=(total>lim?'<div class="row" style="justify-content:center;margin:18px 0"><button class="btn" id="smore">Show more ('+(total-lim)+' left)</button></div>':'');
   $('#list').innerHTML='<div class="grid" style="margin-top:6px">'+list.map(cardH).join('')+'</div>'+more;
 }
@@ -845,16 +867,16 @@ function applyRel(m,d){var r=ottInfo(d);m.runtime=d.runtime||0;m.rel=d.release_d
 function ottState(m){if(m.ott&&m.ott.length)return 'live';if(m.ottDate&&m.ottDate<=today())return 'live';return m.ottDate?'soon':'tba'}
 function tp(id){return id<0?'/tv/'+(-id):'/movie/'+id}
 function needsOtt(m){return !!(key&&m.tmdbId>0&&(!m.ottChk||m.ov===undefined||m.runtime===undefined||(ottState(m)!=='live'&&Date.now()-m.ottChk>864e5)))}
-function enrichOtt(m){
-  if(m.tmdbId<0){if(!key||(m.seasons!=null&&m.sl&&m.kind&&m.ottChk&&m.runtime!==undefined))return Promise.resolve(false);return tmdb(tp(m.tmdbId),{append_to_response:'watch/providers'}).then(function(d){m.rel=d.first_air_date||m.rel||'';m.ott=tvProv(d);m.ottChk=Date.now();m.runtime=tvRt(d);m.kind=tvKind(d);m.seasons=d.number_of_seasons||0;m.eps=d.number_of_episodes||0;m.sl=slOf(d);return true}).catch(function(){return false})}
-  if(!needsOtt(m))return Promise.resolve(false);
+function enrichOtt(m,force){
+  if(m.tmdbId<0){if(!key||(!force&&m.seasons!=null&&m.sl&&m.kind&&m.ottChk&&m.runtime!==undefined))return Promise.resolve(false);return tmdb(tp(m.tmdbId),{append_to_response:'watch/providers'}).then(function(d){m.rel=d.first_air_date||m.rel||'';m.ott=tvProv(d);m.ottChk=Date.now();m.runtime=tvRt(d);m.kind=tvKind(d);m.seasons=d.number_of_seasons||0;m.eps=d.number_of_episodes||0;m.sl=slOf(d);return true}).catch(function(){return false})}
+  if(!force&&!needsOtt(m))return Promise.resolve(false);
   return tmdb('/movie/'+m.tmdbId,{append_to_response:'release_dates,watch/providers'}).then(function(d){applyRel(m,d);return true}).catch(function(){return false})}
 function tvProv(d){var wp=(d['watch/providers']||{}).results||{},oc=(d.origin_country||[])[0],pk=wp[oc]&&wp[oc].flatrate?wp[oc].flatrate:null,n=[];if(!pk)Object.keys(wp).forEach(function(k){if(!pk&&wp[k].flatrate)pk=wp[k].flatrate});(pk||[]).forEach(function(x){if(n.length<4)n.push(x.provider_name)});return n}
 function relTiles(m){
   if(m.tmdbId<0){
     return ''}
   if(!m.tmdbId||!m.ottChk)return '';
-  var st=ottState(m),T=function(a,b,w){return '<div class="tile'+(w?' wide':'')+'"><small>'+a+'</small><b>'+esc(b)+'</b></div>'};
+  var st=ottState(m),T=function(a,b,w){return '<div class="tile'+(w?' wide':'')+cfc(m,a)+'"><small>'+a+'</small><b>'+esc(b)+'</b></div>'};
   var cin=m.rel?fmt(m.rel)+(m.rel>today()?' (coming soon)':''):'Not announced yet';
   var od=st==='tba'?'Not announced yet':(m.ottDate?fmt(m.ottDate):'Streaming now');
   var pf=m.ott&&m.ott.length?m.ott.join(', '):(st==='live'?'Not listed yet':'Not announced yet');
@@ -1171,7 +1193,7 @@ var cdr=null,noClickC=0,ordCtx=null;
   document.addEventListener('mouseup',end);
   L.addEventListener('contextmenu',function(e){if(e.target.closest('.card'))e.preventDefault()});
 })();
-$('#list').onclick=function(e){if(Date.now()-noClickC<400)return;if(e.target.closest('#smore')){lim+=60;render();return}var c=e.target.closest('[data-id]');if(!c)return;var m=movies.find(function(x){return x.id===c.dataset.id});editId=m.id;pick=m;m._ld=needsE(m)&&!unrel(m);showForm(m,true);$('#dlg').showModal();var fin=function(x){delete m._ld;var ch=x&&(x[0]||x[1]);if(ch)putMany([m]);if(editId===m.id&&!$('#form').hidden){$('#info').innerHTML=infoH(m);if(ch)setOv(m)}if(ch)render()};Promise.all([enrich(m),wkChain(m)]).then(fin,function(){fin(null)})};
+$('#list').onclick=function(e){if(Date.now()-noClickC<400)return;if(e.target.closest('#smore')){lim+=60;render();return}var c=e.target.closest('[data-id]');if(!c)return;delete chgSet[c.dataset.id];lastOpen=c.dataset.id;c.classList.remove('chg');var m=movies.find(function(x){return x.id===c.dataset.id});editId=m.id;pick=m;m._ld=needsE(m)&&!unrel(m);showForm(m,true);$('#dlg').showModal();var fin=function(x){delete m._ld;var ch=x&&(x[0]||x[1]);if(ch)putMany([m]);if(editId===m.id&&!$('#form').hidden){$('#info').innerHTML=infoH(m);if(ch)setOv(m)}if(ch)render()};Promise.all([enrich(m),wkChain(m)]).then(fin,function(){fin(null)})};
 function editStatus(){
   var st=statuses.filter(function(x){return x.id===tab})[0];if(!st)return;
   modal({title:'Edit status',input:true,value:st.name,ok:'Save',del:true,nocancel:true}).then(function(n){
@@ -1467,6 +1489,54 @@ idb().then(function(d){db=d;return loadAll()}).then(function(list){
 paintBar();
 render();paintDirty();
 
+/* pull down on the home screen: up to 10 times in each 6-hour slot (00-06, 06-12, 12-18, 18-24), refresh rating, budget and OTT info of new movies only (see hot) */
+(function(){
+  var sy=0,sx=0,pull=0,on=false,busy=false,TH=70,buzz=false;
+  function snapF(m){return {'Rating':m.xm||m.imdb||'','Votes':m.vc||'','Rotten Tomatoes':m.rt||'','In cinemas':m.rel||'','OTT release':[m.ottDate,(m.ott||[]).join(','),m.tmdbId<0?m.rel:''].join('|'),'Budget':[m.wbud,m.wcur].join('|'),'Collection':[m.wrev,m.wcur].join('|'),'Seasons':m.seasons==null?'':m.seasons,'Episodes':m.eps==null?'':m.eps}}
+  function sig(m){return [m.imdb,m.xm,m.vc,m.rt,m.wbud,m.wrev,m.wcur,(m.ott||[]).join(','),m.ottDate,m.rel,m.runtime].join('|')}
+  function mark(id,v){if(v)updSet[id]=1;else delete updSet[id];var c=$('#list').querySelector('[data-id="'+id+'"]');if(c){c.classList.toggle('upd',!!v);if(!v)c.classList.toggle('chg',!!chgSet[id])}}
+  function refreshHot(){
+    var todo=movies.filter(hot),ch=[],names=[],i=0;
+    if(!todo.length)return Promise.resolve([]);
+    todo.forEach(function(m){mark(m.id,1)});
+    return new Promise(function(res){
+      var live=Math.min(4,todo.length);
+      function w(){
+        if(i>=todo.length){if(--live===0){todo.forEach(function(x){mark(x.id,0)});if(ch.length){putMany(ch);render()}res(names)}return}
+        var m=todo[i++],b=sig(m),bf=snapF(m);
+        enrichOtt(m,true).then(function(a){return enrich(m,true).then(function(x){return enrichWiki(m,true).then(function(c){if(a||x||c)ch.push(m)})})}).catch(function(){}).then(function(){
+          if(sig(m)!==b){names.push(m.title);chgSet[m.id]=1;var af=snapF(m),cf2=chgF[m.id]||{};Object.keys(af).forEach(function(k){if(String(af[k])!==String(bf[k]))cf2[k]=1});chgF[m.id]=cf2}
+          setTimeout(w,20)})}
+      for(var k=0,n=live;k<n;k++)w()})}
+  function msg(names){return names.length+(names.length===1?' movie':' movies')+' updated'}
+  function run(){
+    if(busy)return;
+    var h=new Date().getHours(),sl=Math.floor(h/6)+1,td=todayL()+'#'+sl,cnt=0,LIM=10;try{var pv=(LS.getItem('library.pull')||'').split(':');if(pv[0]===td)cnt=parseInt(pv[1],10)||0}catch(e){}
+    if(!key){keys=apiKeys('tmdb').filter(Boolean);ki=0;pickKeys()}
+    if(!key){toast('Add your TMDB key in Settings',3200);return}
+    if(cnt>=LIM){toast('Recently Updated',2600);return}
+    if(navigator.onLine===false){toast('No internet connection',2600);return}
+    busy=true;
+    refreshHot().then(function(n){try{LS.setItem('library.pull',td+':'+(cnt+1))}catch(e){}return n},function(){return null}).then(function(n){
+      busy=false;
+      toast(n?msg(n):'Could not update',n&&n.length?5000:2600)})}
+  document.addEventListener('touchstart',function(e){
+    on=false;pull=0;buzz=false;
+    if(busy||e.touches.length!==1||window.scrollY>0||document.querySelector('dialog[open]')||!$('#library')||$('#library').hidden)return;
+    if(e.target.closest&&e.target.closest('#tabs,input,textarea,select'))return;
+    sy=e.touches[0].clientY;sx=e.touches[0].clientX;on=true},{passive:true});
+  document.addEventListener('touchmove',function(e){
+    if(!on)return;
+    if(window.scrollY>0||(cdr&&cdr.on)){on=false;pull=0;return}
+    var dy=e.touches[0].clientY-sy,dx=e.touches[0].clientX-sx;
+    if(dy<=0||Math.abs(dx)>Math.abs(dy)){pull=0;return}
+    pull=Math.min(dy*.5,90);
+    if(e.cancelable)e.preventDefault();
+    if(pull>=TH&&!buzz){buzz=true;try{navigator.vibrate&&navigator.vibrate(10)}catch(x){}}},{passive:false});
+  function end(){if(!on)return;on=false;var g=pull>=TH;pull=0;if(g)run()}
+  document.addEventListener('touchend',end);document.addEventListener('touchcancel',function(){on=false;pull=0});
+})();
+
 /* keyboard: never auto-open; hide when leaving an input */
 (function(){
   function hideKb(){var a=document.activeElement;if(a&&a!==document.body&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))a.blur()}
@@ -1501,6 +1571,11 @@ sp.classList.add('fr');
 setTimeout(function(){sp.classList.add('hide');setTimeout(function(){sp.remove()},420)},Math.max(400,3100-performance.now()))})();
 </script>
 <script>
+/* leaving the app clears the green 'updated' blink */
+(function(){function clr(){chgSet={};chgF={};document.querySelectorAll('.card.chg').forEach(function(c){c.classList.remove('chg')})}
+document.addEventListener('visibilitychange',function(){if(document.hidden)clr()});
+window.addEventListener('pagehide',clr);
+var dg=document.getElementById('dlg');if(dg)dg.addEventListener('close',function(){if(lastOpen){delete chgF[lastOpen];lastOpen=null}})})();
 /* block copy/cut everywhere unless it comes from a dedicated copy button */
 (function(){var no=function(e){if(!window.__ac)e.preventDefault()};
 ['copy','cut'].forEach(function(n){document.addEventListener(n,no,true)});
