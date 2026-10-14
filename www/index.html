@@ -34,7 +34,17 @@ button,input,select,textarea{font:inherit;color:inherit}
 .btn:disabled{opacity:.4;pointer-events:none}
 .btn.pri{background:var(--acc);border-color:var(--acc);color:var(--onacc);font-weight:700}
 .btn.del{color:#e24b4b}
-.btn.red{background:#e24b4b;border-color:#e24b4b;color:#fff;font-weight:700}
+.btn.red{background:#ff0000;border-color:#ff0000;color:#fff;font-weight:700}
+#okdlg{width:min(86vw,340px);text-align:center}
+#okdlg .okc{width:68px;height:68px;border-radius:50%;background:#16a34a;margin:6px auto 12px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 8px rgba(22,163,74,.18)}
+#okdlg .okc svg{width:36px;height:36px}
+#okdlg .okc path{stroke-dasharray:30;stroke-dashoffset:30}
+#okdlg[open] .okc{animation:okpop .35s cubic-bezier(.2,1.4,.4,1)}
+#okdlg[open] .okc path{animation:okdraw .4s .25s ease forwards}
+@keyframes okpop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes okdraw{to{stroke-dashoffset:0}}
+#okdlg h2{margin:0 0 6px;padding:0;font-size:18px}
+#okdlg .okp{display:block;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:var(--s2);font-size:12px;word-break:break-all;color:var(--ink)}
 input,select,textarea,dialog,[tabindex]{-webkit-tap-highlight-color:transparent}
 input:focus,input:focus-visible,select:focus,select:focus-visible,textarea:focus,textarea:focus-visible,dialog:focus,dialog:focus-visible{outline:none!important;box-shadow:none!important}
 input:focus,select:focus,textarea:focus{border-color:var(--mut)}
@@ -395,6 +405,7 @@ img{-webkit-user-drag:none;user-drag:none}
 <dialog id="sfdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="sft" style="margin-top:0"></h2><div class="fopts" id="sfo"></div><div class="row" style="margin-top:14px;justify-content:space-between"><button class="btn" id="sfclr">Reset</button><button class="btn pri" id="sfok">Done</button></div></dialog>
 
 
+<dialog id="okdlg"><div class="okc"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><h2 id="okt"></h2><p class="note" id="okx"></p><code class="okp" id="okp" hidden></code><div class="row" style="margin-top:16px;justify-content:center"><button class="btn pri" id="okb">OK</button></div></dialog>
 <div id="toast"></div>
 <script>
 var $=function(s){return document.querySelector(s)};
@@ -697,6 +708,7 @@ function setDirty(v){if(v===false){try{LS.setItem('library.bk',String(bkT||Date.
 function initBk(){if(LS.getItem('library.bkv2')!==null)return;try{LS.setItem('library.bk',String(Date.now()));LS.setItem('library.bkv2','1');LS.removeItem('library.dirty')}catch(e){}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function toast(t){var e=$('#toast');e.textContent=t;e.className='show';clearTimeout(tt);tt=setTimeout(function(){e.className=''},2600)}
+function okDlg(title,text,path){var d=$('#okdlg');$('#okt').textContent=title;$('#okx').textContent=text||'';var p=$('#okp');p.hidden=!path;p.textContent=path||'';$('#okb').onclick=function(){d.close()};if(d.open)d.close();d.showModal()}
 function modal(o){return new Promise(function(res){
   var d=$('#mdlg'),i=$('#mi'),ok=$('#mok');
   $('#mt').textContent=o.title;$('#mx').textContent=o.text||'';
@@ -1338,7 +1350,7 @@ function shareBk(P,F,name){
   return writeBackup(F,'CACHE',name)
     .then(function(){return F.getUri({path:name,directory:'CACHE'})})
     .then(function(r){return P.Share.share({title:name,dialogTitle:'Save backup',files:[r.uri]}).catch(function(e){if(/cancel/i.test((e&&e.message)||''))throw e;return P.Share.share({title:name,url:r.uri})})})
-    .then(function(){setDirty(false)})
+    .then(function(){setDirty(false);okDlg('Export successful','Backup shared')})
     .catch(function(e){if(!/cancel/i.test((e&&e.message)||''))toast('Could not share backup')});
 }
 function exportBackup(){
@@ -1352,17 +1364,17 @@ function exportBackup(){
     for(var j=0;j<movies.length;j+=1500)parts.push((j?',':'')+bstr(movies.slice(j,j+1500)));
     parts.push('],"folders":'+JSON.stringify(folders)+',"statuses":'+JSON.stringify(statuses)+',"settings":'+setStr()+'}');
     var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(parts,{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();
-    setDirty(false);toast('Backup downloaded');return;
+    setDirty(false);okDlg('Export successful','Backup downloaded',name);return;
   }
   if(!F){$('#sdlg').close();toast('Backup plugin is missing in this APK build');return}
-  modal({title:'Export backup',text:'Save the file straight into your Documents folder, or send it using your phone\'s share menu.',ok:'Save File',alt:'Share',plain:1,red:1}).then(function(r){
+  modal({title:'Export backup',text:'Documents/MovieVerse/',ok:'Save File',alt:'Share',plain:1,red:1}).then(function(r){
     if(!r)return;
     $('#sdlg').close();
     if(r.del){shareBk(P,F,name);return}
     toast('Saving backup…');
     Promise.resolve(F.requestPermissions?F.requestPermissions():0).catch(function(){})
       .then(function(){return writeBackup(F,'DOCUMENTS','MovieVerse/'+name)})
-      .then(function(){setDirty(false);toast('Saved '+movies.length+' movies: Documents/MovieVerse/'+name)})
+      .then(function(){setDirty(false);okDlg('Export successful',movies.length+' movies saved','Documents/MovieVerse/'+name)})
       .catch(function(){shareBk(P,F,name)});
   });
 }
@@ -1400,7 +1412,7 @@ function importData(t){
   var ids=new Set(movies.map(function(m){return String(m.id)})),add=[],skip=0,bad=0,base=Date.now();
   d.forEach(function(m,i){var n=null;try{n=normM(m,base-i)}catch(e){}if(!n){bad++;return}if(ids.has(n.id)){skip++;return}ids.add(n.id);add.push(n);movies.push(n)});
   var msg=add.length+' movies imported'+(skip?', '+skip+' already in your library':'')+(bad?', '+bad+' could not be read':'');
-  putMany(add).then(function(){render();$('#sdlg').close();toast(msg)},function(){render();$('#sdlg').close();toast('Could not save the imported movies')});
+  putMany(add).then(function(){render();$('#sdlg').close();okDlg('Import successful',msg)},function(){render();$('#sdlg').close();toast('Could not save the imported movies')});
 }
 $('#file').onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;f.text().then(importData,function(){$('#sdlg').close();toast('Could not open that file')})};
 $('#fsb').onclick=function(e){var b=e.target.closest('[data-s]');if(!b)return;fstat=b.dataset.s;if(fsel&&!folders.some(function(f){return f.id===fsel&&f.status===fstat}))fsel=null;drawSeg(true)};
