@@ -1367,7 +1367,7 @@ function exportBackup(){
     setDirty(false);okDlg('Export successful','Saved to','Documents/MovieVerse/'+name);return;
   }
   if(!F){$('#sdlg').close();toast('Backup plugin is missing in this APK build');return}
-  modal({title:'Export backup',text:'Documents/MovieVerse/',ok:'Save File',alt:'Share',plain:1,red:1}).then(function(r){
+  modal({title:'Export backup',text:'Share your backup or save to Documents / MovieVerse',ok:'Save File',alt:'Share',plain:1,red:1}).then(function(r){
     if(!r)return;
     $('#sdlg').close();
     if(r.del){shareBk(P,F,name);return}
