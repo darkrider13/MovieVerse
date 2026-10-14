@@ -1347,7 +1347,6 @@ function writeBackup(F,dir,path){
 }
 function shareBk(P,F,name){
   if(!P.Share||!F.getUri){toast('Share is not available in this APK build');return}
-  toast('Preparing backup…');
   return writeBackup(F,'CACHE',name)
     .then(function(){return F.getUri({path:name,directory:'CACHE'})})
     .then(function(r){return P.Share.share({title:name,dialogTitle:'Save backup',files:[r.uri]}).catch(function(e){if(/cancel/i.test((e&&e.message)||''))throw e;return P.Share.share({title:name,url:r.uri})})})
@@ -1372,7 +1371,6 @@ function exportBackup(){
     if(!r)return;
     $('#sdlg').close();
     if(r.del){shareBk(P,F,name);return}
-    toast('Saving backup…');
     Promise.resolve(F.requestPermissions?F.requestPermissions():0).catch(function(){})
       .then(function(){return writeBackup(F,'DOCUMENTS','MovieVerse/'+name)})
       .then(function(){setDirty(false);okDlg('Export successful','Saved to','Documents/MovieVerse/'+name)})
