@@ -44,6 +44,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 @keyframes okpop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes okdraw{to{stroke-dashoffset:0}}
 #okdlg h2{margin:0 0 6px;padding:0;font-size:18px}
+#okdlg .okp[hidden]{display:none}
 #okdlg .okp{display:block;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:var(--s2);font-size:12px;word-break:break-all;color:var(--ink)}
 input,select,textarea,dialog,[tabindex]{-webkit-tap-highlight-color:transparent}
 input:focus,input:focus-visible,select:focus,select:focus-visible,textarea:focus,textarea:focus-visible,dialog:focus,dialog:focus-visible{outline:none!important;box-shadow:none!important}
@@ -1364,7 +1365,7 @@ function exportBackup(){
     for(var j=0;j<movies.length;j+=1500)parts.push((j?',':'')+bstr(movies.slice(j,j+1500)));
     parts.push('],"folders":'+JSON.stringify(folders)+',"statuses":'+JSON.stringify(statuses)+',"settings":'+setStr()+'}');
     var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(parts,{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();
-    setDirty(false);okDlg('Export successful','Backup downloaded',name);return;
+    setDirty(false);okDlg('Export successful','Saved to','Documents/MovieVerse/'+name);return;
   }
   if(!F){$('#sdlg').close();toast('Backup plugin is missing in this APK build');return}
   modal({title:'Export backup',text:'Documents/MovieVerse/',ok:'Save File',alt:'Share',plain:1,red:1}).then(function(r){
@@ -1374,7 +1375,7 @@ function exportBackup(){
     toast('Saving backup…');
     Promise.resolve(F.requestPermissions?F.requestPermissions():0).catch(function(){})
       .then(function(){return writeBackup(F,'DOCUMENTS','MovieVerse/'+name)})
-      .then(function(){setDirty(false);okDlg('Export successful',movies.length+' movies saved','Documents/MovieVerse/'+name)})
+      .then(function(){setDirty(false);okDlg('Export successful','Saved to','Documents/MovieVerse/'+name)})
       .catch(function(){shareBk(P,F,name)});
   });
 }
