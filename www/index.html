@@ -51,6 +51,12 @@ html{overscroll-behavior-y:contain}
 @keyframes okdraw{to{stroke-dashoffset:0}}
 #okdlg h2{margin:0 0 6px;padding:0;font-size:18px}
 #okdlg .okp[hidden]{display:none}
+#apild{width:min(78vw,290px);text-align:center;padding:26px 18px 22px}
+#apild .aps{width:46px;height:46px;margin:0 auto 14px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--acc);animation:ptrs .8s linear infinite}
+#apild p{margin:0;font-weight:700;font-size:15px}
+#apild p i{font-style:normal;display:inline-block;animation:apdot 1.2s infinite both}
+#apild p i:nth-child(2){animation-delay:.2s}#apild p i:nth-child(3){animation-delay:.4s}
+@keyframes apdot{0%,80%,100%{opacity:.2}40%{opacity:1}}
 #okdlg .okp{display:block;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:var(--s2);font-size:12px;word-break:break-all;color:var(--ink)}
 input,select,textarea,dialog,[tabindex]{-webkit-tap-highlight-color:transparent}
 input:focus,input:focus-visible,select:focus,select:focus-visible,textarea:focus,textarea:focus-visible,dialog:focus,dialog:focus-visible{outline:none!important;box-shadow:none!important}
@@ -88,6 +94,7 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 .hit:hover{border-color:var(--acc)}
 .hit img,.hit .ph{width:44px;height:66px;border-radius:6px;object-fit:cover;background:var(--line);flex:none}
 .note{color:var(--mut);font-size:14px}
+#trend .tnone{min-height:55vh;margin:0;padding:0 24px;display:flex;align-items:center;justify-content:center;text-align:center}
 .star{background:none;border:0;font-size:30px;cursor:pointer;color:var(--line);padding:0 2px}
 .star.on{color:var(--p)}
 .pv{display:flex;gap:12px;align-items:flex-start}
@@ -503,6 +510,7 @@ dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 
 
 <dialog id="okdlg"><div class="okc"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><h2 id="okt"></h2><p class="note" id="okx"></p><code class="okp" id="okp" hidden></code><div class="row" style="margin-top:16px;justify-content:center"><button class="btn pri" id="okb">OK</button></div></dialog>
+<dialog id="apild"><div class="aps"></div><p>Fetching your API key<i>.</i><i>.</i><i>.</i></p></dialog>
 <div id="toast"></div>
 <script>
 var $=function(s){return document.querySelector(s)};
@@ -848,6 +856,10 @@ function paintDirty(){var on=isDirty();$('#set').classList.toggle('on',on);$('#e
 function setDirty(v){if(v===false){try{LS.setItem('library.bk',String(bkT||Date.now()))}catch(e){}}paintDirty()}
 function initBk(){if(LS.getItem('library.bkv2')!==null)return;try{LS.setItem('library.bk',String(Date.now()));LS.setItem('library.bkv2','1');LS.removeItem('library.dirty')}catch(e){}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
+function apiBusy(p,min,cap){var d=$('#apild'),t0=Date.now();if(!d.open)d.showModal();
+  return Promise.race([Promise.resolve(p).catch(function(e){return e instanceof Error?e:new Error(String(e))}),new Promise(function(r){setTimeout(r,cap||12000)})]).then(function(r){
+    return new Promise(function(ok){setTimeout(function(){if(d.open)d.close();ok(r)},Math.max(0,(min||900)-(Date.now()-t0)))})})}
+$('#apild').addEventListener('cancel',function(e){e.preventDefault()});
 function toast(t,ms){var e=$('#toast');e.textContent=t;e.className='show';clearTimeout(tt);tt=setTimeout(function(){e.className=''},ms||2600)}
 function okDlg(title,text,path){var d=$('#okdlg');$('#okt').textContent=title;$('#okx').textContent=text||'';var p=$('#okp');p.hidden=!path;p.textContent=path||'';$('#okb').onclick=function(){d.close()};if(d.open)d.close();d.showModal()}
 function modal(o){return new Promise(function(res){
@@ -1136,6 +1148,7 @@ function drawUp(){
   var on=movies.map(function(m){return m.tmdbId});
   $('#ulist').innerHTML='<div class="grid">'+uitems.map(function(m){return upCard(m,on)}).join('')+'</div>';
 }
+function ageOf(b,e){var a=String(b||'').split('-').map(Number);if(a.length<3||!a[0]||!a[1]||!a[2])return '';var n=new Date(),r=String(e||'').split('-').map(Number);if(r.length===3&&r[0])n=new Date(r[0],r[1]-1,r[2]);var y=n.getFullYear()-a[0];if(n.getMonth()+1<a[1]||(n.getMonth()+1===a[1]&&n.getDate()<a[2]))y--;return y>=0&&y<130?' (Age '+y+')':''}
 function fmt(d){if(!d)return 'TBA';var a=d.split('-'),M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return a[2]+' '+M[a[1]-1]+' '+a[0]}
 
 /* ---------- add / edit ---------- */
@@ -1225,8 +1238,9 @@ function personOpen(pid){
       q.forEach(function(x){x.w=(x.n/(x.n+M0))*x.v+(M0/(x.n+M0))*C0});
       return q.sort(function(a,b){return b.w-a.w}).slice(0,30)})();
     var ks={};(cc.cast||[]).concat(cc.crew||[]).forEach(function(x){ks[(x.media_type||'')+x.id]=1});var kc=Object.keys(ks).length;
-    var info=[p.known_for_department,p.birthday?'Born '+fmt(p.birthday):'',p.place_of_birth].filter(Boolean).join(' · ');
-    pSet('<div class="phd">'+pimg(p.profile_path,'nop',p.gender||2)+'<div><h2 data-lp="'+esc(p.name)+'" data-tap="1" data-nofx="1">'+esc(p.name)+'</h2><p class="note" style="margin:4px 0 0">'+esc(info)+'</p>'+(kc?'<span class="pop">Known Credits '+kc+'</span>':'')+'</div></div>'+
+    var dep=p.known_for_department==='Acting'?(p.gender===1?'Actress':'Actor'):p.known_for_department;
+    var info=[dep,p.birthday?'Born '+fmt(p.birthday)+ageOf(p.birthday,p.deathday):'',p.place_of_birth].filter(Boolean).join(' · ');
+    pSet('<div class="phd">'+pimg(p.profile_path,'nop',p.gender||2)+'<div><h2 data-lp="'+esc(p.name)+'" data-tap="1" data-nofx="1">'+esc(p.name)+'</h2><p class="note" style="margin:4px 0 0;font-size:12px">'+esc(info)+'</p>'+(kc?'<span class="pop">Known Credits '+kc+'</span>':'')+'</div></div>'+
       (p.biography?'<p class="pbio">'+esc(p.biography.length>420?p.biography.slice(0,420)+'…':p.biography)+'</p>':'')+
       (up.length?'<div class="ph3">Upcoming movies</div><div class="snv" style="--rh:69px">'+up.map(function(x){return row(x)}).join('')+'</div>':'')+
       '<div id="ppg"><div class="pgp"><div class="mh"><div class="ph3" id="pmh">Movies ('+all.length+')</div><div class="mtg"><button type="button" class="pill" data-pm="new" aria-pressed="true">Latest</button><button type="button" class="pill" data-pm="top" aria-pressed="false">Top Rated</button></div></div>'+
@@ -1630,24 +1644,29 @@ function trSame(a,b){return a.length===b.length&&a.every(function(o,i){return o.
 var TRS=[['tr-m','Trending Movies'],['tr-d','Trending Today'],['tr-w','Weekly Trending'],['tr-t','Trending TV Shows'],['tr-x','Top Rated Movies']];
 function trendLoad(force){
   if(!key){keys=apiKeys('tmdb').filter(Boolean);ki=0;pickKeys()}
-  if(!key){$('#tr-m').innerHTML='<p class="note">Add your TMDB key in Settings to see Trending.</p>';return}
+  if(!key){$('#tr-m').innerHTML='<p class="note tnone">Add your TMDB key in Settings to see Trending.</p>';return Promise.resolve()}
   var C=null;try{C=JSON.parse(LS.getItem(TRK)||'null')}catch(e){}
   var draw=function(D){[D.m,D.d,D.w,D.t,D.x].forEach(function(l,i){trDraw(TRS[i][0],TRS[i][1],l)})};
-  if(C&&!force&&Date.now()-C.t<108e5){draw(C.d);trEnrich([C.d.m,C.d.d,C.d.w,C.d.t,C.d.x])}
+  if(C&&!force&&Date.now()-C.t<108e5){draw(C.d);trEnrich([C.d.m,C.d.d,C.d.w,C.d.t,C.d.x]);return Promise.resolve()}
   else{
     var D={},f=function(k,i,pr){return pr.catch(function(){return null}).then(function(l){D[k]=l;trDraw(TRS[i][0],TRS[i][1],l)})};
-    Promise.all([f('m',0,trCombined()),f('d',1,tget('/trending/all/day')),f('w',2,tget('/trending/all/week')),f('t',3,tget('/trending/tv/week',1)),f('x',4,tget('/movie/top_rated'))]).then(function(){if(D.m&&D.m.length){try{LS.setItem(TRK,JSON.stringify({t:Date.now(),d:D}))}catch(e){}}trEnrich([D.m,D.d,D.w,D.t,D.x]);if(D.x&&D.x.length)trBlend(D.x).then(function(l){if(!trSame(l,D.x)){D.x=l;trDraw('tr-x','Top Rated Movies',l);if(D.m&&D.m.length){try{LS.setItem(TRK,JSON.stringify({t:Date.now(),d:D}))}catch(e){}}}})})}
+    return Promise.all([f('m',0,trCombined()),f('d',1,tget('/trending/all/day')),f('w',2,tget('/trending/all/week')),f('t',3,tget('/trending/tv/week',1)),f('x',4,tget('/movie/top_rated'))]).then(function(){if(D.m&&D.m.length){try{LS.setItem(TRK,JSON.stringify({t:Date.now(),d:D}))}catch(e){}}trEnrich([D.m,D.d,D.w,D.t,D.x]);if(D.x&&D.x.length)trBlend(D.x).then(function(l){if(!trSame(l,D.x)){D.x=l;trDraw('tr-x','Top Rated Movies',l);if(D.m&&D.m.length){try{LS.setItem(TRK,JSON.stringify({t:Date.now(),d:D}))}catch(e){}}}})})}
 }
+function waitImgs(ms){var im=[].slice.call(document.querySelectorAll('#trend img')).filter(function(i){var r=i.getBoundingClientRect();return !i.complete&&r.width>0&&r.top<innerHeight&&r.bottom>0&&r.left<innerWidth&&r.right>0});
+  if(!im.length)return Promise.resolve();
+  return Promise.race([Promise.all(im.map(function(i){return new Promise(function(r){i.addEventListener('load',r,{once:true});i.addEventListener('error',r,{once:true})})})),new Promise(function(r){setTimeout(r,ms)})])}
+function trendReady(){if(home!=='trend'||!$('#up').hidden)return Promise.resolve();return trendLoad(true).then(function(){return waitImgs(6000)})}
+function keyLoad(){return (key?tmdb('/configuration'):Promise.resolve()).then(function(){return null},function(e){return e}).then(function(err){return trendReady().then(function(){return err})})}
 $('#trend').onclick=function(e){$('#ulist').onclick(e)};
-/* one side-swipe system: Trending <-> Your Library <-> each status tab */
+/* side-swipe: only between status tabs inside Your Library; Trending <-> Your Library is button-only */
 (function(){var sx=0,sy=0,t0=0,ok=false,bad=false;
   document.addEventListener('touchstart',function(e){ok=false;bad=false;if(e.touches.length!==1||document.querySelector('dialog[open]')||!$('#up').hidden||(home==='lib'&&folder))return;if(e.target.closest&&e.target.closest('#tabs,.crow,.ffil,input,textarea,select,.fly'))return;sx=e.touches[0].clientX;sy=e.touches[0].clientY;t0=Date.now();ok=true},{passive:true});
   document.addEventListener('touchmove',function(){if((typeof dr!=='undefined'&&dr&&dr.on)||(typeof cdr!=='undefined'&&cdr&&cdr.on))bad=true},{passive:true});
   document.addEventListener('touchend',function(e){if(!ok||bad)return;ok=false;var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;if(Math.abs(dx)<70||Math.abs(dx)<2*Math.abs(dy)||Date.now()-t0>700)return;go(dx<0?1:-1)},{passive:true});
   function go(d){
-    if(home==='trend'){if(d>0)setHome('lib');return}
+    if(home==='trend')return;
     var ids=['all'].concat(statuses.map(function(x){return x.id})),i=ids.indexOf(tab)+d;
-    if(i<0){setHome('trend');return}
+    if(i<0)return;
     if(i>=ids.length)return;
     tab=ids[i];folder=null;country='all';lim=60;render();window.scrollTo(0,0)}
 })();
@@ -1706,7 +1725,11 @@ $('#aks').addEventListener('click',function(e){
 $('#set').onclick=function(){sapis=JSON.parse(JSON.stringify(apis));sapis.forEach(function(a){if(!a.keys.length)a.keys=['']});cur=0;drawA();$('#nm').value=uname;themeBtn();$('#sdlg').showModal();drawA();var ae=document.activeElement;if(ae&&/^(INPUT|TEXTAREA)$/.test(ae.tagName))ae.blur()};
 $('#nm').oninput=function(){uname=this.value.trim();LS.setItem('library.name',uname);$('#uname').textContent=uname||'User'};
 $('#theme').onclick=function(){setTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')};
-$('#ksave').onclick=function(){apis=sapis.map(function(a){var o={id:a.id,name:a.name,keys:a.keys.map(function(v){return a.id==='tmdb'?v.replace(/["'\s]/g,''):v.trim()}).filter(Boolean)};if(a.custom)o.custom=1;return o});keys=apiKeys('tmdb');omdbs=apiKeys('omdb');ki=0;oi=0;xi=0;pickKeys();LS.setItem('library.apis',JSON.stringify(apis));LS.setItem('library.keys',JSON.stringify(keys));LS.setItem('library.omdbs',JSON.stringify(omdbs));LS.setItem('library.key',key);LS.setItem('library.omdb',omdb);$('#sdlg').close();uitems=[];if(!$('#up').hidden)loadUp(true);if(apiKeys('xmdb').some(Boolean))movies.forEach(function(m){if(!m.imdb&&!m.xm&&m.tmdbId&&m.rt!==undefined)m.chk=0});backfill()};
+$('#ksave').onclick=function(){var prevK=JSON.stringify(apis.map(function(a){return a.keys}));apis=sapis.map(function(a){var o={id:a.id,name:a.name,keys:a.keys.map(function(v){return a.id==='tmdb'?v.replace(/["'\s]/g,''):v.trim()}).filter(Boolean)};if(a.custom)o.custom=1;return o});keys=apiKeys('tmdb');omdbs=apiKeys('omdb');ki=0;oi=0;xi=0;pickKeys();LS.setItem('library.apis',JSON.stringify(apis));LS.setItem('library.keys',JSON.stringify(keys));LS.setItem('library.omdbs',JSON.stringify(omdbs));LS.setItem('library.key',key);LS.setItem('library.omdb',omdb);$('#sdlg').close();
+  var after=function(){uitems=[];if(!$('#up').hidden)loadUp(true);if(apiKeys('xmdb').some(Boolean))movies.forEach(function(m){if(!m.imdb&&!m.xm&&m.tmdbId&&m.rt!==undefined)m.chk=0});backfill()};
+  var ch=JSON.stringify(apis.map(function(a){return a.keys}))!==prevK,has=apis.some(function(a){return a.keys.length});
+  if(!ch||!has){after();if(ch&&home==='trend'&&$('#up').hidden)trendLoad(true);return}
+  apiBusy(keyLoad().then(function(e){after();return e}),900,45000).then(function(r){if(r instanceof Error)toast(r.message,4000)})};
 function setStr(){return JSON.stringify({name:uname,theme:LS.getItem('library.theme')||'dark',apis:apis})}
 function restoreSet(t){
   if(!t||typeof t!=='object')return;
@@ -1798,7 +1821,11 @@ function importData(t){
   var ids=new Set(movies.map(function(m){return String(m.id)})),add=[],skip=0,bad=0,base=Date.now();
   d.forEach(function(m,i){var n=null;try{n=normM(m,base-i)}catch(e){}if(!n){bad++;return}if(ids.has(n.id)){skip++;return}ids.add(n.id);add.push(n);movies.push(n)});
   var msg=add.length+' movies imported'+(skip?', '+skip+' already in your library':'')+(bad?', '+bad+' could not be read':'');
-  putMany(add).then(function(){render();$('#sdlg').close();okDlg('Import successful',msg)},function(){render();$('#sdlg').close();toast('Could not save the imported movies')});
+  var hasK=!Array.isArray(o)&&!!(o.settings&&Array.isArray(o.settings.apis)&&o.settings.apis.some(function(a){return a&&Array.isArray(a.keys)&&a.keys.some(Boolean)}));
+  putMany(add).then(function(){render();$('#sdlg').close();
+    if(!hasK){okDlg('Import successful',msg);return}
+    return apiBusy(keyLoad(),900,45000).then(function(r){okDlg('Import successful',msg);if(r instanceof Error)toast(r.message,4000)})
+  },function(){render();$('#sdlg').close();toast('Could not save the imported movies')});
 }
 $('#file').onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;f.text().then(importData,function(){$('#sdlg').close();toast('Could not open that file')})};
 $('#fsb').onclick=function(e){var b=e.target.closest('[data-s]');if(!b)return;fstat=b.dataset.s;if(fsel&&!folders.some(function(f){return f.id===fsel&&f.status===fstat}))fsel=null;drawSeg(true)};
