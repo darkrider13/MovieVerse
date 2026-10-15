@@ -353,6 +353,8 @@ img{-webkit-user-drag:none;user-drag:none}
 #paw .pc>span{display:block;min-width:0}
 #paw .pc b{font-size:13px;font-weight:600;-webkit-line-clamp:1}
 #paw .pc small{margin-top:2px;font-size:12px;font-weight:700;color:var(--ink);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+#paw .pc .bdg{display:inline-block;font-size:10px;font-weight:700;line-height:1.5;padding:0 7px;margin-right:6px;border-radius:99px;background:var(--s2);color:var(--mut);vertical-align:1px}
+#paw .pc .bdg.won{background:var(--w);color:#fff}
 #paw .pc small.aw2{font-weight:400;font-size:11.5px;color:var(--mut)}
 .phd{display:flex;gap:12px;align-items:center;padding-right:34px}.phd img,.phd .nop{width:78px;height:78px;border-radius:50%;object-fit:cover;background:var(--s2);flex:none}
 
@@ -362,6 +364,50 @@ img{-webkit-user-drag:none;user-drag:none}
 .tcard b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;line-height:1.25;margin-top:5px}.tcard small{color:var(--mut);font-size:11px}
 .tcard .tag{left:4px;top:4px;font-size:8px;padding:1px 4px;line-height:1.3}.tcard .tag.tlib{left:4px;top:4px;display:inline-flex;align-items:center;height:12.4px;box-sizing:border-box;background:#16a34a;color:#fff;font-size:6px;line-height:1;padding:0 4px;white-space:nowrap;letter-spacing:0}.tcard .rbox{right:4px;top:4px}.tcard .rate{font-size:8px;padding:1px 4px}.tcard .rate small{font-size:8px;color:#fff}
 #trend .crow{gap:10px;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}#trend .tcard{flex:0 0 calc((100% - 20px)/3);min-width:0;scroll-snap-align:start;scroll-snap-stop:always}
+
+/* ===== smooth-scroll performance fixes (design unchanged: 5 rows visible, row-by-row snap kept) ===== */
+/* inner list hands over to the dialog scroll at its ends, vertical touch only */
+.snv{touch-action:pan-x pan-y;overscroll-behavior-y:auto;scroll-behavior:auto}
+/* rows off screen are not laid out/painted; row height is fixed so snap positions stay exact */
+.snv .pc{content-visibility:auto;contain-intrinsic-size:auto var(--rh,69px)}
+/* dialog glass: blur lives on the static ::backdrop only, not on the box that scrolls */
+dialog{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:rgba(18,20,40,.62)}
+:root[data-theme=light] dialog{background:rgba(255,255,255,.72)}
+dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+/* movies | awards: two pages side by side, swipe left/right; each page keeps its own 5-row vertical snap list */
+#ppg{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scroll-behavior:auto}
+#ppg .pgp{flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:normal}
+#ppg .mh{min-height:30px}
+#ppg .snv .pc{content-visibility:visible}
+
+#ppg #paw.note{margin:0;padding:6px 0}
+.pdots{display:flex;justify-content:center;gap:7px;margin:8px 0 2px}
+.pdots .d{display:block;width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.28)}
+.pdots .d.on{background:#fff}
+:root[data-theme=light] .pdots .d{background:rgba(20,24,70,.25)}
+:root[data-theme=light] .pdots .d.on{background:#161830}
+/* vertical lists: still snap to a row (5-row window kept), but a fling now passes many rows instead of stopping at every one */
+.snv .pc{scroll-snap-stop:normal!important}
+/* jitter fixes while scrolling: no on/off rendering of rows, no scroll-anchor jumps, no hand-over tug between list and dialog */
+.snv .pc,#ppg .snv .pc{content-visibility:visible!important;contain-intrinsic-size:none}
+.snv,#ppg,.dsc{overflow-anchor:none}
+.snv{overscroll-behavior:contain!important}
+/* awards page is off-screen until you slide: keep its list rasterised ahead of time so arriving on it doesn't stutter */
+#ppg #paw.snv{will-change:transform;contain:layout paint}
+/* ===== same smooth-scroll system for the movie details popup (#dlg): snaps kept, but no stop on every item ===== */
+#dlg .cpg,#dlg .cp,#dlg .segc button,#dlg .fopts.rows3 .pill{scroll-snap-stop:normal!important}
+#dlg .cv{touch-action:pan-x pan-y;overscroll-behavior:contain;overflow-anchor:none}
+#dlg .crow,#dlg .segc{touch-action:pan-x pan-y;overscroll-behavior-x:contain;overflow-anchor:none}
+/* crew/cast pages sit below each other: keep them rasterised so snapping between them doesn't stutter */
+#dlg .cv .crow{will-change:transform;contain:layout paint}
+/* overview text that opens into a scroll box stays inside itself */
+#dlg .ov2.open .ovi{overscroll-behavior:contain;touch-action:pan-y}
+/* chaining back on: when a list is at its first/last row, further scrolling moves the popup itself */
+.snv{overscroll-behavior-y:auto!important;overscroll-behavior-x:contain!important}
+#dlg .cv{overscroll-behavior-y:auto;overscroll-behavior-x:contain}
+#dlg .ov2.open .ovi{overscroll-behavior-y:auto}
+/* API key copy button: the cast-card rule (.cp) was also hitting it and pushing the icon to the top */
+.eye.cp{position:absolute;right:40px;top:50%;transform:translateY(-50%);flex:none;display:inline-flex;flex-direction:row;align-items:center;justify-content:center;width:34px;height:34px;padding:0;margin:0;font:inherit}
 </style>
 <script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("library.theme")||"dark");document.querySelector("meta[name=theme-color]").content=document.documentElement.getAttribute("data-theme")==="dark"?"#0a0b18":"#eceefb"}catch(e){}</script>
 </head>
@@ -548,6 +594,7 @@ function boxOf(m){
   if(!m||!m.tmdbId||m.tmdbId<0||unrel(m))return null;
   /* box office comes only from Wikipedia (budget and collection from the same infobox, same currency); nothing is shown when it is not found */
   if(m.wbud>0&&!(m.wrev>0))return {b:m.wbud,r:0,c:m.wcur||'',src:'Wikipedia',bo:1};
+  if(m.wrev>0&&!(m.wbud>0))return {b:0,r:m.wrev,c:m.wcur||'',src:'Wikipedia',go:1};
   var p=(m.wbud>0&&m.wrev>0)?{b:m.wbud,r:m.wrev,c:m.wcur||'',src:'Wikipedia'}:null;
   if(!p)return null;
   var x=p.r/p.b,age=m.rel?(Date.now()-new Date(m.rel+'T00:00:00').getTime())/864e5:999,v,col;
@@ -561,9 +608,10 @@ function boxOf(m){
 function setPvt(m){
   var el=document.getElementById('pvt');if(!el||!m)return;
   el.textContent=m.title?m.title+(m.year?' ('+m.year+')':''):'New movie';
-  var p=boxOf(m);if(p&&!p.bo){var sp=document.createElement('span');sp.textContent=p.v;sp.style.cssText='color:'+p.col+';white-space:nowrap;margin-left:6px;font-size:.72em;font-weight:700;vertical-align:middle';el.appendChild(sp)}}
+  var p=boxOf(m);if(p&&!p.bo&&!p.go){var sp=document.createElement('span');sp.textContent=p.v;sp.style.cssText='color:'+p.col+';white-space:nowrap;margin-left:6px;font-size:.72em;font-weight:700;vertical-align:middle';el.appendChild(sp)}}
 function boxTiles(m){
   var p=boxOf(m);if(!p)return '';
+  if(p.go)return '<div class="tile'+cfc(m,'Collection')+'"><small>Collection · '+p.src+'</small><b>'+esc(moneyF(p.r,p.c))+'</b></div>';
   var bt='<div class="tile'+cfc(m,'Budget')+'"><small>Budget</small><b>'+esc(moneyF(p.b,p.c))+'</b></div>';if(p.bo)return bt;
   return bt+'<div class="tile'+cfc(m,'Collection')+'"><small>Collection · '+p.src+'</small><b>'+esc(moneyF(p.r,p.c))+'</b></div>'}
 /* ===== Wikipedia box office: budget + box office from the film's infobox (editor-maintained, keeps the real currency) ===== */
@@ -583,8 +631,8 @@ function wkPair(bt,gt){
   var B=wkAmts(bt),G=wkAmts(gt),i,j;
   for(i=0;i<B.length;i++)for(j=0;j<G.length;j++)if(B[i].c===G[j].c)return {b:B[i].v,r:G[j].v,c:B[i].c};
   return null}
-function wkApi(q,base){
-  var ac=window.AbortController?new AbortController():null,tm=ac?setTimeout(function(){ac.abort()},9000):0;
+function wkApi(q,base,ms){
+  var ac=window.AbortController?new AbortController():null,tm=ac?setTimeout(function(){ac.abort()},ms||9000):0;
   return fetch((base||'https://en.wikipedia.org/w/api.php')+'?'+Object.keys(q).map(function(k){return k+'='+encodeURIComponent(q[k])}).join('&')+'&format=json&formatversion=2&origin=*',ac?{signal:ac.signal}:undefined)
     .then(function(r){clearTimeout(tm);if(!r.ok)throw new Error('wiki '+r.status);return r.json()},function(e){clearTimeout(tm);throw e})}
 function wkNorm(t){return String(t||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'')}
@@ -602,7 +650,13 @@ function wkQid(pr){
   if(!pr)return '';
   if(Array.isArray(pr)){var x=pr.filter(function(e){return e&&e.name==='wikibase_item'})[0];return x?String(x.value||x['*']||''):''}
   return String(pr.wikibase_item||'')}
-function wkSame(pt,t){return wkNorm(String(pt||'').replace(/\s*\([^)]*\)\s*$/,''))===wkNorm(t)}
+function wkMain(t){return String(t||'').split(/\s*[:–—]\s*|\s+-\s+/)[0]}
+/* same title ignoring a trailing "(2022 film)"; also accepts the Wikipedia page being just the main title ("Fall 2") of a movie with a subtitle ("Fall 2: Deadpoint"), or the reverse. The release-year check and the Wikidata check still decide whether it is really this film. */
+function wkSame(pt,t){
+  var p=String(pt||'').replace(/\s*\([^)]*\)\s*$/,''),a=wkNorm(p),b=wkNorm(t);
+  if(a===b)return true;
+  var am=wkNorm(wkMain(p)),bm=wkNorm(wkMain(t));
+  return !!(am.length>=3&&bm.length>=3&&((a===bm&&bm!==b)||(am===b&&am!==a)))}
 function wkCheck(page,t,y){
   return wkApi({action:'parse',page:page,prop:'text|properties',section:0,redirects:1,disableeditsection:1,disablelimitreport:1}).then(function(p){
     if(!p.parse||!wkSame(p.parse.title,t))return null;
@@ -632,15 +686,18 @@ function wkFind(m){
   var t=m.title,y=+m.year;if(!t||!y)return Promise.resolve(null);
   var k=wkNorm(t)+y+'.'+m.tmdbId;if(wkMem[k])return wkMem[k];
   var chk=function(page){return wkCheck(page,t,y).then(function(c){return c?wkVerify(c,m).then(function(ok){return {c:c,ok:ok}}):{n:1}}).catch(function(){return {e:1}})};
-  var g=chk(t+' ('+y+' film)');
-  var s=wkApi({action:'query',list:'search',srsearch:t+' '+y+' film',srlimit:5,srnamespace:0}).then(function(j){
+  var mt=wkMain(t),loose=wkNorm(mt)!==wkNorm(t)&&mt.length>=3;
+  var names=[t+' ('+y+' film)',t,t+' (film)'];if(loose)names.push(mt+' ('+y+' film)',mt);
+  var gs=names.map(chk);
+  var srch=function(q){return wkApi({action:'query',list:'search',srsearch:q,srlimit:5,srnamespace:0}).then(function(j){
     var hits=((j.query||{}).search||[]).filter(function(h){return wkSame(h.title,t)}).slice(0,3);
-    return Promise.all(hits.map(function(h){return chk(h.title)}))});
-  s.catch(function(){});
-  var res=g.then(function(x){
-    if(x.c&&x.ok)return x.c;
-    return s.then(function(a){
-      var all=[x].concat(a),i;
+    return Promise.all(hits.map(function(h){return chk(h.title)}))})};
+  var ss=[srch(t+' '+y+' film')];if(loose)ss.push(srch(mt+' '+y+' film'));
+  ss.forEach(function(p){p.catch(function(){})});
+  var res=Promise.all(gs).then(function(a){
+    var i;for(i=0;i<a.length;i++)if(a[i].c&&a[i].ok)return a[i].c;
+    return Promise.all(ss.map(function(p){return p.catch(function(){return [{e:1}]})})).then(function(b){
+      var all=a.concat([].concat.apply([],b));
       for(i=0;i<all.length;i++)if(all[i].c&&all[i].ok)return all[i].c;
       if(all.some(function(z){return z.e}))throw new Error('wiki');
       return null})});
@@ -662,9 +719,10 @@ function enrichWiki(m,force){
   return wkFind(m).then(function(r){
     m.wkc=Date.now();m.wkv=3;
     var pr=r&&wkPair(r.bud,r.gross);
-    var bo=!pr&&r?wkAmts(r.bud)[0]:null;
+    var bo=!pr&&r?wkAmts(r.bud)[0]:null,go=!pr&&!bo&&r?wkAmts(r.gross)[0]:null;
     if(pr){m.wbud=pr.b;m.wrev=pr.r;m.wcur=pr.c;m.wpg=r.page}
     else if(bo){m.wbud=bo.v;m.wcur=bo.c;m.wpg=r.page;delete m.wrev}
+    else if(go){m.wrev=go.v;m.wcur=go.c;m.wpg=r.page;delete m.wbud}
     else{delete m.wbud;delete m.wrev;delete m.wcur;delete m.wpg}
     return true}).catch(function(){return false})}
 function needsAny(m){return needsE(m)||needsOtt(m)||needsWiki(m)}
@@ -715,11 +773,10 @@ function upCmp(a,b){
 function stTag(m){return m.status==='upcoming'&&m.ottDate?'OTT '+fmt(m.ottDate):(SL[m.status]||m.status)}
 /* opening a movie (any status) inside its update window force-refreshes it by the same phase rules; at most once per 10 minutes per movie */
 function openRefresh(m){
-  var md=hotMode(m,1);
-  if(!md||Date.now()-(m.fopen||0)<6e5)return [enrich(m),wkChain(m)];
+  hotMode(m,1);
+  if(Date.now()-(m.fopen||0)<6e4)return [enrich(m),wkChain(m)];
   m.fopen=Date.now();
-  if(md==='all')return [enrichOtt(m,true).then(function(a){return enrich(m,true).then(function(x){return enrichWiki(m,true).then(function(c){return a||x||c})})}),Promise.resolve(false)];
-  return [enrich(m,true),Promise.resolve(false)]}
+  return [enrichOtt(m,true).then(function(a){return enrich(m,true).then(function(x){return enrichWiki(m,true).then(function(c){return a||x||c})})}),Promise.resolve(false)]}
 function needsE(m){return !!((omdb||apiKeys('xmdb').some(Boolean))&&key&&m.tmdbId&&(m.rt===undefined||(apiKeys('xmdb').some(Boolean)&&!m.xmc)||(!m.xm&&Date.now()-(m.chk||0)>((+m.year||0)>=new Date().getFullYear()-1?216e5:2592e5))))}
 function enrich(m,force){
   if(!force&&!needsE(m))return Promise.resolve(false);
@@ -1114,7 +1171,7 @@ function setOv(m){ovSet($('#pvov'),m.ov||'');var fd=$('#fd');if(fd)fd.value=fmtR
 var castMem={},castTok=0,WDA='https://www.wikidata.org/w/api.php';
 var AVM='<svg viewBox="0 0 64 64"><circle cx="32" cy="23" r="11" fill="#000"/><path d="M9 64c0-15 10-24 23-24s23 9 23 24z" fill="#000"/></svg>',
     AVF='<svg viewBox="0 0 64 64"><path d="M32 6c-11 0-17 7-17 18 0 7 2 12 4 15-7 3-11 9-11 25h48c0-16-4-22-11-25 2-3 4-8 4-15C49 13 43 6 32 6z" fill="#000"/></svg>';
-function pimg(p,c,g){return p?'<img src="'+IMG+'w185'+p+'" alt="">':(g?'<div class="'+(c||'nop')+' av">'+(g===1?AVF:AVM)+'</div>':'<div class="'+(c||'nop')+'"></div>')}
+function pimg(p,c,g){return p?'<img src="'+IMG+(c==='nop2'?'w154':'w185')+p+'" alt="" loading="lazy" decoding="async">':(g?'<div class="'+(c||'nop')+' av">'+(g===1?AVF:AVM)+'</div>':'<div class="'+(c||'nop')+'"></div>')}
 function castLoad(m){
   var box=$('#cast'),t=++castTok;box.hidden=true;box.innerHTML='';
   if(!m||!m.tmdbId||!key)return;
@@ -1138,13 +1195,13 @@ $('#pbody').addEventListener('click',function(e){
   if(e.target.closest('.cpb,[data-tap]'))return;
   var c=e.target.closest('[data-up]');if(!c)return;
   var b=$('#pbody'),pd=$('#pdlg');
-  pRet={top:b.scrollTop,sn:[].map.call(b.querySelectorAll('.snv'),function(x){return x.scrollTop})};
+  pRet={pg:(b.querySelector('#ppg')||{}).scrollLeft||0,top:b.scrollTop,sn:[].map.call(b.querySelectorAll('.snv'),function(x){return x.scrollTop})};
   pd.close();
   $('#ulist').onclick({target:c})});
 $('#dlg').addEventListener('close',function(){
   if(!pRet)return;var r=pRet;pRet=null;var pd=$('#pdlg'),b=$('#pbody');
   if(pd.open)return;pd.showModal();
-  var sn=b.querySelectorAll('.snv');b.scrollTop=r.top;[].forEach.call(sn,function(x,i){x.scrollTop=r.sn[i]||0});pFade()});
+  var sn=b.querySelectorAll('.snv');var pg0=b.querySelector('#ppg');if(pg0)pg0.scrollLeft=r.pg||0;b.scrollTop=r.top;[].forEach.call(sn,function(x,i){x.scrollTop=r.sn[i]||0});pFade()});
 function pFade(){var e=$('#pbody');if(e)e.dispatchEvent(new Event('scroll'))}
 function pSet(h){var b=$('#pbody'),x=b.querySelector('.xw');b.innerHTML=h;if(x)b.insertBefore(x,b.firstChild);pFade()}
 function personOpen(pid){
@@ -1172,9 +1229,17 @@ function personOpen(pid){
     pSet('<div class="phd">'+pimg(p.profile_path,'nop',p.gender||2)+'<div><h2 data-lp="'+esc(p.name)+'" data-tap="1" data-nofx="1">'+esc(p.name)+'</h2><p class="note" style="margin:4px 0 0">'+esc(info)+'</p>'+(kc?'<span class="pop">Known Credits '+kc+'</span>':'')+'</div></div>'+
       (p.biography?'<p class="pbio">'+esc(p.biography.length>420?p.biography.slice(0,420)+'…':p.biography)+'</p>':'')+
       (up.length?'<div class="ph3">Upcoming movies</div><div class="snv" style="--rh:69px">'+up.map(function(x){return row(x)}).join('')+'</div>':'')+
-      '<div class="mh"><div class="ph3" id="pmh">Movies ('+all.length+')</div><div class="mtg"><button type="button" class="pill" data-pm="new" aria-pressed="true">Latest</button><button type="button" class="pill" data-pm="top" aria-pressed="false">Top Rated</button></div></div>'+
-      '<div id="pmv" class="snv" style="--rh:69px">'+(dn.map(function(x){return row(x)}).join('')||'<p class="note">No credits found.</p>')+'</div>'+
-      '<div class="ph3" id="pawh">Awards</div><div id="paw" class="note">Loading…</div>');
+      '<div id="ppg"><div class="pgp"><div class="mh"><div class="ph3" id="pmh">Movies ('+all.length+')</div><div class="mtg"><button type="button" class="pill" data-pm="new" aria-pressed="true">Latest</button><button type="button" class="pill" data-pm="top" aria-pressed="false">Top Rated</button></div></div>'+
+      '<div id="pmv" class="snv" style="--rh:69px">'+(dn.map(function(x){return row(x)}).join('')||'<p class="note">No credits found.</p>')+'</div></div>'+
+      '<div class="pgp"><div class="mh"><div class="ph3" id="pawh">Awards</div></div><div id="paw" class="note">Loading…</div></div></div><div class="pdots"><span class="d on"></span><span class="d"></span></div>');
+    var pg=b.querySelector('#ppg'),dots=b.querySelectorAll('.pdots .d');
+    if(pg){var dt=0,setDot=function(){dt=0;var n=pg.scrollLeft>pg.clientWidth/2?1:0;dots.forEach(function(d,k){d.classList.toggle('on',k===n)})};pg.addEventListener('scroll',function(){if(!dt)dt=requestAnimationFrame(setDot)},{passive:true});
+      /* easy swipe: only helps when the browser did NOT already slide the page itself (finger started on a list), so the two never fight */
+      var sx=0,sy=0,sl=0;
+      pg.addEventListener('touchstart',function(e){var t=e.touches[0];sx=t.clientX;sy=t.clientY;sl=pg.scrollLeft},{passive:true});
+      pg.addEventListener('touchend',function(e){var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy,w=pg.clientWidth||1;
+        if(Math.abs(pg.scrollLeft-sl)>3)return;
+        if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.5)pg.scrollTo({left:(dx<0?1:0)*w,behavior:'smooth'})},{passive:true})}
     b.querySelectorAll('[data-pm]').forEach(function(btn){btn.onclick=function(){
       var t=btn.dataset.pm==='top';
       b.querySelectorAll('[data-pm]').forEach(function(o){o.setAttribute('aria-pressed',String(o===btn))});
@@ -1183,8 +1248,8 @@ function personOpen(pid){
     awards((p.external_ids||{}).wikidata_id,all,p.name)
   }).catch(function(){pSet('<p class="note">Could not load details.</p>')})}
 /* Awards: Wikipedia's "List of awards and nominations received by <name>" first (category + nominated work), Wikidata only as fallback */
-function awEl(h,list){var e=$('#paw');if(!e)return;e.innerHTML=h;var hd=$('#pawh');if(hd)hd.textContent='Awards'+(list?' ('+e.querySelectorAll('.pc').length+')':'');e.className=list?'snv':'note';if(list)e.style.setProperty('--rh','70px');pFade()}
-function awRow(n,c,w,ch){return '<div class="pc"><span><b>'+esc(n)+'</b>'+(c?'<small>'+esc(c)+'</small>':'')+(w?'<small class="aw2">'+esc(w+(ch?' · as '+ch:''))+'</small>':'')+'</span></div>'}
+function awEl(h,list){var e=$('#paw');if(!e)return;e.innerHTML=h;var hd=$('#pawh');if(hd){var t=e.querySelectorAll('.pc').length,w=e.querySelectorAll('.awW').length;hd.textContent='Awards'+(list?(w&&t>w?' ('+w+' won · '+(t-w)+' nominated)':t>w?' ('+t+' nominated)':' ('+t+' won)'):'')}e.className=list?'snv':'note';if(list)e.style.setProperty('--rh','70px');pFade()}
+function awRow(n,c,w,ch,won){return '<div class="pc '+(won?'awW':'awN')+'"><span><b>'+esc(n)+'</b><small><span class="bdg'+(won?' won':'')+'">'+(won?'Won':'Nominee')+'</span>'+esc(c||'')+'</small>'+(w?'<small class="aw2">'+esc(w+(ch?' · as '+ch:''))+'</small>':'')+'</span></div>'}
 function awChar(all,w,y){
   if(!w||!all)return '';
   var c=all.filter(function(k){return wkNorm(k.t)===wkNorm(w)&&/^as /.test(k.r)}).sort(function(a,b){return Math.abs((+a.d.slice(0,4))-(y||0))-Math.abs((+b.d.slice(0,4))-(y||0))})[0];
@@ -1200,12 +1265,18 @@ function wkTbl(tb){
       for(var a=0;a<rs;a++)for(var b=0;b<cs;b++){(g[ri+a]=g[ri+a]||[])[ci+b]={t:t}}
       ci+=cs})});
   return g}
+function wkAwPage(t){return wkApi({action:'parse',page:t,prop:'text',redirects:1,disableeditsection:1,disablelimitreport:1},null,30000).then(function(p){return p.parse?p:null})}
+/* tries the usual page names first ("List of roles and awards of X", "List of awards and nominations received by X"), then a search */
 function wkAwList(name){
-  var key=wkNorm(name);
-  return wkApi({action:'query',list:'search',srsearch:'List of awards and nominations received by '+name,srlimit:5,srnamespace:0}).then(function(j){
-    var h=((j.query||{}).search||[]).filter(function(x){return /awards and nominations/i.test(x.title)&&wkNorm(x.title).indexOf(key)>-1})[0];
-    if(!h)return null;
-    return wkApi({action:'parse',page:h.title,prop:'text',redirects:1,disableeditsection:1,disablelimitreport:1}).then(function(p){
+  var key=wkNorm(name),T=['List of roles and awards of '+name,'List of awards and nominations received by '+name,'List of awards and nominations of '+name],
+      tryT=function(i){if(i>=T.length)return null;return wkAwPage(T[i]).then(function(p){return p||tryT(i+1)})};
+  return tryT(0).then(function(p0){
+    if(p0)return p0;
+    return wkApi({action:'query',list:'search',srsearch:name+' awards list',srlimit:8,srnamespace:0}).then(function(j){
+      var h=((j.query||{}).search||[]).filter(function(x){return /^list of .*(awards|accolades)/i.test(x.title)&&wkNorm(x.title).indexOf(key)>-1})[0];
+      return h?wkAwPage(h.title):null})
+  }).then(function(p){
+      if(!p)return null;
       var doc=new DOMParser().parseFromString((p.parse&&p.parse.text)||'','text/html'),out=[],head='';
       [].forEach.call(doc.querySelectorAll('h2,h3,h4,table.wikitable'),function(n0){
         if(n0.tagName!=='TABLE'){head=n0.textContent.replace(/\[[^\]]*\]/g,'').trim();return}
@@ -1213,22 +1284,26 @@ function wkAwList(name){
         g.forEach(function(r,i){if(hi<0&&r.some(function(c){return c&&/^(result|outcome)/i.test(c.t)}))hi=i});
         if(hi<0)return;
         var H=g[hi],ix=function(re){for(var k=0;k<H.length;k++)if(H[k]&&re.test(H[k].t))return k;return -1};
-        var yi=ix(/^year/i),ci=ix(/category/i),ai=ix(/^award/i),wi=ix(/work|film|movie|title|project/i),ri=ix(/^(result|outcome)/i),named=ai>=0&&ci>=0&&ai!==ci;
+        var yi=ix(/^year/i),ci=ix(/category/i),ai=ix(/^(award|association|organi[sz]ation|ceremony|festival)/i),wi=ix(/work|film|movie|title|project/i),ri=ix(/^(result|outcome)/i),named=ai>=0&&ci>=0&&ai!==ci;
         if(ci<0)ci=ai;
+        var cur=head;
         g.slice(hi+1).forEach(function(r){
-          var res=r[ri]&&r[ri].t;if(!res||!/^(won|win)/i.test(res))return;
+          /* a row where every cell says the same thing is a ceremony label inside the table (e.g. "British Academy Television Awards") */
+          if(r.length>1&&r[0]&&r.every(function(c){return c&&c.t&&c.t===r[0].t})){cur=r[0].t;return}
+          var res=r[ri]&&r[ri].t,won=!!(res&&/^(won|win)/i.test(res)),nom=!!(res&&/^nominat/i.test(res));if(!won&&!nom)return;
           var cat=ci>=0&&r[ci]?r[ci].t:'',wk=wi>=0&&r[wi]?r[wi].t:'',yr=yi>=0&&r[yi]?(r[yi].t.match(/\d{4}/)||[''])[0]:'';
-          if(/^[—–\-\s]*$|^n\/a$/i.test(wk))wk='';
-          out.push({n:named&&r[ai]?r[ai].t:head,c:cat,w:wk,y:+yr||0})})});
+          if(/^[—–\-\s]*(n\/?a)?$/i.test(wk))wk='';
+          out.push({n:named&&r[ai]?r[ai].t:cur,c:cat,w:wk,y:+yr||0,r:won?1:0})})});
       if(!out.length)return null;
-      out.sort(function(a,b){return b.y-a.y});
-      return out})})}
+      out.sort(function(a,b){return b.y-a.y||b.r-a.r});
+      return out})}
 function awards(q,all,name){
   if(!name)return awardsWD(q,all);
-  wkAwList(name).then(function(L){
+  /* if a Wikipedia list page exists but could not be loaded, say so (never silently show the thinner Wikidata list instead) */
+  wkAwList(name).catch(function(){return wkAwList(name)}).then(function(L){
     if(!L)return awardsWD(q,all);
-    awEl(L.map(function(x){return awRow(x.n||'Award',x.c&&wkNorm(x.c)!==wkNorm(x.n)?x.c:'',x.w,awChar(all,x.w,x.y))}).join(''),1)
-  }).catch(function(){awardsWD(q,all)})}
+    awEl(L.map(function(x){return awRow(x.n||'Award',x.c&&wkNorm(x.c)!==wkNorm(x.n)?x.c:'',x.w,awChar(all,x.w,x.y),x.r)}).join(''),1)
+  }).catch(function(){awEl('Could not load awards from Wikipedia. Check your connection and open this person again.',0)})}
 function awardsWD(q,all){
   var el=function(h,list){var e=$('#paw');if(!e)return;e.innerHTML=h;var hd=$('#pawh');if(hd)hd.textContent='Awards'+(list?' ('+e.querySelectorAll('.pc').length+')':'');e.className=list?'snv':'note';if(list)e.style.setProperty('--rh','70px');pFade()};
   if(!q)return el('No award data found.');
@@ -1389,7 +1464,7 @@ var cdr=null,noClickC=0,ordCtx=null;
   document.addEventListener('mouseup',end);
   L.addEventListener('contextmenu',function(e){if(e.target.closest('.card'))e.preventDefault()});
 })();
-$('#list').onclick=function(e){if(Date.now()-noClickC<400)return;if(e.target.closest('#smore')){lim+=60;render();return}var c=e.target.closest('[data-id]');if(!c)return;delete chgSet[c.dataset.id];lastOpen=c.dataset.id;c.classList.remove('chg');var m=movies.find(function(x){return x.id===c.dataset.id});editId=m.id;pick=m;m._ld=needsE(m)&&!unrel(m);showForm(m,true);$('#dlg').showModal();var fin=function(x){delete m._ld;var ch=x&&(x[0]||x[1]);if(ch)putMany([m]);if(editId===m.id&&!$('#form').hidden){$('#info').innerHTML=infoH(m);if(ch)setOv(m)}if(ch)render()};Promise.all(openRefresh(m)).then(fin,function(){fin(null)})};
+$('#list').onclick=function(e){if(Date.now()-noClickC<400)return;if(e.target.closest('#smore')){lim+=60;render();return}var c=e.target.closest('[data-id]');if(!c)return;delete chgSet[c.dataset.id];lastOpen=c.dataset.id;c.classList.remove('chg');var m=movies.find(function(x){return x.id===c.dataset.id});editId=m.id;pick=m;m._ld=needsE(m)&&!unrel(m);showForm(m,true);$('#dlg').showModal();var bf=window.__snapF?window.__snapF(m):null;var fin=function(x){delete m._ld;var ch=x&&(x[0]||x[1]);if(ch){if(bf&&window.__snapF){var af=window.__snapF(m),cf=chgF[m.id]||{};Object.keys(af).forEach(function(k){if(String(af[k])!==String(bf[k]))cf[k]=1});chgF[m.id]=cf}putMany([m])}if(editId===m.id&&!$('#form').hidden){$('#info').innerHTML=infoH(m);if(ch)setOv(m)}if(ch)render()};Promise.all(openRefresh(m)).then(fin,function(){fin(null)})};
 function editStatus(){
   var st=statuses.filter(function(x){return x.id===tab})[0];if(!st)return;
   modal({title:'Edit status',input:true,value:st.name,ok:'Save',del:true,nocancel:true}).then(function(n){
@@ -1783,6 +1858,7 @@ render();paintDirty();
 (function(){
   var sy=0,sx=0,pull=0,on=false,busy=false,TH=70,buzz=false;
   function snapF(m){return {'Rating':m.xm||'','Votes':m.vc||'','Rotten Tomatoes':m.rt||'','In cinemas':m.rel||'','OTT release':[m.ottDate,(m.ott||[]).join(','),m.tmdbId<0?m.rel:''].join('|'),'Budget':[m.wbud,m.wcur].join('|'),'Collection':[m.wrev,m.wcur].join('|'),'Seasons':m.seasons==null?'':m.seasons,'Episodes':m.eps==null?'':m.eps}}
+  window.__snapF=snapF;
   function sig(m){return [m.imdb,m.xm,m.vc,m.rt,m.wbud,m.wrev,m.wcur,(m.ott||[]).join(','),m.ottDate,m.rel,m.runtime].join('|')}
   function mark(id,v){if(v)updSet[id]=1;else delete updSet[id];var c=$('#list').querySelector('[data-id="'+id+'"]');if(c){c.classList.toggle('upd',!!v);if(!v)c.classList.toggle('chg',!!chgSet[id])}}
   function refreshHot(){
@@ -1849,7 +1925,9 @@ document.querySelectorAll('dialog').forEach(function(d){
 });
 /* soft fade at the bottom edge of scrolling dialogs while there is more content below */
 document.querySelectorAll('.dsc').forEach(function(c){
-  var upd=function(){var r=c.scrollHeight-c.scrollTop-c.clientHeight;c.style.setProperty('--fb',Math.max(0,Math.min(34,r))+'px')};
+  var lastFb=-1,tk=0;
+  var upd0=function(){tk=0;var r=c.scrollHeight-c.scrollTop-c.clientHeight,v=Math.round(Math.max(0,Math.min(34,r)));if(v!==lastFb){lastFb=v;c.style.setProperty('--fb',v+'px')}};
+  var upd=function(){if(!tk)tk=requestAnimationFrame(upd0)};
   c.addEventListener('scroll',upd,{passive:true});
   window.addEventListener('resize',upd);
   if(window.ResizeObserver){var ro=new ResizeObserver(upd);ro.observe(c);Array.prototype.forEach.call(c.children,function(k){ro.observe(k)})}
