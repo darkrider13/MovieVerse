@@ -1239,7 +1239,8 @@ function personOpen(pid){
       q.forEach(function(x){x.w=(x.n/(x.n+M0))*x.v+(M0/(x.n+M0))*C0});
       return q.sort(function(a,b){return b.w-a.w}).slice(0,30)})();
     var ks={};(cc.cast||[]).concat(cc.crew||[]).forEach(function(x){ks[(x.media_type||'')+x.id]=1});var kc=Object.keys(ks).length;
-    var dep=p.known_for_department==='Acting'?(p.gender===1?'Actress':'Actor'):p.known_for_department;
+    var DM={Directing:'Director',Writing:'Writer',Production:'Producer',Camera:'Cinematographer',Editing:'Editor','Visual Effects':'VFX Artist','Costume & Make-Up':'Costume & Make-Up Artist',Creator:'Creator',Lighting:'Lighting Technician'};
+    var dep=p.known_for_department==='Acting'?(p.gender===1?'Actress':'Actor'):(DM[p.known_for_department]||p.known_for_department);
     var info=[dep,p.birthday?'Born '+fmt(p.birthday)+ageOf(p.birthday,p.deathday):'',p.place_of_birth].filter(Boolean).join(' · ');
     pSet('<div class="phd">'+pimg(p.profile_path,'nop',p.gender||2)+'<div><h2 data-lp="'+esc(p.name)+'" data-tap="1" data-nofx="1">'+esc(p.name)+'</h2><p class="note" style="margin:4px 0 0;font-size:12px">'+esc(info)+'</p>'+(kc?'<span class="pop">Known Credits '+kc+'</span>':'')+'</div></div>'+
       (p.biography?'<p class="pbio">'+esc(p.biography.length>420?p.biography.slice(0,420)+'…':p.biography)+'</p>':'')+
