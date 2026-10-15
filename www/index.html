@@ -776,10 +776,22 @@ function hotMode(m,anySt){
   if(!st){m.liveSince=Date.now();lsNew.push(m);return 'rating'}
   return Date.now()-st<=7*864e5?'rating':0}
 function hot(m){return !!hotMode(m)}
-/* Coming Soon order: titles with an announced OTT date first (soonest OTT date on top), then the rest by cinema release date (earliest first), no date last */
+/* Coming Soon order:
+   1) in cinemas now AND OTT date announced (soonest OTT date first)
+   2) in cinemas now, no OTT date yet (newest cinema release first)
+   3) not in cinemas yet (earliest cinema date first, no date last)
+   4) already streaming (newest first) */
+function upGrp(m){
+  if(ottState(m)==='live')return 3;
+  if(m.rel&&m.rel<=todayL())return m.ottDate?0:1;
+  return 2}
 function upCmp(a,b){
-  var ga=a.ottDate?0:1,gb=b.ottDate?0:1;if(ga!==gb)return ga-gb;
-  var da=(ga?a.rel:a.ottDate)||'9999',db=(gb?b.rel:b.ottDate)||'9999';
+  var ga=upGrp(a),gb=upGrp(b);if(ga!==gb)return ga-gb;
+  var da,db;
+  if(ga===0){da=a.ottDate;db=b.ottDate}
+  else if(ga===1){da=b.rel;db=a.rel}
+  else if(ga===3){da=b.ottDate||'';db=a.ottDate||''}
+  else{da=a.rel||'9999';db=b.rel||'9999'}
   if(da!==db)return da<db?-1:1;
   return (b.added||0)-(a.added||0)}
 function stTag(m){return m.status==='upcoming'&&m.ottDate?'OTT '+fmt(m.ottDate):(SL[m.status]||m.status)}
@@ -943,7 +955,7 @@ function render(){try{trTagLib()}catch(e){}
     yn:function(a,b){return yr(b)-yr(a)||b.added-a.added},yo:function(a,b){return yr(a)-yr(b)||b.added-a.added},
     az:function(a,b){return a.title.localeCompare(b.title)},za:function(a,b){return b.title.localeCompare(a.title)}}[tab!=='all'?ff.s:'new'];
   var upAuto=tab==='upcoming'&&ff.s==='new';if(upAuto)cmp=upCmp;
-  if(tab==='all'){var RK={watching:0,upcoming:1,plan:2,favourite:3,watched:4},rk=function(m){if(RK[m.status]!=null)return RK[m.status];var k=0;statuses.forEach(function(x,i){if(x.id===m.status)k=i});return 5+k};list.sort(function(a,b){return rk(a)-rk(b)||(a.status==='upcoming'&&b.status==='upcoming'?upCmp(a,b):cmp(a,b))})}
+  if(tab==='all'){var W1=list.filter(function(m){return m.status==='watching'}).sort(cmp)[0]||null,RK={watching:1.5,upcoming:1,plan:2,favourite:3,watched:4},rk=function(m){if(m===W1)return -1;if(RK[m.status]!=null)return RK[m.status];var k=0;statuses.forEach(function(x,i){if(x.id===m.status)k=i});return 5+k};list.sort(function(a,b){return rk(a)-rk(b)||(a.status==='upcoming'&&b.status==='upcoming'?upCmp(a,b):cmp(a,b))})}
   else list.sort(cmp);
   ordCtx=(tab!=='all'&&!upAuto&&!flat&&(!folder||ff.s==='new'))?inTab.slice().sort(cmp).map(function(m){return m.id}):null;
   var total=list.length;list=list.slice(0,lim);
