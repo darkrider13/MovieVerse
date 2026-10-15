@@ -1828,7 +1828,7 @@ function exportBackup(){
   });
 }
 $('#exp').onclick=exportBackup;
-$('#imp').onclick=function(){$('#file').value='';$('#file').click()};
+$('#imp').onclick=function(){$('#file').value='';try{LS.setItem('library.picking',String(Date.now()))}catch(e){}$('#file').click()};
 var STALIAS={watch:'watching',current:'watching',currentlywatching:'watching',planned:'plan',plantowatch:'plan',towatch:'plan',watchlist:'plan',want:'plan',wishlist:'plan',completed:'watched',complete:'watched',done:'watched',seen:'watched',finished:'watched',favorite:'favourite',favorites:'favourite',favourites:'favourite',fav:'favourite',soon:'upcoming',comingsoon:'upcoming'};
 function normStatus(v){
   var k=String(v==null?'':v);if(statuses.some(function(x){return x.id===k}))return k;
@@ -1868,7 +1868,10 @@ function importData(t){
     return apiBusy(keyLoad(),900,45000).then(function(r){okDlg('Import successful',msg);if(r instanceof Error)toast(r.message,4000)})
   },function(){render();$('#sdlg').close();toast('Could not save the imported movies')});
 }
-$('#file').onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;f.text().then(importData,function(){$('#sdlg').close();toast('Could not open that file')})};
+$('#file').addEventListener('cancel',function(){try{LS.removeItem('library.picking')}catch(e){}});
+document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(function(){try{LS.removeItem('library.picking')}catch(e){}},2500)});
+(function(){var t=+LS.getItem('library.picking')||0;if(!t)return;try{LS.removeItem('library.picking')}catch(e){}if(Date.now()-t<180000)setTimeout(function(){okDlg('Import did not finish','The phone ran out of memory while the file picker was open, so the app was closed and restarted before the file could be read. Close other apps and try Import again.')},3800)})();
+$('#file').onchange=function(e){try{LS.removeItem('library.picking')}catch(x){}var f=e.target.files&&e.target.files[0];if(!f)return;f.text().then(importData,function(){$('#sdlg').close();toast('Could not open that file')})};
 $('#fsb').onclick=function(e){var b=e.target.closest('[data-s]');if(!b)return;fstat=b.dataset.s;if(fsel&&!folders.some(function(f){return f.id===fsel&&f.status===fstat}))fsel=null;drawSeg(true)};
 $('#ffol').onclick=function(e){var b=e.target.closest('[data-fo]');if(b){fsel=fsel===b.dataset.fo?null:b.dataset.fo;drawSeg(true)}};
 function fpool(){return movies.filter(function(m){return m.status===tab&&(folder?m.folder===folder:true)})}
