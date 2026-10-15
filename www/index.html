@@ -1023,14 +1023,22 @@ function trailerInfo(m){
   return tcache[id]=pr;
 }
 function openTrailer(m){
-  var go=function(url){
-    var AL=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.AppLauncher;
-    if(AL)AL.openUrl({url:url}).catch(function(){window.open(url,'_blank')});
-    else window.open(url,'_blank');
+  var go=function(id){
+    var web='https://www.youtube.com/watch?v='+id;
+    var C=window.Capacitor,AL=C&&C.Plugins&&C.Plugins.AppLauncher;
+    var browser=function(){
+      if(AL)AL.openUrl({url:web}).catch(function(){window.open(web,'_blank')});
+      else window.open(web,'_blank');
+    };
+    if(!AL){browser();return}
+    /* 1st priority: official YouTube app. 2nd: browser */
+    var ios=C.getPlatform&&C.getPlatform()==='ios';
+    var app=ios?'youtube://www.youtube.com/watch?v='+id:'vnd.youtube:'+id;
+    AL.openUrl({url:app}).then(function(r){if(!r||r.completed!==true)browser()}).catch(browser);
   };
   trailerInfo(m).then(function(i){
     if(!i){toast('Trailer not found');return}
-    if(i.t||i.s)go('https://www.youtube.com/watch?v='+(i.t||i.s));else toast('Trailer not found');
+    if(i.t||i.s)go(i.t||i.s);else toast('Trailer not found');
   }).catch(function(e){toast(e.message||'Trailer not found')});
 }
 function needsOtt(m){return !!(key&&m.tmdbId>0&&(!m.ottChk||m.ov===undefined||m.runtime===undefined||(ottState(m)!=='live'&&Date.now()-m.ottChk>864e5&&!(m.rel&&Date.now()-new Date(m.rel+'T00:00:00').getTime()>365*864e5))))}
