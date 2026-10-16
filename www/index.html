@@ -519,7 +519,7 @@ dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 <script>
 var $=function(s){return document.querySelector(s)};
 var IMG='https://image.tmdb.org/t/p/';
-var LS=window.localStorage;
+var LS=window.localStorage;var ready=false;
 var movies=[],lim=60,db=null,qt;
 var key=LS.getItem('library.key')||'';
 var tab='all',country='all',q='',pick=null,editId=null,rating=0,timer;
@@ -966,7 +966,7 @@ function render(){try{trTagLib()}catch(e){}
   ordCtx=(tab!=='all'&&!upAuto&&!flat&&(!folder||ff.s==='new'))?inTab.slice().sort(cmp).map(function(m){return m.id}):null;
   var total=list.length;list=list.slice(0,lim);
   var qc=$('#qcnt');if(qc)qc.textContent=fmtK(inTab.length);
-  if(!list.length){$('#list').innerHTML='<div class="empty">'+(flat?'No movies match these filters.':folder?(inTab.length?'No movies match these filters.':'This folder is empty. Tap Add to Library to put the first film in it.'):movies.length?'No movies match this view.':'Your library is empty. Tap Add to Library, or browse Coming Soon.')+'</div>';return}
+  if(!list.length){$('#list').innerHTML='<div class="empty">'+(flat?'No movies match these filters.':folder?(inTab.length?'No movies match these filters.':'This folder is empty. Tap Add to Library to put the first film in it.'):(!ready?'Loading your library…':movies.length?'No movies match this view.':'Your library is empty. Tap Add to Library, or browse Coming Soon.'))+'</div>';return}
   var cardH=function(m){
       return '<button class="card'+(updSet[m.id]?' upd':'')+(chgSet[m.id]?' chg':'')+'" data-id="'+m.id+'"><div class="poster">'+img(m.poster)+'<span class="tag" style="background:'+scol(m.status)+'">'+esc(stTag(m))+'</span>'+'<div class="rbox">'+(rr(m)?'<span class="rate"><small>'+rr(m)[0]+'</small> <span class="'+rcls(parseFloat(rr(m)[1])*10)+'">'+esc(rr(m)[1])+'</span></span>':'<span class="rate"><small>IMDb</small> <span class="na">N/A</span></span>')+'</div>'+'<div class="cap"><div><b>'+esc(m.title)+'</b><span>'+esc(m.year)+(m.tmdbId<0?' · '+'TV':'')+'</span></div>'+(sc(m)?'<i class="mine">★ '+sc(m)+'</i>':'')+'</div></div></button>'};
   var more=(total>lim?'<div class="row" style="justify-content:center;margin:18px 0"><button class="btn" id="smore">Show more ('+(total-lim)+' left)</button></div>':'');
@@ -1671,10 +1671,12 @@ function trTagLib(){
     if(on&&!t){var p=c.querySelector('.poster');if(!p)return;
       var sp=document.createElement('span');sp.className='tag tlib';sp.textContent='In Library';p.appendChild(sp)}
     else if(!on&&t)t.remove()})}
-var TRXK='library.trx',trxC=null,trxBusy={},trxAct=0,trxWait=[];
+var TRXK='library.trx2',trxC=null,trxBusy={},trxAct=0,trxWait=[];
 function trxCache(){if(!trxC){try{trxC=JSON.parse(LS.getItem(TRXK)||'{}')||{}}catch(e){trxC={}}}return trxC}
 function trxSave(){try{LS.setItem(TRXK,JSON.stringify(trxC))}catch(e){}}
-function trxFresh(e){return e&&Date.now()-e.t<(e.x?2592e5:216e5)}
+function trxFresh(e){return e&&Date.now()-e.t<(e.x?2592e5:36e5)}
+function omRating(id){if(!id||!omdbs.some(Boolean))return Promise.resolve(undefined);return omdbGet(id).then(function(j){if(limitHit(j))return null;var o=parseO(j);return o&&o.imdb?o.imdb:''},function(){return null})}
+function trHasSrc(){return apiKeys('xmdb').some(Boolean)||omdbs.some(Boolean)}
 /* IMDb rating (XMDb) for one movie/show: cached, de-duplicated, max 3 requests at a time. Resolves '' when there is none. */
 function trxGet(o){
   var k=o.id,e=trxCache()[k];
@@ -1682,8 +1684,10 @@ function trxGet(o){
   if(trxBusy[k])return trxBusy[k];
   return trxBusy[k]=new Promise(function(res){
     var run=function(){trxAct++;
-      tmdb((o.tv||o.id<0?'/tv/'+Math.abs(o.id):'/movie/'+o.id)+'/external_ids').then(function(x){return x.imdb_id?xmLookup(x.imdb_id):null}).then(function(x){
-        if(x===false)return null;var v=x&&x.imdb?x.imdb:'';trxCache()[k]={x:v,t:Date.now()};trxSave();return v},function(){return null}).then(function(v){
+      tmdb((o.tv||o.id<0?'/tv/'+Math.abs(o.id):'/movie/'+o.id)+'/external_ids').then(function(x){var id=x&&x.imdb_id;if(!id)return '';
+        return xmLookup(id).then(function(a){if(a&&a.imdb)return a.imdb;
+          return omRating(id).then(function(b){if(b)return b;if(a===false||b===null)return null;return ''})})}).then(function(v){
+        if(v===null)return null;trxCache()[k]={x:v,t:Date.now()};trxSave();return v},function(){return null}).then(function(v){
         trxAct--;delete trxBusy[k];res(v);if(trxWait.length)trxWait.shift()()})};
     if(trxAct<3)run();else trxWait.push(run)})}
 function trPatch(o){
@@ -1695,7 +1699,7 @@ function trPatch(o){
     rb.insertBefore(sp,rb.firstChild)})}
 /* IMDb rating on every card of every Trending row (XMDb key needed) */
 function trEnrich(lists,retry){
-  if(!apiKeys('xmdb').some(Boolean))return;
+  if(!trHasSrc())return;
   var by={},order=[],fail=[];
   lists.forEach(function(l){(l||[]).slice(0,20).forEach(function(o){if(o&&o.id!=null){if(!by[o.id]){by[o.id]=[];order.push(o.id)}by[o.id].push(o)}})});
   order.forEach(function(k){
@@ -1705,7 +1709,7 @@ function trEnrich(lists,retry){
     var done=function(v){if(v){os.forEach(function(o){o.x=v});trPatch(os[0])}else if(v===null)fail.push(os)};
     if(x!==undefined)done(x);else trxGet(os[0]).then(done)});
   trxSave();
-  if(!retry)setTimeout(function(){var f=[];order.forEach(function(k){var os=by[k];if(!os.some(function(o){return o.x})&&!trxFresh(trxCache()[k]))f.push(os[0])});if(f.length&&!$('#trend').hidden)trEnrich([f],1)},40000)}
+  if((retry||0)<4)setTimeout(function(){var f=[];order.forEach(function(k){var os=by[k];if(!os.some(function(o){return o.x})&&!trxFresh(trxCache()[k]))f.push(os[0])});if(f.length&&!$('#trend').hidden)trEnrich([f],(retry||0)+1)},retry?30000:15000)}
 /* Recommendations / Top Rated: TMDB order + XMDb (IMDb) rating blended into one ranking, same weighting as Trending Movies */
 function trBlend(list){
   if(!list||list.length<2||!apiKeys('xmdb').some(Boolean))return Promise.resolve(list);
@@ -2039,12 +2043,15 @@ $('#fold').onclick=function(e){
   if(k==='ren')modal({title:'Edit folder',input:true,value:cf.name,colors:true,color:cf.color,ok:'Save'}).then(function(r){if(r){cf.name=r.n;cf.color=r.c;saveF();render()}});
   else modal({title:'Delete "'+cf.name+'"?',text:'The movies stay in '+SL[tab]+'. Only the folder is removed.',ok:'Delete',danger:true}).then(function(y){if(y){var ch=movies.filter(function(m){return m.folder===cf.id});ch.forEach(function(m){m.folder=null});putMany(ch);folders=folders.filter(function(x){return x!==cf});folder=null;saveF();render()}});
 };
-idb().then(function(d){db=d;return loadAll()}).then(function(list){
+progOn('Loading your library');
+idb().then(function(d){db=d;return new Promise(function(res){var q=d.transaction('m').objectStore('m').count();q.onsuccess=function(){var n=q.result||0;if(n)progSet(n.toLocaleString('en-US')+' movies');res()};q.onerror=function(){res()}})}).then(function(){return loadAll()}).then(function(list){
   var old=LS.getItem('library.movies');
   if(!old)return list;
   if(list.length){LS.removeItem('library.movies');return list}
   var o=JSON.parse(old);return putMany(o).then(function(){LS.removeItem('library.movies');return o});
-}).then(function(list){movies=list;initBk();render();backfill()}).catch(function(){movies=JSON.parse(LS.getItem('library.movies')||'[]');render()});
+}).then(function(list){movies=list;ready=true;initBk();render();
+  return Promise.resolve().then(function(){progOff();if(movies.length)okDlg('Library loaded',movies.length.toLocaleString('en-US')+' movies');backfill()})
+}).catch(function(){progOff();try{movies=JSON.parse(LS.getItem('library.movies')||'[]')}catch(e){movies=[]}ready=true;render()});
 paintBar();
 render();paintDirty();
 
