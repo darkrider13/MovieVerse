@@ -801,7 +801,7 @@ function openRefresh(m){
   if(Date.now()-(m.fopen||0)<6e4)return [enrich(m),wkChain(m)];
   m.fopen=Date.now();
   return [enrichOtt(m,true).then(function(a){return enrich(m,true).then(function(x){return enrichWiki(m,true).then(function(c){return a||x||c})})}),Promise.resolve(false)]}
-function needsE(m){return !!((omdb||apiKeys('xmdb').some(Boolean))&&key&&m.tmdbId&&(m.rt===undefined||(apiKeys('xmdb').some(Boolean)&&!m.xmc)||(!m.xm&&Date.now()-(m.chk||0)>((+m.year||0)>=new Date().getFullYear()-1?216e5:2592e5))))}
+function needsE(m){return !!((omdb||apiKeys('xmdb').some(Boolean))&&key&&m.tmdbId&&(m.rt===undefined||(omdb&&m.om===undefined)||(apiKeys('xmdb').some(Boolean)&&!m.xmc)||(!m.xm&&Date.now()-(m.chk||0)>((+m.year||0)>=new Date().getFullYear()-1?216e5:2592e5))))}
 function enrich(m,force){
   if(!force&&!needsE(m))return Promise.resolve(false);
   if(force&&!((omdb||apiKeys('xmdb').some(Boolean))&&key&&m.tmdbId))return Promise.resolve(false);
@@ -813,8 +813,11 @@ function enrich(m,force){
     var xf=(x===false);if(xf)x=null; /* false = every XMDb key failed/limit, so don't mark XMDb as checked */
     return (omdb?lookupO(id||'',m.title,m.year).catch(function(){return null}):Promise.resolve(null)).then(function(o){
       if(!o&&!x)return false;
+      var oReal=!!o;
       if(!o)o={imdb:'',rt:'',vc:''};
+      if(oReal){m.om=o.imdb||'';m.omvc=o.vc||''}
       if(x&&x.imdb){m.xm=x.imdb;m.xvc=x.vc||'';m.vc=x.vc||''}
+      else if(!m.xm&&o.imdb&&o.vc)m.vc=o.vc;
       if(o.id&&!m.imdbId)m.imdbId=o.id;m.rt=o.rt||m.rt||'';m.chk=Date.now();if(hasX&&!xf)m.xmc=Date.now();return true})})
   }).catch(function(){return false})}
 var bfBusy=false;
@@ -827,8 +830,8 @@ function backfill(){
     var m=todo[i++];
     Promise.all([enrich(m),wkChain(m)]).catch(function(){return [false,false]}).then(function(x){if(x[0]||x[1])ch.push(m);setTimeout(worker,20)})}
   for(var k=0,n=live;k<n;k++)worker()}
-/* rating priority: XMDb -> OMDb only (never TMDB); no rating = N/A */
-function rr(m){return m.xm?['IMDb',m.xm]:null}
+/* rating priority: XMDb first, then OMDb (never TMDB); neither = N/A. Label always reads IMDb. */
+function rr(m){return m.xm?['IMDb',m.xm]:(m.om?['IMDb',m.om]:null)}
 function fmtTs(t){var d=new Date(t);return d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getFullYear()}
 function sc(m){return m.score!=null?m.score:(m.rating?m.rating*2:0)}
 var COUNTRIES=[['BD','Bangladesh'],['IN','India'],['IN-BN','India (Bengali)'],['US','United States'],['GB','United Kingdom'],['KR','South Korea'],['JP','Japan'],['CN','China'],['FR','France'],['DE','Germany'],['IT','Italy'],['ES','Spain'],['TR','Turkey'],['TH','Thailand'],['PK','Pakistan'],['NP','Nepal'],['LK','Sri Lanka'],['ID','Indonesia'],['MY','Malaysia'],['PH','Philippines'],['VN','Vietnam'],['HK','Hong Kong'],['TW','Taiwan'],['RU','Russia'],['UA','Ukraine'],['PL','Poland'],['SE','Sweden'],['NO','Norway'],['DK','Denmark'],['FI','Finland'],['NL','Netherlands'],['BE','Belgium'],['CH','Switzerland'],['AT','Austria'],['IE','Ireland'],['PT','Portugal'],['GR','Greece'],['CZ','Czechia'],['HU','Hungary'],['RO','Romania'],['IL','Israel'],['IR','Iran'],['EG','Egypt'],['SA','Saudi Arabia'],['AE','United Arab Emirates'],['NG','Nigeria'],['ZA','South Africa'],['KE','Kenya'],['MA','Morocco'],['BR','Brazil'],['MX','Mexico'],['AR','Argentina'],['CO','Colombia'],['CL','Chile'],['PE','Peru'],['CA','Canada'],['AU','Australia'],['NZ','New Zealand']];
@@ -1207,12 +1210,21 @@ function fmt(d){if(!d)return 'TBA';var a=d.split('-'),M=['Jan','Feb','Mar','Apr'
 
 /* ---------- add / edit ---------- */
 function updRs(){var v=parseFloat($('#fr').value);v=isNaN(v)?0:Math.max(0,Math.min(10,v));$('#rs').style.setProperty('--p',(v*10)+'%');$('#rst').textContent=v?(v/2).toFixed(1)+' / 5':'';$('#rst').className='note '+(v?rcls(v*10):'')}
+/* can this title be put in Coming Soon? only titles that really belong there: not yet released, in cinemas with no OTT yet (under ~1 year), or inside the OTT update window. Old / already-streamed titles cannot. */
+function upOk(m){
+  if(!m||!m.tmdbId)return true;
+  if(editId&&m.status==='upcoming')return true;
+  if(!m.rel||unrel(m))return true;
+  var age=Date.now()-new Date(m.rel+'T00:00:00').getTime();
+  if(ottState(m)!=='live')return age<=365*864e5;
+  if(m.ottDate&&m.ottDate<=today())return Date.now()-new Date(m.ottDate+'T00:00:00').getTime()<=7*864e5;
+  return age<=30*864e5}
 function drawSeg(keep){
   var el=$('#fsb'),sl=el.scrollLeft;
-  el.innerHTML=statuses.map(function(st,i){var s=st.id;return '<button type="button" class="'+(i%3?'':'sn')+'" data-s="'+s+'" aria-pressed="'+(fstat===s)+'">'+esc(SL[s])+'</button>'}).join('');
+  el.innerHTML=statuses.map(function(st,i){var s=st.id;var off=(s==='upcoming'&&!upOk(pick));return '<button type="button" class="'+(i%3?'':'sn')+'" data-s="'+s+'" aria-pressed="'+(fstat===s)+'"'+(off?' disabled style="opacity:.35"':'')+'>'+esc(SL[s])+'</button>'}).join('');
   if(keep)el.scrollLeft=sl;else{var si=0;statuses.forEach(function(x,i){if(x.id===fstat)si=i});var sb=el.children[si];if(sb){var go=function(){el.scrollLeft=0;if(sb.offsetLeft+sb.offsetWidth>el.clientWidth+1)el.scrollLeft=sb.offsetLeft-4};if(el.offsetWidth)go();else setTimeout(go,40)}}
   var fo=folders.filter(function(f){return f.status===fstat});
-  $('#ffol').innerHTML=fo.length?fo.map(function(f){return '<button type="button" class="pill" data-fo="'+f.id+'" aria-pressed="'+(fsel===f.id)+'">'+esc(f.name)+'</button>'}).join(''):'<span class="note">No folders in '+SL[fstat]+' yet. Create one from the library.</span>';
+  $('#ffol').innerHTML=fo.length?fo.map(function(f){return '<button type="button" class="pill" data-fo="'+f.id+'" aria-pressed="'+(fsel===f.id)+'">'+esc(f.name)+'</button>'}).join(''):'<span class="note">No folders in '+(SL[fstat]||'this status')+' yet. Create one from the library.</span>';
 }
 function ovFit(el){return;
   if(!el||!el.isConnected||!el.offsetWidth||!el.firstChild)return;
@@ -1387,7 +1399,7 @@ function awardsWD(q,all){
       el(it.map(function(x){var n=L(x.a)||'Award',r='',m=n.match(/^(.+?)\s+for\s+(.+)$/i);if(m){n=m[1];r=m[2]}var w=x.w&&L(x.w)?L(x.w):'',ch='';if(w&&all){var c=all.filter(function(k){return wkNorm(k.t)===wkNorm(w)&&/^as /.test(k.r)}).sort(function(a,b){return Math.abs((+a.d.slice(0,4))-(+x.y||0))-Math.abs((+b.d.slice(0,4))-(+x.y||0))})[0];if(c)ch=c.r.slice(3)}return '<div class="pc"><span><b>'+esc(n)+'</b>'+(r?'<small>'+esc(r)+'</small>':'')+(w?'<small class="aw2">'+esc(w+(ch?' · as '+ch:''))+'</small>':'')+'</span></div>'}).join(''),1)})
   }).catch(function(){el('Could not load awards.')})}
 function showForm(m,isEdit,dup,keepSeg){
-  var lock=!!m.tmdbId;
+  var lock=!!m.tmdbId;pick=m;
   $('.dsc').scrollTop=0;
   $('#find').hidden=true;$('#form').hidden=false;
   $('#pvimg').innerHTML=m.poster?'<img src="'+IMG+'w185'+m.poster+'" alt="">':'';
@@ -1396,7 +1408,7 @@ function showForm(m,isEdit,dup,keepSeg){
   $('#ft').value=m.title||'';$('#fy').value=m.year||'';$('#fc').value=shortC(m.country);
   soOpen=false;$('#info').innerHTML=infoH(m);castLoad(m);
   $('#dupn').hidden=!dup;if(dup)$('#dupn').innerHTML='<span class="dupb">Already added · '+esc(SL[m.status]||m.status)+'</span>';
-  fstat=SL[m.status]?m.status:(SL.watched?'watched':statuses[0].id);fsel=m.folder||null;drawSeg(keepSeg);
+  fstat=SL[m.status]?m.status:(SL.watched?'watched':statuses[0].id);if(fstat==='upcoming'&&!upOk(m))fstat=SL.plan?'plan':(SL.watched?'watched':statuses[0].id);fsel=m.folder||null;drawSeg(keepSeg);
   $('#fr').value=(sc(m)||0).toFixed(2);updRs();$('#del').hidden=!isEdit;
   $('#rwrap').hidden=unrel(m);$('#save').textContent='Save';
   var fa=folders.filter(function(f){return f.id===m.folder})[0],an=$('#addedn');an.hidden=!(isEdit&&m.added);if(isEdit&&m.added)an.textContent=(fa?'Added to '+fa.name+' · ':'Added · ')+fmtTs(m.added);
@@ -1457,13 +1469,13 @@ $('#fr').onblur=function(){var v=parseFloat(this.value);this.value=(isNaN(v)?0:M
 $('#fr').oninput=function(){var v=parseFloat(this.value);if(v>10)this.value=10;if(v<0)this.value=0;updRs()};
 document.addEventListener('click',function(e){var c=e.target.closest('[data-close]');if(c)c.closest('dialog').close()});
 $('#save').onclick=function(){
-  var title=$('#ft').value.trim();if(!title){$('#ft').focus();return}
+  var title=$('#ft').value.trim();if(!title){$('#ft').focus();return}if(!fstat){toast('Select a status first');return}
   var sv=parseFloat($('#fr').value);sv=isNaN(sv)?0:Math.max(0,Math.min(10,Math.round(sv*10)/10));
   if(!editId&&pick&&pick.tmdbId){var dx=movies.filter(function(m){return m.tmdbId===pick.tmdbId})[0];if(dx)editId=dx.id}
   var d={title:title,year:$('#fy').value.trim(),country:$('#fc').value.trim(),status:fstat,folder:fsel,score:sv,rating:sv/2};
   var mv;
   if(editId){mv=movies.filter(function(m){return m.id===editId})[0];if(mv.status!==d.status||(mv.folder||null)!==(d.folder||null))delete mv.ord;Object.assign(mv,d)}
-  else{mv=Object.assign(d,{id:uid(),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,lang:pick&&pick.lang,genres:pick&&pick.genres,imdb:pick&&pick.imdb,tr:pick&&pick.tr,rt:pick&&pick.rt,vc:pick&&pick.vc,imdbId:pick&&pick.imdbId,chk:pick&&pick.chk,rel:pick&&pick.rel,ottDate:pick&&pick.ottDate,ottC:pick&&pick.ottC,ott:pick&&pick.ott,ottChk:pick&&pick.ottChk,runtime:pick&&pick.runtime,xm:pick&&pick.xm,xvc:pick&&pick.xvc,wbud:pick&&pick.wbud,wrev:pick&&pick.wrev,wcur:pick&&pick.wcur,wpg:pick&&pick.wpg,wkc:pick&&pick.wkc,wkv:pick&&pick.wkv,wkt:pick&&pick.wkt,ov:pick&&pick.ov,seasons:pick&&pick.seasons,eps:pick&&pick.eps,sl:pick&&pick.sl,kind:pick&&pick.kind,added:Date.now()});movies.push(mv)}
+  else{mv=Object.assign(d,{id:uid(),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,lang:pick&&pick.lang,genres:pick&&pick.genres,imdb:pick&&pick.imdb,tr:pick&&pick.tr,rt:pick&&pick.rt,vc:pick&&pick.vc,imdbId:pick&&pick.imdbId,chk:pick&&pick.chk,rel:pick&&pick.rel,ottDate:pick&&pick.ottDate,ottC:pick&&pick.ottC,ott:pick&&pick.ott,ottChk:pick&&pick.ottChk,runtime:pick&&pick.runtime,xm:pick&&pick.xm,xvc:pick&&pick.xvc,om:pick&&pick.om,omvc:pick&&pick.omvc,wbud:pick&&pick.wbud,wrev:pick&&pick.wrev,wcur:pick&&pick.wcur,wpg:pick&&pick.wpg,wkc:pick&&pick.wkc,wkv:pick&&pick.wkv,wkt:pick&&pick.wkt,ov:pick&&pick.ov,seasons:pick&&pick.seasons,eps:pick&&pick.eps,sl:pick&&pick.sl,kind:pick&&pick.kind,added:Date.now()});movies.push(mv)}
   putMany([mv]);$('#dlg').close();render();if(!$('#up').hidden)drawUp();
 };
 $('#del').onclick=function(){modal({title:'Delete this movie?',text:'It will be removed from your library.',ok:'Delete',danger:true}).then(function(y){if(y){var did=editId;movies=movies.filter(function(m){return m.id!==did});delOne(did);$('#dlg').close();render()}})};
@@ -1629,7 +1641,9 @@ $('#ulist').onclick=function(e){var c=e.target.closest('[data-up]');if(c){iid=+c
 var home='trend';
 function showView(v){var u=v==='up';$('#up').hidden=!u;$('#hsw').hidden=u;$('#hero').hidden=u;$('#library').hidden=u||home!=='lib';$('#trend').hidden=u||home!=='trend';$('#upb').textContent=u?'Home':'Coming Soon';if(u&&!uitems.length)loadUp(true);if(!u&&home==='trend')trendLoad()}
 function setHome(h){home=h;try{LS.setItem('library.home',h)}catch(e){}document.querySelectorAll('#hsw [data-h]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.h===h))});showView($('#up').hidden?'library':'up');window.scrollTo(0,0)}
-$('#hsw').onclick=function(e){var b=e.target.closest('[data-h]');if(b&&b.dataset.h!==home)setHome(b.dataset.h)};
+$('#hsw').onclick=function(e){var b=e.target.closest('[data-h]');if(!b)return;if(b.dataset.h==='lib'){tab='all';folder=null;country='all';lim=60}if(b.dataset.h!==home)setHome(b.dataset.h);else if(b.dataset.h==='lib')render()};
+/* leaving the app puts the Status bar back on All */
+var wasOut=false;document.addEventListener('visibilitychange',function(){if(document.hidden){wasOut=true;tab='all';folder=null;country='all';lim=60}else if(wasOut){wasOut=false;try{render()}catch(e){}}});
 /* ---------- trending: TMDB is the main source; XMDb IMDb rating is the extra signal for the combined ranking ---------- */
 var TRK='library.tr3';
 function tget(path,tv){return tmdb(path).then(function(j){var seen={};return (j.results||[]).map(function(x){var t=tv||x.media_type==='tv';return {id:t?-x.id:x.id,t:x.title||x.name||'',p:x.poster_path,d:x.release_date||x.first_air_date||'',v:x.vote_average||0,n:x.vote_count||0,tv:t}}).filter(function(o){if(!o.t||!o.p||o.n<10||seen[o.id])return false;seen[o.id]=1;return true})})}
@@ -1785,7 +1799,7 @@ $('#set').onclick=function(){sapis=JSON.parse(JSON.stringify(apis));sapis.forEac
 $('#nm').oninput=function(){uname=this.value.trim();LS.setItem('library.name',uname);$('#uname').textContent=uname||'User'};
 $('#theme').onclick=function(){setTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')};
 $('#ksave').onclick=function(){var prevK=JSON.stringify(apis.map(function(a){return a.keys}));apis=sapis.map(function(a){var o={id:a.id,name:a.name,keys:a.keys.map(function(v){return a.id==='tmdb'?v.replace(/["'\s]/g,''):v.trim()}).filter(Boolean)};if(a.custom)o.custom=1;return o});keys=apiKeys('tmdb');omdbs=apiKeys('omdb');ki=0;oi=0;xi=0;pickKeys();LS.setItem('library.apis',JSON.stringify(apis));LS.setItem('library.keys',JSON.stringify(keys));LS.setItem('library.omdbs',JSON.stringify(omdbs));LS.setItem('library.key',key);LS.setItem('library.omdb',omdb);$('#sdlg').close();
-  var after=function(){uitems=[];if(!$('#up').hidden)loadUp(true);if(apiKeys('xmdb').some(Boolean))movies.forEach(function(m){if(!m.imdb&&!m.xm&&m.tmdbId&&m.rt!==undefined)m.chk=0});backfill()};
+  var after=function(){uitems=[];if(!$('#up').hidden)loadUp(true);if(apiKeys('xmdb').some(Boolean))movies.forEach(function(m){if(!m.imdb&&!m.xm&&!m.om&&m.tmdbId&&m.rt!==undefined)m.chk=0});backfill()};
   var ch=JSON.stringify(apis.map(function(a){return a.keys}))!==prevK,has=apis.some(function(a){return a.keys.length});
   if(ch)selTrend();
   if(!ch||!has){after();if(ch)trendLoad(true);return}
@@ -1948,9 +1962,9 @@ render();paintDirty();
 /* pull down on the home screen: up to 10 times in each 6-hour slot (00-06, 06-12, 12-18, 18-24), refresh only Coming Soon titles (see hotMode) */
 (function(){
   var sy=0,sx=0,pull=0,on=false,busy=false,TH=70,buzz=false;
-  function snapF(m){return {'Rating':m.xm||'','Votes':m.vc||'','Rotten Tomatoes':m.rt||'','In cinemas':m.rel||'','OTT release':[m.ottDate,(m.ott||[]).join(','),m.tmdbId<0?m.rel:''].join('|'),'Budget':[m.wbud,m.wcur].join('|'),'Collection':[m.wrev,m.wcur].join('|'),'Seasons':m.seasons==null?'':m.seasons,'Episodes':m.eps==null?'':m.eps}}
+  function snapF(m){return {'Rating':m.xm||m.om||'','Votes':m.vc||'','Rotten Tomatoes':m.rt||'','In cinemas':m.rel||'','OTT release':[m.ottDate,(m.ott||[]).join(','),m.tmdbId<0?m.rel:''].join('|'),'Budget':[m.wbud,m.wcur].join('|'),'Collection':[m.wrev,m.wcur].join('|'),'Seasons':m.seasons==null?'':m.seasons,'Episodes':m.eps==null?'':m.eps}}
   window.__snapF=snapF;
-  function sig(m){return [m.imdb,m.xm,m.vc,m.rt,m.wbud,m.wrev,m.wcur,(m.ott||[]).join(','),m.ottDate,m.rel,m.runtime].join('|')}
+  function sig(m){return [m.imdb,m.xm,m.om,m.vc,m.rt,m.wbud,m.wrev,m.wcur,(m.ott||[]).join(','),m.ottDate,m.rel,m.runtime].join('|')}
   function mark(id,v){if(v)updSet[id]=1;else delete updSet[id];var c=$('#list').querySelector('[data-id="'+id+'"]');if(c){c.classList.toggle('upd',!!v);if(!v)c.classList.toggle('chg',!!chgSet[id])}}
   function refreshHot(){
     lsNew=[];var todo=movies.filter(hot),ch=lsNew.slice(),names=[],i=0;
