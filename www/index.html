@@ -868,6 +868,14 @@ function tx(fn){if(!db)return new Promise(function(res,rej){setTimeout(function(
 function putMany(l){return tx(function(st){l.forEach(function(m){st.put(m)})})}
 function delOne(id){return tx(function(st){st.delete(id)})}
 function loadAll(){return new Promise(function(res,rej){var q=db.transaction('m').objectStore('m').getAll();q.onsuccess=function(){res(q.result)};q.onerror=function(){rej(q.error)}})}
+/* loads the library in 5000-movie pieces so the spinner can show a live count */
+function loadAllP(total){return new Promise(function(res,rej){var out=[],st=db.transaction('m').objectStore('m'),CH=5000;
+  function next(last){var q=st.getAll(last===null?undefined:IDBKeyRange.lowerBound(last,true),CH);
+    q.onsuccess=function(){var r=q.result||[];for(var i=0;i<r.length;i++)out.push(r[i]);
+      progSet(out.length.toLocaleString('en-US')+(total?' / '+total.toLocaleString('en-US'):'')+' movies');
+      if(r.length<CH)res(out);else next(r[r.length-1].id)};
+    q.onerror=function(){rej(q.error)}}
+  next(null)})}
 function saveF(){LS.setItem('library.folders',JSON.stringify(folders))}
 var bkT=0;
 function isDirty(){var b=+LS.getItem('library.bk')||0;return movies.some(function(m){return (m.added||0)>b})}
@@ -2043,8 +2051,9 @@ $('#fold').onclick=function(e){
   if(k==='ren')modal({title:'Edit folder',input:true,value:cf.name,colors:true,color:cf.color,ok:'Save'}).then(function(r){if(r){cf.name=r.n;cf.color=r.c;saveF();render()}});
   else modal({title:'Delete "'+cf.name+'"?',text:'The movies stay in '+SL[tab]+'. Only the folder is removed.',ok:'Delete',danger:true}).then(function(y){if(y){var ch=movies.filter(function(m){return m.folder===cf.id});ch.forEach(function(m){m.folder=null});putMany(ch);folders=folders.filter(function(x){return x!==cf});folder=null;saveF();render()}});
 };
+var ldN=0;
 progOn('Loading your library');
-idb().then(function(d){db=d;return new Promise(function(res){var q=d.transaction('m').objectStore('m').count();q.onsuccess=function(){var n=q.result||0;if(n)progSet(n.toLocaleString('en-US')+' movies');res()};q.onerror=function(){res()}})}).then(function(){return loadAll()}).then(function(list){
+idb().then(function(d){db=d;return new Promise(function(res){var q=d.transaction('m').objectStore('m').count();q.onsuccess=function(){var n=q.result||0;ldN=n;if(n)progSet('0 / '+n.toLocaleString('en-US')+' movies');res()};q.onerror=function(){res()}})}).then(function(){return loadAllP(ldN)}).then(function(list){
   var old=LS.getItem('library.movies');
   if(!old)return list;
   if(list.length){LS.removeItem('library.movies');return list}
