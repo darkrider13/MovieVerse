@@ -36,6 +36,11 @@ jobs:
               <solid android:color="#0a0b18"/>
           </shape>
           XML
+      - name: Black window background (no grey screen when the app restarts after a long time in background)
+        run: |
+          s=android/app/src/main/res/values/styles.xml
+          sed -i '/<style name="AppTheme.NoActionBar"/a\        <item name="android:windowBackground">@android:color/black</item>' "$s"
+          grep -n -A4 'name="AppTheme.NoActionBar"' "$s"
       - name: Hide native WebView scrollbars
         run: |
           f=$(find android/app/src/main/java -name MainActivity.java | head -n1)
