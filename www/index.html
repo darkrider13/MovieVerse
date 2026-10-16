@@ -592,7 +592,7 @@ function infoH(m){
   else if(!ld)t.push(['Rating','<span style="color:var(--mut)">N/A</span>']);
   if(m.vc&&rr(m)&&!unrel(m)&&!ld)t.push(['Votes',esc(m.vc)]);
   if(m.rt&&!unrel(m)&&!ld)t.push(['Rotten Tomatoes','<span class="'+rcls(parseInt(m.rt,10),1)+'">'+esc(m.rt)+'</span>']);
-  if(m.tmdbId<0&&m.ottChk){var od1=m.rel?fmt(m.rel)+(m.rel>today()?' (coming soon)':''):'Not announced yet';t.push(['OTT release',esc(od1),'',t.length%2===0])}
+  if(m.tmdbId<0&&m.ottChk){var od1=m.rel?fmt(m.rel)+(m.rel>today()?' (coming soon)':''):'N/A';t.push(['OTT release',esc(od1),'',t.length%2===0])}
   var h=t.map(function(x){return '<div class="tile'+(x[3]?' wide':'')+cfc(m,x[0])+'"'+(x[2]||'')+'><small>'+x[0]+'</small><b>'+x[1]+'</b></div>'}).join('');
   if(soOpen&&m.tmdbId<0&&m.sl&&m.sl.length)h+='<div class="tile wide"><small>Episodes per season</small><b>'+m.sl.map(function(x){return 'Season '+x[0]+' · '+x[1]+' episode'+(x[1]===1?'':'s')}).join('<br>')+'</b></div>';
   if(m.genres&&m.genres.length)h+='<div class="tile wide"><small>Genre</small><b>'+esc(m.genres.join(', '))+'</b></div>';
@@ -1036,6 +1036,7 @@ function ottInfo(d){
 var dcache={},umode='soon',uload=false,ugen=0,uerr=false;
 function today(){return new Date().toISOString().slice(0,10)}
 function tvRt(d){return (d.episode_run_time&&d.episode_run_time[0])||(d.last_episode_to_air&&d.last_episode_to_air.runtime)||(d.next_episode_to_air&&d.next_episode_to_air.runtime)||0}
+/* dates always mirror TMDB: new date -> new date, date removed on TMDB -> removed here too (shows N/A) */
 function applyRel(m,d){var r=ottInfo(d);m.runtime=d.runtime||0;m.rel=d.release_date||'';m.ottDate=r.date?r.date.t:'';m.ottC=r.date?r.date.c:'';m.ott=r.names;m.ottChk=Date.now();m.ov=d.overview||'';return m}
 /* live = streaming now, soon = OTT date announced, tba = nothing announced yet */
 function ottState(m){if(m.ott&&m.ott.length)return 'live';if(m.ottDate&&m.ottDate<=today())return 'live';return m.ottDate?'soon':'tba'}
@@ -1089,9 +1090,9 @@ function relTiles(m){
     return ''}
   if(!m.tmdbId||!m.ottChk)return '';
   var st=ottState(m),T=function(a,b,w){return '<div class="tile'+(w?' wide':'')+cfc(m,a)+'"><small>'+a+'</small><b>'+esc(b)+'</b></div>'};
-  var cin=m.rel?fmt(m.rel)+(m.rel>today()?' (coming soon)':''):'Not announced yet';
-  var od=st==='tba'?'Not announced yet':(m.ottDate?fmt(m.ottDate):'Streaming now');
-  var pf=m.ott&&m.ott.length?m.ott.join(', '):(st==='live'?'Not listed yet':'Not announced yet');
+  var cin=m.rel?fmt(m.rel)+(m.rel>today()?' (coming soon)':''):'N/A';
+  var od=st==='tba'?'N/A':(m.ottDate?fmt(m.ottDate):'Streaming now');
+  var pf=m.ott&&m.ott.length?m.ott.join(', '):(st==='live'?'Not listed yet':'N/A');
   var h=T('In cinemas',cin)+T('OTT release',od);
   return h}
 function tvGenres(g){var M={'28':'10759','12':'10759','14':'10765','878':'10765','10752':'10768'},OK={'16':1,'35':1,'80':1,'99':1,'18':1,'10751':1,'9648':1,'37':1,'10759':1,'10765':1,'10768':1},o=[];(g||[]).forEach(function(x){x=String(x);var t=M[x]||x;if(OK[t]&&o.indexOf(t)<0)o.push(t)});return o}
