@@ -305,7 +305,7 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 /* app-open splash: logo shows at once, name + tagline fade in when fonts are ready */
 #splash{position:fixed;inset:0;z-index:99999;background:#0a0b18;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .4s ease}
 #splash.hide{opacity:0;pointer-events:none}
-#splash img{width:112px;height:112px;display:block;background:#0a0b18;border:0;outline:0}
+#splash img{width:112px;height:112px;display:block;background:none!important;border:0;outline:0;box-shadow:none;filter:none;pointer-events:none;-webkit-tap-highlight-color:transparent;user-select:none}
 #splash .sn{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-weight:800;font-size:30px;letter-spacing:-.03em;color:#f1f2fc;line-height:1}
 #splash .sn i{color:#ff1a1a;font-style:normal}
 #splash .st{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-weight:400;letter-spacing:.02em;color:#a3a9c9;font-size:16px;line-height:1.2;text-align:center;padding:0 24px}
@@ -875,7 +875,7 @@ function loadAll(){return new Promise(function(res,rej){var q=db.transaction('m'
 function loadAllP(total){return new Promise(function(res,rej){var out=[],st=db.transaction('m').objectStore('m'),CH=5000;
   function next(last){var q=st.getAll(last===null?undefined:IDBKeyRange.lowerBound(last,true),CH);
     q.onsuccess=function(){var r=q.result||[];for(var i=0;i<r.length;i++)out.push(r[i]);
-      progSet(out.length.toLocaleString('en-US')+(total?' / '+total.toLocaleString('en-US'):'')+' movies');
+      ldSet(out.length.toLocaleString('en-US')+(total?' / '+total.toLocaleString('en-US'):'')+' movies');
       if(r.length<CH)res(out);else next(r[r.length-1].id)};
     q.onerror=function(){rej(q.error)}}
   next(null)})}
@@ -2062,16 +2062,20 @@ $('#fold').onclick=function(e){
   if(k==='ren')modal({title:'Edit folder',input:true,value:cf.name,colors:true,color:cf.color,ok:'Save'}).then(function(r){if(r){cf.name=r.n;cf.color=r.c;saveF();render()}});
   else modal({title:'Delete "'+cf.name+'"?',text:'The movies stay in '+SL[tab]+'. Only the folder is removed.',ok:'Delete',danger:true}).then(function(y){if(y){var ch=movies.filter(function(m){return m.folder===cf.id});ch.forEach(function(m){m.folder=null});putMany(ch);folders=folders.filter(function(x){return x!==cf});folder=null;saveF();render()}});
 };
-var ldN=0;
-progOn('Loading your library');
-idb().then(function(d){db=d;return new Promise(function(res){var q=d.transaction('m').objectStore('m').count();q.onsuccess=function(){var n=q.result||0;ldN=n;if(n)progSet('0 / '+n.toLocaleString('en-US')+' movies');res()};q.onerror=function(){res()}})}).then(function(){return loadAllP(ldN)}).then(function(list){
+var ldN=0,ldTxt='',ldDone=false;
+function ldSet(t){ldTxt=t;progSet(t)}
+function whenSplashGone(fn){if(!document.getElementById('splash')){fn();return}var t=setInterval(function(){if(!document.getElementById('splash')){clearInterval(t);fn()}},80)}
+/* the loading box and the done popup wait until the splash screen is gone, so nothing flashes behind the splash */
+whenSplashGone(function(){if(ldDone)return;progOn('Loading your library');$('#apic').textContent=ldTxt});
+idb().then(function(d){db=d;return new Promise(function(res){var q=d.transaction('m').objectStore('m').count();q.onsuccess=function(){var n=q.result||0;ldN=n;if(n)ldSet('0 / '+n.toLocaleString('en-US')+' movies');res()};q.onerror=function(){res()}})}).then(function(){return loadAllP(ldN)}).then(function(list){
   var old=LS.getItem('library.movies');
   if(!old)return list;
   if(list.length){LS.removeItem('library.movies');return list}
   var o=JSON.parse(old);return putMany(o).then(function(){LS.removeItem('library.movies');return o});
 }).then(function(list){movies=list;ready=true;initBk();render();
-  return Promise.resolve().then(function(){progOff();if(movies.length)okDlg('Library loaded',movies.length.toLocaleString('en-US')+' movies');backfill()})
-}).catch(function(){progOff();try{movies=JSON.parse(LS.getItem('library.movies')||'[]')}catch(e){movies=[]}ready=true;render()});
+  ldDone=true;backfill();
+  return new Promise(function(r){whenSplashGone(r)}).then(function(){progOff();if(movies.length)okDlg('Library loaded',movies.length.toLocaleString('en-US')+' movies')})
+}).catch(function(){ldDone=true;progOff();try{movies=JSON.parse(LS.getItem('library.movies')||'[]')}catch(e){movies=[]}ready=true;render()});
 paintBar();
 render();paintDirty();
 
