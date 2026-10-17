@@ -881,8 +881,10 @@ var CO=[['','All countries'],['BD','Bangladesh'],['IN','India'],['US','United St
 function idb(){return new Promise(function(res,rej){var r=indexedDB.open('movieverse',1);r.onupgradeneeded=function(){r.result.createObjectStore('m',{keyPath:'id'})};r.onsuccess=function(){res(r.result)};r.onerror=function(){rej(r.error)}})}
 function tx(fn){if(!db)return new Promise(function(res,rej){setTimeout(function(){try{LS.setItem('library.movies',JSON.stringify(movies));res()}catch(e){rej(e)}},0)}); /* no IndexedDB here (e.g. opened from a content:// file): keep the library in localStorage instead */
   return new Promise(function(res,rej){var t=db.transaction('m','readwrite');fn(t.objectStore('m'));t.oncomplete=res;t.onerror=function(){rej(t.error)}})}
-function putMany(l){return tx(function(st){l.forEach(function(m){st.put(m)})})}
-function delOne(id){return tx(function(st){st.delete(id)})}
+/* ids deleted in this session: a background refresh that was still running must never write a deleted movie back */
+var delIds={};
+function putMany(l){l=l.filter(function(m){return m&&!delIds[m.id]});if(!l.length)return Promise.resolve();return tx(function(st){l.forEach(function(m){st.put(m)})})}
+function delOne(id){delIds[id]=1;return tx(function(st){st.delete(id)})}
 function loadAll(){return new Promise(function(res,rej){var q=db.transaction('m').objectStore('m').getAll();q.onsuccess=function(){res(q.result)};q.onerror=function(){rej(q.error)}})}
 /* loads the library in 5000-movie pieces so the spinner can show a live count */
 function loadAllP(total){return new Promise(function(res,rej){var out=[],st=db.transaction('m').objectStore('m'),CH=5000;
@@ -1926,6 +1928,7 @@ function normM(m,ts){
   if(typeof m.added!=='number'||isNaN(m.added))m.added=ts;
   m.status=normStatus(m.status);
   if(m.genres&&!Array.isArray(m.genres))delete m.genres;
+  delete delIds[m.id];
   return m}
 function importData(t){
   var o;
