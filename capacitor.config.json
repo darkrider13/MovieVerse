@@ -4,12 +4,12 @@
   "webDir": "www",
   "plugins": {
     "StatusBar": {
-      "backgroundColor": "#0a0b18",
+      "backgroundColor": "#000000",
       "style": "DARK",
       "overlaysWebView": false
     }
   },
   "android": {
-    "backgroundColor": "#0a0b18"
+    "backgroundColor": "#000000"
   }
 }
