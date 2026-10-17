@@ -125,6 +125,7 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 .ovi i{position:absolute;left:0;width:1px;height:1px;scroll-snap-align:start}
 .hov{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;color:var(--mut);font-size:11.5px;line-height:1.35;margin-top:2px}
 .pv img{width:60px;height:90px;border-radius:8px;object-fit:cover}
+.agebox{position:absolute;top:50%;left:12px;transform:translateY(-50%);pointer-events:none;padding:2px 6px;border:1px solid var(--line);border-radius:6px;color:var(--mut);font-size:11px;font-weight:700;line-height:1.2;white-space:nowrap}.agebox[hidden]{display:none}
 .segc{display:flex;gap:6px;background:var(--s2);border-radius:12px;padding:4px}
 .segc button{flex:1;border:0;background:none;border-radius:9px;padding:9px 4px;cursor:pointer;color:var(--mut);font-weight:700}
 .segc button[aria-pressed=true]{background:var(--acc);color:var(--onacc)}
@@ -170,6 +171,11 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 #dlg #fr{width:56px!important;height:38px!important;box-sizing:border-box!important;padding:0!important;text-align:center;flex:none}
 #dlg #fr::selection{background:transparent;color:inherit}
 #dlg #fr:focus,#dlg #fr:focus-visible{border-color:#fff!important}
+/* rating number: no box, just the text */
+#dlg #fr,#dlg #fr:focus,#dlg #fr:focus-visible{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+#dlg #fr{height:30px!important;width:44px!important;margin:0 0 0 6px!important;caret-color:transparent!important;-webkit-touch-callout:none}
+#dlg #rst{margin-left:-6px;white-space:nowrap}
+#dlg #fr::placeholder{color:var(--ink);opacity:.25}
 .cg{color:var(--w)}.cy{color:#d9a400}.cr{color:#e24b4b}
 :root[data-theme=dark] .cy{color:#f2c230}:root[data-theme=dark] .cr{color:#ff6b6b}
 .rate .na{color:#c9ccd6}.rate .cg{color:#00e000}.rate .cy{color:#ffc857}.rate .cr{color:#ff6b6b}
@@ -180,9 +186,9 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 #sdlg input[type=text],#sdlg input[type=password],#sdlg .btn{font-size:13px}
 #sdlg input[type=text],#sdlg input[type=password]{padding:9px 11px}
 #sdlg .btn{padding:8px 14px}
-#sdlg .credit{margin-top:10px;text-align:right;display:flex;flex-direction:column;gap:2px;font-size:10.5px;line-height:1.35;color:var(--mut);letter-spacing:.3px}
+#sdlg .credit{margin-top:10px;text-align:right;display:flex;flex-direction:column;gap:2px;font-size:9px;line-height:1.35;color:var(--mut);letter-spacing:.2px}
 #sdlg .credit a{color:inherit;text-decoration:none;-webkit-tap-highlight-color:transparent}
-#sdlg .credit b{color:var(--ink);font-weight:700;letter-spacing:.8px}
+#sdlg .credit b{color:var(--ink);font-weight:700;letter-spacing:.6px}
 #sdlg .btn svg{width:16px;height:16px}
 .pw{position:relative}
 .pw input{padding-right:76px!important}
@@ -195,11 +201,11 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 .eye[aria-pressed=true]{color:var(--acc)}
 .apih{display:flex;align-items:center;justify-content:space-between}
 .kx.ph{visibility:hidden;border:0}
-.atabs{position:relative;display:flex;flex-wrap:nowrap;gap:6px;margin-bottom:8px;overflow-x:auto;scroll-behavior:smooth;scroll-snap-type:x proximity;scrollbar-width:none}
+.atabs{position:relative;display:flex;flex-wrap:nowrap;gap:6px;margin-bottom:8px;overflow-x:auto;scroll-behavior:smooth;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none}
 .atabs::-webkit-scrollbar{display:none}
-.atabs{gap:5px;margin-top:6px}.atabs .pill{flex:0 0 calc((100% - 30px)/6);scroll-snap-align:start;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink);font-weight:600;font-size:11px;padding:3px 2px;line-height:1.3}
+.atabs{gap:5px;margin-top:6px}.atabs .pill{flex:0 0 calc((100% - 25px)/6);scroll-snap-align:start;scroll-snap-stop:always;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink);font-weight:600;font-size:11px;padding:3px 2px;line-height:1.3}
 .atabs .pill[aria-pressed=true]{color:var(--bg)}
-.atabs .pill[data-newapi]{color:var(--mut);border-style:dashed;font-size:16px;font-weight:800}
+.atabs .pill[data-newapi]{color:var(--mut);border-style:dashed;font-size:16px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;padding:0}
 .apiadd{width:30px;height:30px;margin-top:8px;border:0;background:none;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .akb{display:flex;gap:8px;margin-top:8px}
 .akb .btn{flex:1}
@@ -250,7 +256,7 @@ input[type=number]{border:1px solid var(--line);background:var(--s2);border-radi
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 #ft.ro{pointer-events:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.pw.one[data-lp]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#ft.ro::selection{background:transparent;color:inherit}
 input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
-.info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.info{display:grid;grid-template-columns:1fr 1fr;grid-auto-flow:dense;gap:8px;margin-top:10px}
 .info:empty{display:none}
 .tile{background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:7px 10px}
 .tile.wide{grid-column:1/-1}
@@ -261,7 +267,7 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 #dlg .trow{margin:10px 0 4px}
 .trow label,#dlg .trow label{margin:0}
 .trow #dupn{margin:0;text-align:left}
-.rs{--p:0%;--star:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cpath d='M13 3l2.9 6.2 6.8.8-5 4.7 1.3 6.7L13 18l-6 3.4 1.3-6.7-5-4.7 6.8-.8z' fill='black' stroke='black' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E");flex:none;width:130px;height:26px;background:linear-gradient(90deg,#ffb52e var(--p),rgba(140,145,175,.32) var(--p));-webkit-mask:var(--star) 0 0/26px 26px repeat-x;mask:var(--star) 0 0/26px 26px repeat-x}
+.rs{--p:0%;--star:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cpath d='M13 3l2.9 6.2 6.8.8-5 4.7 1.3 6.7L13 18l-6 3.4 1.3-6.7-5-4.7 6.8-.8z' fill='black' stroke='black' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E");flex:none;width:205px;height:20.5px;background:linear-gradient(90deg,#ffb52e var(--p),rgba(140,145,175,.32) var(--p));-webkit-mask:var(--star) 0 0/20.5px 20.5px repeat-x;mask:var(--star) 0 0/20.5px 20.5px repeat-x}
 .segc{position:relative;flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x proximity;scroll-padding-left:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
 .segc::-webkit-scrollbar{display:none}
 .segc button{flex:0 0 calc((100% - 12px)/3);min-height:38px;padding:5px 3px;font-size:12.5px;line-height:1.15;display:flex;align-items:center;justify-content:center;text-align:center;scroll-snap-align:start;scroll-snap-stop:always}
@@ -375,7 +381,7 @@ img{-webkit-user-drag:none;user-drag:none}
 .sn{scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}.sn .cp{scroll-snap-align:start}
 .cpg .crow.sn{gap:6px}.cpg .sn .cp{flex:0 0 calc((100% - 18px)/4);min-width:0;scroll-snap-stop:always}.cpg .sn .cp img,.cpg .sn .cp .nop{width:44px;height:44px;margin-bottom:3px}.cpg .sn .cp b{font-size:9px}.cpg .sn .cp small{font-size:8px}
 .av{background:#fff;overflow:hidden}.cp .nop.av,.phd .nop.av{background:#fff}.av svg{width:100%;height:100%;display:block}
-.cpg .cp b,.cpg .cp small{max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+.cpg .cp b,.cpg .cp small{max-width:100%;overflow-wrap:anywhere;word-break:break-word;overflow:visible;text-overflow:clip;white-space:normal;-webkit-line-clamp:unset;max-height:none}
 .pdsc{max-height:calc(90vh - 32px);overflow-y:auto;padding-right:2px}
 .pdsc h2{font-size:17px;margin:0}.pdsc .pbio{font-size:12px;line-height:1.45;color:var(--mut);margin:8px 0 0}
 .ph3{font-size:13px;font-weight:700;margin:14px 0 2px}
@@ -512,7 +518,7 @@ dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
     <div class="xw"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="pv"><div id="pvimg"></div><div><h2 id="pvt" data-tap="1" style="margin:0"></h2><p class="ov2" id="pvov" hidden></p></div></div>
     <div class="trow"><label for="ft">Title</label><p class="note" id="dupn" hidden></p></div>
-    <div class="pw one"><input type="text" id="ft"><button type="button" class="eye" id="trl" aria-label="YouTube trailer" hidden><svg viewBox="0 0 24 24" width="28" height="28" shape-rendering="geometricPrecision"><rect x="1.6" y="4.8" width="20.8" height="14.4" rx="4.6" fill="none" stroke="#ff0000" stroke-width="1"/><path d="M10.2 9.3l4.6 2.7-4.6 2.7z" fill="none" stroke="#ff0000" stroke-width="1" stroke-linejoin="round"/></svg></button></div>
+    <div class="pw one"><input type="text" id="ft"><button type="button" class="eye" id="trl" aria-label="YouTube trailer" hidden><svg viewBox="0 0 24 24" width="28" height="28" shape-rendering="geometricPrecision"><rect x="1.6" y="4.8" width="20.8" height="14.4" rx="4.6" fill="none" stroke="#ff0000" stroke-width="1"/><path d="M10.2 9.3l4.6 2.7-4.6 2.7z" fill="none" stroke="#ff0000" stroke-width="1" stroke-linejoin="round"/></svg></button><span class="agebox" id="agebox" hidden></span></div>
     <div class="row" style="align-items:flex-start;flex-wrap:nowrap">
       <div style="flex:1" id="yrbox"><label for="fy">Year</label><input type="text" id="fy" inputmode="numeric"></div>
       <div style="flex:1" id="durbox" hidden><label for="fd">Duration</label><input type="text" id="fd" class="ro" readonly></div>
@@ -522,8 +528,8 @@ dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
     <div class="cast" id="cast" hidden></div>
     <label>Status</label><div class="segc" id="fsb"></div>
     <label>Folder</label><div class="row" id="ffol"></div>
-    <div id="rwrap"><label>My rating <span class="note">(out of 10)</span></label>
-    <div class="row" style="flex-wrap:nowrap;gap:12px"><input type="number" id="fr" min="0" max="10" step="0.1" inputmode="decimal"><div class="rs" id="rs"></div><span class="note" id="rst"></span></div></div>
+    <div id="rwrap"><label>My rating <span class="note" id="rof">(out of 10)</span></label>
+    <div class="row" style="flex-wrap:nowrap;gap:12px"><input type="number" id="fr" min="0" max="10" step="0.1" inputmode="decimal" placeholder="0.00"><div class="rs" id="rs"></div><span class="note" id="rst"></span></div></div>
     <div class="row" style="margin-top:16px">
       <button class="btn pri" id="save">Save</button>
       <button class="btn del" id="del" hidden style="margin-left:auto">Delete</button>
@@ -539,13 +545,13 @@ dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
   <h2 style="margin-top:0">Settings</h2>
   <label for="nm">Your name</label><input type="text" id="nm" placeholder="Your name" maxlength="30">
   <label>Appearance</label><button class="btn" id="theme" type="button"></button>
-  <div class="apih"><label>API keys</label><button type="button" class="apiadd" id="apiadd" aria-label="Add API"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
+  <div class="apih"><label>API keys</label></div>
   <div class="atabs" id="atabs"></div>
   <div class="aks" id="aks"></div>
   <label>Export or import your data</label>
   <div class="srow ex"><button class="btn dotb" id="exp">Export</button><button class="btn" id="imp">Import</button></div>
   <div class="srow" style="margin-top:14px"><button class="btn pri" id="ksave">Save</button></div>
-  <div class="credit"><span>Developed by <a href="https://www.facebook.com/insanul.islam.abirr" target="_blank" rel="noopener noreferrer"><b>INSANUL ISLAM ABIR</b></a></span><span>© 2026 All Rights Reserved.</span></div>
+  <div class="credit"><span>Developed by <a href="https://www.facebook.com/insanul.islam.abirr" target="_blank" rel="noopener noreferrer"><b>INSANUL ISLAM ABIR</b></a></span><span>© <span id="cyr">2026</span> All Rights Reserved.</span></div>
   <input type="file" id="file" accept="*/*" hidden>
   </div>
 </dialog>
@@ -635,7 +641,9 @@ function infoH(m){
   var h=t.map(function(x){return '<div class="tile'+(x[3]?' wide':'')+cfc(m,x[0])+'"'+(x[2]||'')+'><small>'+x[0]+'</small><b>'+x[1]+'</b></div>'}).join('');
   if(soOpen&&m.tmdbId<0&&m.sl&&m.sl.length)h+='<div class="tile wide"><small>Episodes per season</small><b>'+m.sl.map(function(x){return 'Season '+x[0]+' · '+x[1]+' episode'+(x[1]===1?'':'s')}).join('<br>')+'</b></div>';
   if(m.genres&&m.genres.length)h+='<div class="tile wide"><small>Genre</small><b>'+esc(m.genres.join(', '))+'</b></div>';
-  setPvt(m);return h+relTiles(m)+boxTiles(m)}
+  setPvt(m);return fillGaps(h+relTiles(m)+boxTiles(m))}
+/* no empty holes in the 2-column grid: half tiles back-fill gaps (grid dense); if one half tile would be left alone, it spans the full row */
+function fillGaps(h){var re=/<div class="tile([^"]*)"/g,ix=[],m,L='<div class="tile'.length;while((m=re.exec(h))){if(m[1].split(' ').indexOf('wide')<0&&m[1].split(' ').indexOf('in')<0)ix.push(m.index+L)}if(ix.length%2){var i=ix[ix.length-1];h=h.slice(0,i)+' wide'+h.slice(i)}return h}
 function moneyF(n,c){
   var sy={USD:'$',EUR:'€',GBP:'£',INR:'₹',BDT:'৳',AUD:'A$',CAD:'C$'}[c];if(sy===undefined)sy=c?c+' ':'';
   if(c==='INR'||c==='BDT'){if(n>=1e7)return sy+(n/1e7).toFixed(n>=1e9?0:1).replace(/\.0$/,'')+' Cr';if(n>=1e5)return sy+(n/1e5).toFixed(1).replace(/\.0$/,'')+' L'}
@@ -662,7 +670,18 @@ function boxOf(m){
 function setPvt(m){
   var el=document.getElementById('pvt');if(!el||!m)return;
   el.textContent=m.title?m.title+(m.year?' ('+m.year+')':''):'New movie';
-  var p=boxOf(m);if(p&&!p.bo&&!p.go){var sp=document.createElement('span');sp.textContent=p.v;sp.style.cssText='color:'+p.col+';white-space:nowrap;margin-left:6px;font-size:.72em;font-weight:700;vertical-align:middle';el.appendChild(sp)}}
+  var p=boxOf(m);if(p&&!p.bo&&!p.go){var sp=document.createElement('span');sp.textContent=p.v;sp.style.cssText='color:'+p.col+';white-space:nowrap;margin-left:6px;font-size:.72em;font-weight:700;vertical-align:middle';el.appendChild(sp)}
+  placeAge(m)}
+/* age rating inside the Title box, right after the title text */
+function placeAge(m){var ab=document.getElementById('agebox'),ft=document.getElementById('ft');if(!ab||!ft)return;
+  if(!m||!m.cert){ab.hidden=true;ft.style.removeProperty('padding-right');return}
+  ab.textContent=m.cert;ab.hidden=false;var n=0;
+  (function fit(){var wp=ft.parentNode,w=wp.getBoundingClientRect().width;if(!w){if(++n<12)setTimeout(fit,100);return}
+    var cs=getComputedStyle(ft),c=placeAge.c||(placeAge.c=document.createElement('canvas').getContext('2d'));
+    c.font=cs.fontStyle+' '+cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;
+    var tw=c.measureText(ft.value||'').width,pl=parseFloat(cs.paddingLeft)||10,bw=ab.offsetWidth,rr=wp.classList.contains('tl')?44:12;
+    ab.style.left=Math.max(pl,Math.min(pl+tw+8,w-rr-bw))+'px';
+    ft.style.setProperty('padding-right',(rr+bw+8)+'px','important')})()}
 function boxTiles(m){
   var p=boxOf(m);if(!p)return '';
   if(p.go)return '<div class="tile'+cfc(m,'Collection')+'"><small>Collection · '+p.src+'</small><b>'+esc(moneyF(p.r,p.c))+'</b></div>';
@@ -1070,6 +1089,12 @@ function openFilter(k){
   $('#ft2').textContent=k==='c'?'Choose countries':k==='g'?'Choose genres':k==='t'?'Choose type':'Choose year';
   $('#fsr').hidden=k!=='c';$('#fsr').value='';$('#fo').scrollTop=0;drawOpts(true);$('#fdlg').showModal();$('#fo').scrollTop=0;
 }
+/* age rating (PG-13, R, ...) from TMDB release_dates: US first, then the movie's origin country */
+function certOf(d){var rd=((d.release_dates||{}).results)||[],oc=(d.origin_country||[])[0];
+  function g(cc){var c=rd.filter(function(x){return x.iso_3166_1===cc})[0];if(!c)return '';var a=(c.release_dates||[]).filter(function(r){return r.certification&&r.certification.trim()});var t=a.filter(function(r){return r.type===3})[0]||a[0];return t?t.certification.trim():''}
+  return g('US')||g(oc)||''}
+function tvCert(d){var r=((d.content_ratings||{}).results)||[],oc=(d.origin_country||[])[0];function g(cc){var c=r.filter(function(x){return x.iso_3166_1===cc&&x.rating&&x.rating.trim()})[0];return c?c.rating.trim():''}
+  return g('US')||g(oc)||''}
 function ottInfo(d){
   var rd=(d.release_dates||{}).results||[],best=null,bo=null,oc0=(d.origin_country||[])[0];
   rd.forEach(function(c){(c.release_dates||[]).forEach(function(r){if(r.type===4&&r.release_date){var t=r.release_date.slice(0,10);if(!best||t<best.t)best={t:t,c:c.iso_3166_1};if(c.iso_3166_1===oc0&&(!bo||t<bo.t))bo={t:t,c:c.iso_3166_1}}})});
@@ -1083,7 +1108,7 @@ var dcache={},umode='soon',uload=false,ugen=0,uerr=false;
 function today(){return new Date().toISOString().slice(0,10)}
 function tvRt(d){return (d.episode_run_time&&d.episode_run_time[0])||(d.last_episode_to_air&&d.last_episode_to_air.runtime)||(d.next_episode_to_air&&d.next_episode_to_air.runtime)||0}
 /* dates always mirror TMDB: new date -> new date, date removed on TMDB -> removed here too (shows N/A) */
-function applyRel(m,d){var r=ottInfo(d);m.runtime=d.runtime||0;m.rel=d.release_date||'';m.ottDate=r.date?r.date.t:'';m.ottC=r.date?r.date.c:'';m.ott=r.names;m.ottChk=Date.now();m.ov=d.overview||'';
+function applyRel(m,d){var r=ottInfo(d);m.runtime=d.runtime||0;m.rel=d.release_date||'';m.ottDate=r.date?r.date.t:'';m.ottC=r.date?r.date.c:'';m.ott=r.names;m.cert=certOf(d);m.ottChk=Date.now();m.ov=d.overview||'';
   /* direct-to-OTT movie: has a digital/streaming release but never a cinema (type 2/3) release */
   var hc=false,hd=false;(((d.release_dates||{}).results)||[]).forEach(function(c){(c.release_dates||[]).forEach(function(r){if(r.type===2||r.type===3)hc=true;else if(r.type===4)hd=true})});m.direct=!hc&&hd;return m}
 /* live = streaming now, soon = OTT date announced, tba = nothing announced yet */
@@ -1127,9 +1152,9 @@ function openTrailer(m){
     if(i.t||i.s)go(i.t||i.s);else toast('Trailer not found');
   }).catch(function(e){toast(e.message||'Trailer not found')});
 }
-function needsOtt(m){return !!(key&&m.tmdbId>0&&(!m.ottChk||m.ov===undefined||m.runtime===undefined||(ottState(m)!=='live'&&Date.now()-m.ottChk>864e5&&!(m.rel&&Date.now()-new Date(m.rel+'T00:00:00').getTime()>365*864e5))))}
+function needsOtt(m){return !!(key&&m.tmdbId>0&&(!m.ottChk||m.ov===undefined||m.runtime===undefined||m.direct===undefined||m.cert===undefined||(ottState(m)!=='live'&&Date.now()-m.ottChk>864e5&&!(m.rel&&Date.now()-new Date(m.rel+'T00:00:00').getTime()>365*864e5))))}
 function enrichOtt(m,force){
-  if(m.tmdbId<0){if(!key||(!force&&m.seasons!=null&&m.sl&&m.kind&&m.ottChk&&m.runtime!==undefined))return Promise.resolve(false);return tmdb(tp(m.tmdbId),{append_to_response:'watch/providers'}).then(function(d){m.rel=d.first_air_date||m.rel||'';m.ott=tvProv(d);m.ottChk=Date.now();m.runtime=tvRt(d);m.kind=tvKind(d);m.seasons=d.number_of_seasons||0;m.eps=d.number_of_episodes||0;m.sl=slOf(d);return true}).catch(function(){return false})}
+  if(m.tmdbId<0){if(!key||(!force&&m.seasons!=null&&m.sl&&m.kind&&m.ottChk&&m.runtime!==undefined))return Promise.resolve(false);return tmdb(tp(m.tmdbId),{append_to_response:'watch/providers,content_ratings'}).then(function(d){m.cert=tvCert(d);m.rel=d.first_air_date||m.rel||'';m.ott=tvProv(d);m.ottChk=Date.now();m.runtime=tvRt(d);m.kind=tvKind(d);m.seasons=d.number_of_seasons||0;m.eps=d.number_of_episodes||0;m.sl=slOf(d);return true}).catch(function(){return false})}
   if(!force&&!needsOtt(m))return Promise.resolve(false);
   return tmdb('/movie/'+m.tmdbId,{append_to_response:'release_dates,watch/providers'}).then(function(d){applyRel(m,d);return true}).catch(function(){return false})}
 function tvProv(d){var wp=(d['watch/providers']||{}).results||{},oc=(d.origin_country||[])[0],pk=wp[oc]&&wp[oc].flatrate?wp[oc].flatrate:null,n=[];if(!pk)Object.keys(wp).forEach(function(k){if(!pk&&wp[k].flatrate)pk=wp[k].flatrate});(pk||[]).forEach(function(x){if(n.length<4)n.push(x.provider_name)});return n}
@@ -1138,10 +1163,10 @@ function relTiles(m){
     return ''}
   if(!m.tmdbId||!m.ottChk)return '';
   var st=ottState(m),T=function(a,b,w){return '<div class="tile'+(w?' wide':'')+cfc(m,a)+'"><small>'+a+'</small><b>'+esc(b)+'</b></div>'};
-  var cin=m.rel?fmt(m.rel)+(m.rel>today()?' (coming soon)':''):'N/A';
+  var cin=(m.rel&&!m.direct)?fmt(m.rel)+(m.rel>today()?' (coming soon)':''):'N/A';
   var od=st==='tba'?'N/A':(m.ottDate?fmt(m.ottDate):'Streaming now');
   var pf=m.ott&&m.ott.length?m.ott.join(', '):(st==='live'?'Not listed yet':'N/A');
-  var h=T('In cinemas',cin)+T('OTT release',od);
+  var h=m.direct?T('OTT release',od):T('In cinemas',cin)+T('OTT release',od);
   return h}
 function tvGenres(g){var M={'28':'10759','12':'10759','14':'10765','878':'10765','10752':'10768'},OK={'16':1,'35':1,'80':1,'99':1,'18':1,'10751':1,'9648':1,'37':1,'10759':1,'10765':1,'10768':1},o=[];(g||[]).forEach(function(x){x=String(x);var t=M[x]||x;if(OK[t]&&o.indexOf(t)<0)o.push(t)});return o}
 var tvc={};
@@ -1285,7 +1310,7 @@ function ageOf(b,e){var a=String(b||'').split('-').map(Number);if(a.length<3||!a
 function fmt(d){if(!d)return 'TBA';var a=d.split('-'),M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return a[2]+' '+M[a[1]-1]+' '+a[0]}
 
 /* ---------- add / edit ---------- */
-function updRs(){var v=parseFloat($('#fr').value);v=isNaN(v)?0:Math.max(0,Math.min(10,v));$('#rs').style.setProperty('--p',(v*10)+'%');$('#rst').textContent=v?(v/2).toFixed(1)+' / 5':'';$('#rst').className='note '+(v?rcls(v*10):'')}
+function updRs(){var v=parseFloat($('#fr').value);v=isNaN(v)?0:Math.max(0,Math.min(10,v));$('#rs').style.setProperty('--p',(v*10)+'%');$('#rst').textContent=v?(Number.isInteger(v)?String(v):v.toFixed(1))+' / 10':'';$('#rst').className='note '+(v?rcls(v*10):'');var ro=$('#rof');if(ro)ro.textContent=v?'('+(Number.isInteger(v)?String(v):v.toFixed(1))+' out of 10)':'(out of 10)'}
 /* can this title be put in Coming Soon? only titles that really belong there: not yet released, in cinemas with no OTT yet (under ~1 year), or inside the OTT update window. Old / already-streamed titles cannot. */
 function upOk(m){
   if(!m||!m.tmdbId)return true;
@@ -1354,8 +1379,24 @@ function castLoad(m){
     var two=h1&&h2;box.innerHTML='<label>Cast</label><div class="cv">'+(h1?'<div class="cpg"><div class="crow sn">'+h1+'</div></div>':'')+(h2?'<div class="cpg"><div class="crow sn">'+h2+'</div></div>':'')+'</div>';box.hidden=false;fitCast(box)
   }).catch(function(){})}
 /* every cast name / role uses the same size and wraps inside its own column; the block is only as tall as the tallest card, so a long role opens a gap only when it needs one */
-function fitCast(box,again){var cv=box.querySelector('.cv');if(!cv)return;var h=0;[].forEach.call(box.querySelectorAll('.cp'),function(k){var a=k.firstElementChild,z=k.lastElementChild;if(!a||!z)return;var v=0;[].forEach.call(k.children,function(c){v+=c.offsetHeight+(parseFloat(getComputedStyle(c).marginBottom)||0)+(parseFloat(getComputedStyle(c).marginTop)||0)});if(v>h)h=v});h=Math.max(76,Math.ceil(h+6));cv.style.height=h+'px';[].forEach.call(cv.querySelectorAll('.cpg'),function(p){p.style.height=h+'px'});
-  if(!again){if(box._ro)box._ro.disconnect();if(window.ResizeObserver){var ro=box._ro=new ResizeObserver(function(){fitCast(box,1)});[].forEach.call(box.querySelectorAll('.cp b,.cp small'),function(e){ro.observe(e)})}if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){fitCast(box,1)})}}
+function fitCast(box,again){var cv=box&&box.querySelector('.cv');if(!cv)return;
+  /* not rendered right now (popup still loading / hidden): measuring would give 0 and clip the text, so wait; the observers below re-run this as soon as it shows */
+  var cards=box.querySelectorAll('.cp');
+  if(cv.offsetWidth&&cards.length){
+    var h=0;
+    [].forEach.call(cards,function(k){var v=0;[].forEach.call(k.children,function(c){var cs=getComputedStyle(c);v+=c.getBoundingClientRect().height+(parseFloat(cs.marginTop)||0)+(parseFloat(cs.marginBottom)||0)});if(v>h)h=v});
+    if(h>0){
+      h=Math.max(76,Math.ceil(h+12));
+      var apply=function(){cv.style.height=h+'px';[].forEach.call(cv.querySelectorAll('.cpg'),function(p){p.style.height=h+'px'})};
+      apply();
+      /* safety check: if any row still has hidden overflow, grow until nothing is cut */
+      for(var n=0;n<6;n++){var extra=0;[].forEach.call(cv.querySelectorAll('.crow'),function(r){var d=r.scrollHeight-r.clientHeight;if(d>extra)extra=d});if(extra<=0)break;h+=Math.ceil(extra)+2;apply()}
+    }
+  }
+  if(!again){if(box._ro)box._ro.disconnect();if(window.ResizeObserver){var ro=box._ro=new ResizeObserver(function(){fitCast(box,1)});ro.observe(cv);[].forEach.call(box.querySelectorAll('.cp b,.cp small'),function(e){ro.observe(e)})}
+    if(!box._rz){box._rz=1;window.addEventListener('resize',function(){var b=document.getElementById('cast');if(b&&!b.hidden)fitCast(b,1)})}
+    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){fitCast(box,1)});
+    [150,500,1200].forEach(function(ms){setTimeout(function(){if(!box.hidden)fitCast(box,1)},ms)})}}
 $('#cast').onclick=function(e){var b=e.target.closest('[data-pid]');if(b)personOpen(b.dataset.pid)};
 var CPB_SVG='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 function cpBtn(t){return '<button type="button" class="cpb" data-cp="'+esc(t)+'" aria-label="Copy">'+CPB_SVG+'</button>'}
@@ -1494,7 +1535,7 @@ function showForm(m,isEdit,dup,keepSeg){
   $('.dsc').scrollTop=0;
   $('#find').hidden=true;$('#form').hidden=false;$('#dlg').classList.add('tall');
   $('#pvimg').innerHTML=m.poster?'<img src="'+IMG+'w185'+m.poster+'" alt="">':'';
-  $('#pvt').textContent=m.title?m.title+(m.year?' ('+m.year+')':''):'New movie';var cpT=m.title?m.title+(m.year?' ('+m.year+')':''):'';$('#pvt').dataset.lp=cpT;$('#pvt').setAttribute('data-nofx','1');var tb=$('#trl');tb.hidden=true;tb.parentNode.classList.remove('tl');tb._m=m;tb.onclick=function(){openTrailer(m)};if(m.tmdbId)trailerInfo(m).then(function(i){if(tb._m===m&&i&&(i.t||i.s)){tb.hidden=false;tb.parentNode.classList.add('tl')}},function(){});setOv(m);$('#yrbox').hidden=!!m.tmdbId;$('#durbox').hidden=!m.tmdbId;
+  $('#pvt').textContent=m.title?m.title+(m.year?' ('+m.year+')':''):'New movie';var cpT=m.title?m.title+(m.year?' ('+m.year+')':''):'';$('#pvt').dataset.lp=cpT;$('#pvt').setAttribute('data-nofx','1');var tb=$('#trl');tb.hidden=true;tb.parentNode.classList.remove('tl');tb._m=m;tb.onclick=function(){openTrailer(m)};if(m.tmdbId)trailerInfo(m).then(function(i){if(tb._m===m&&i&&(i.t||i.s)){tb.hidden=false;tb.parentNode.classList.add('tl');placeAge(m)}},function(){});setOv(m);$('#yrbox').hidden=!!m.tmdbId;$('#durbox').hidden=!m.tmdbId;
   ['#ft','#fy','#fc'].forEach(function(k){$(k).readOnly=lock;$(k).classList.toggle('ro',lock)});
   $('#ft').value=m.title||'';$('#fy').value=m.year||'';$('#fc').value=shortC(m.country);
   soOpen=false;$('#info').innerHTML=infoH(m);castLoad(m);
@@ -1515,7 +1556,9 @@ var sres=[];
 function qn(s){return String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}]+/gu,'')}
 function qLev(a,b){var m=a.length,n=b.length;if(!m)return n;if(!n)return m;var d=[],i,j;for(i=0;i<=m;i++)d[i]=[i];for(j=0;j<=n;j++)d[0][j]=j;for(i=1;i<=m;i++)for(j=1;j<=n;j++){var c=a[i-1]===b[j-1]?0:1;d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1)}return d[m][n]}
 function qSim(a,b){if(!a||!b)return 0;return 1-qLev(a,b)/Math.max(a.length,b.length)}
-function qMap(x){if(x.media_type==='tv')return{id:-x.id,title:x.name||'',release_date:x.first_air_date||'',poster_path:x.poster_path,overview:x.overview,popularity:x.popularity||0,tv:1};if(x.media_type==='movie')return{id:x.id,title:x.title||'',release_date:x.release_date||'',poster_path:x.poster_path,overview:x.overview,popularity:x.popularity||0};return null}
+/* titles missing a poster OR a year are never suggested */
+function qMap(x){var r=qMap0(x);return r&&r.poster_path&&(r.release_date||'').slice(0,4)?r:null}
+function qMap0(x){if(x.media_type==='tv')return{id:-x.id,title:x.name||'',release_date:x.first_air_date||'',poster_path:x.poster_path,overview:x.overview,popularity:x.popularity||0,tv:1};if(x.media_type==='movie')return{id:x.id,title:x.title||'',release_date:x.release_date||'',poster_path:x.poster_path,overview:x.overview,popularity:x.popularity||0};return null}
 /* famous / recent titles, loaded once, so one or two letters already give useful suggestions */
 var QPL=null;
 function qPool(){if(QPL)return QPL;var eps=['/trending/all/week','/movie/popular','/tv/popular','/movie/now_playing','/movie/upcoming','/movie/top_rated'];
@@ -1600,7 +1643,7 @@ function choose(id,status,fromUp,fold){
     editId=null;pick={tmdbId:id,title:u.title||'',year:(u.release_date||'').slice(0,4),poster:u.poster_path||null,rel:u.release_date||'',ov:u.overview||'',status:status,folder:fromUp?(fold||null):folder};
     if(!dg.open)dg.showModal();showForm(pick,false);$('#save').textContent=fromUp?'Add':'Save';$('#save').disabled=true;dg.classList.add('busy','hold');
   }
-  tmdb(tp(id),{append_to_response:id<0?'external_ids,watch/providers':'external_ids,release_dates,watch/providers'}).then(function(d){
+  tmdb(tp(id),{append_to_response:id<0?'external_ids,watch/providers,content_ratings':'external_ids,release_dates,watch/providers'}).then(function(d){
     if(id<0){d.title=d.name||'';d.release_date=d.first_air_date||'';d.id=id}
     var oc=(d.origin_country||[])[0],pc=d.production_countries||[],c={name:cName(effC(d.origin_country,pc),pc)};
     var lang='';try{lang=new Intl.DisplayNames(['en'],{type:'language'}).of(d.original_language)}catch(e){lang=d.original_language||''}
@@ -1614,7 +1657,7 @@ function choose(id,status,fromUp,fold){
       /* TV shows and direct-to-OTT movies never belong in Coming Soon by default: Plan to watch is pre-selected instead */
       if(pick.status==='upcoming'&&SL.plan&&(id<0||pick.direct))pick.status='plan';
       if(pick.status==='upcoming'&&SL.plan&&!upOk(pick))pick.status='plan';
-      if(id<0){pick.runtime=tvRt(d);pick.seasons=d.number_of_seasons||0;pick.eps=d.number_of_episodes||0;pick.sl=slOf(d);pick.kind=tvKind(d)}
+      if(id<0){pick.cert=tvCert(d);pick.runtime=tvRt(d);pick.seasons=d.number_of_seasons||0;pick.eps=d.number_of_episodes||0;pick.sl=slOf(d);pick.kind=tvKind(d)}
       editId=null;pick._ld=!!((omdb||apiKeys('xmdb').some(Boolean))&&!unrel(pick));showForm(pick,false,false,true);
       {var p0=pick;$('#save').textContent=fromUp?'Add':'Save';$('#save').disabled=false;if(!dg.open)dg.showModal();
         var fin2=function(){delete p0._ld;if(pick===p0&&dg.open&&!$('#form').hidden){$('#info').innerHTML=infoH(p0)}};var wkp=function(){return enrichWiki(p0).then(function(){if(pick===p0&&dg.open&&!$('#form').hidden){$('#info').innerHTML=infoH(p0)}},function(){})};var PL=((omdb||apiKeys('xmdb').some(Boolean))&&!unrel(p0))?enrich(p0).then(fin2,fin2).then(wkp):(delete p0._ld,wkp());
@@ -1636,18 +1679,23 @@ $('#qs').onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();clearTimeo
 $('#sug').onclick=function(e){var b=e.target.closest('[data-sg]');if(!b)return;var x=sres[+b.dataset.sg];if(!x)return;clearTimeout(timer);$('#qs').blur();choose(x.id,curStatus,false)};
 $('#res').onclick=function(e){var b=e.target.closest('[data-t]');if(b)choose(b.dataset.t,curStatus,false)};
 $('#manual').onclick=function(){pick={title:$('#qs').value.trim(),poster:null,status:curStatus,folder:folder};showForm(pick,false)};
-$('#fr').onfocus=function(){var t=this;setTimeout(function(){try{t.select()}catch(x){}},0)};
-$('#fr').onblur=function(){var v=parseFloat(this.value);this.value=(isNaN(v)?0:Math.max(0,Math.min(10,v))).toFixed(2);updRs()};
+var frKeep='';
+$('#fr').onfocus=function(){if(this.value!=='')frKeep=this.value;this.placeholder=frKeep||'0.00';this.value=''};
+function fmtFr(){var f=$('#fr');if(f.value===''&&frKeep!==''){f.value=frKeep}var v=parseFloat(f.value);f.value=(isNaN(v)?0:Math.max(0,Math.min(10,v))).toFixed(2);frKeep=f.value;updRs()}
+$('#fr').onblur=fmtFr;
+$('#fr').onkeydown=function(e){if(e.key==='Enter'||e.keyCode===13){e.preventDefault();fmtFr();this.blur()}};
+$('#fr').addEventListener('beforeinput',function(e){if(e.inputType==='insertLineBreak'){e.preventDefault();fmtFr();this.blur()}});
 $('#fr').oninput=function(){var v=parseFloat(this.value);if(v>10)this.value=10;if(v<0)this.value=0;updRs()};
 document.addEventListener('click',function(e){var c=e.target.closest('[data-close]');if(c)c.closest('dialog').close()});
 $('#save').onclick=function(){
   var title=$('#ft').value.trim();if(!title){$('#ft').focus();return}if(!fstat){toast('Select a status first');return}
+  fmtFr();
   var sv=parseFloat($('#fr').value);sv=isNaN(sv)?0:Math.max(0,Math.min(10,Math.round(sv*10)/10));
   if(!editId&&pick&&pick.tmdbId){var dx=movies.filter(function(m){return m.tmdbId===pick.tmdbId})[0];if(dx)editId=dx.id}
   var d={title:title,year:$('#fy').value.trim(),country:$('#fc').value.trim(),status:fstat,folder:fsel,score:sv,rating:sv/2};
   var mv;
   if(editId){mv=movies.filter(function(m){return m.id===editId})[0];if(mv.status!==d.status||(mv.folder||null)!==(d.folder||null))delete mv.ord;Object.assign(mv,d)}
-  else{mv=Object.assign(d,{id:uid(),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,lang:pick&&pick.lang,genres:pick&&pick.genres,imdb:pick&&pick.imdb,tr:pick&&pick.tr,rt:pick&&pick.rt,vc:pick&&pick.vc,imdbId:pick&&pick.imdbId,chk:pick&&pick.chk,rel:pick&&pick.rel,ottDate:pick&&pick.ottDate,ottC:pick&&pick.ottC,ott:pick&&pick.ott,ottChk:pick&&pick.ottChk,runtime:pick&&pick.runtime,xm:pick&&pick.xm,xvc:pick&&pick.xvc,om:pick&&pick.om,omvc:pick&&pick.omvc,wbud:pick&&pick.wbud,wrev:pick&&pick.wrev,wcur:pick&&pick.wcur,wpg:pick&&pick.wpg,wkc:pick&&pick.wkc,wkv:pick&&pick.wkv,wkt:pick&&pick.wkt,ov:pick&&pick.ov,seasons:pick&&pick.seasons,eps:pick&&pick.eps,sl:pick&&pick.sl,kind:pick&&pick.kind,added:Date.now()});movies.push(mv)}
+  else{mv=Object.assign(d,{id:uid(),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,lang:pick&&pick.lang,genres:pick&&pick.genres,imdb:pick&&pick.imdb,tr:pick&&pick.tr,rt:pick&&pick.rt,vc:pick&&pick.vc,imdbId:pick&&pick.imdbId,chk:pick&&pick.chk,rel:pick&&pick.rel,ottDate:pick&&pick.ottDate,ottC:pick&&pick.ottC,ott:pick&&pick.ott,ottChk:pick&&pick.ottChk,direct:pick&&pick.direct,cert:pick&&pick.cert,runtime:pick&&pick.runtime,xm:pick&&pick.xm,xvc:pick&&pick.xvc,om:pick&&pick.om,omvc:pick&&pick.omvc,wbud:pick&&pick.wbud,wrev:pick&&pick.wrev,wcur:pick&&pick.wcur,wpg:pick&&pick.wpg,wkc:pick&&pick.wkc,wkv:pick&&pick.wkv,wkt:pick&&pick.wkt,ov:pick&&pick.ov,seasons:pick&&pick.seasons,eps:pick&&pick.eps,sl:pick&&pick.sl,kind:pick&&pick.kind,added:Date.now()});movies.push(mv)}
   putMany([mv]);$('#dlg').close();render();if(!$('#up').hidden)drawUp();
 };
 $('#del').onclick=function(){modal({title:'Delete this movie?',text:'It will be removed from your library.',ok:'Delete',danger:true}).then(function(y){if(y){var did=editId;movies=movies.filter(function(m){return m.id!==did});delOne(did);$('#dlg').close();render()}})};
@@ -1974,21 +2022,21 @@ function drawL(i){
   $('#akl'+i).innerHTML=sapis[i].keys.map(function(v,j){return '<div class="kr"><div class="pw"><input type="password" value="'+esc(v)+'" data-ki="'+i+'.'+j+'" placeholder="'+esc(sapis[i].name)+' key '+(j+1)+'" autocomplete="off" autocapitalize="off" spellcheck="false">'+CPI+EYI+'</div>'+(j===0&&sapis[i].id!=='tmdb'&&sapis[i].id!=='xmdb'&&sapis[i].id!=='omdb'?'<button type="button" class="kx" data-delapi="'+i+'" aria-label="Delete this API">'+XI+'</button>':'')+'</div>'}).join('');
 }
 function drawA(){
-  $('#atabs').innerHTML=sapis.map(function(a,i){return '<button type="button" class="pill" data-at="'+i+'" aria-pressed="'+(i===cur)+'">'+esc(a.name)+'</button>'}).join('');
+  $('#atabs').innerHTML=sapis.map(function(a,i){return '<button type="button" class="pill" data-at="'+i+'" aria-pressed="'+(i===cur)+'">'+esc(a.name)+'</button>'}).join('')+'<button type="button" class="pill" id="apiadd" data-newapi="1" aria-label="Add API"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" style="display:block"><path d="M12 5v14M5 12h14"/></svg></button>';
   $('#aks').innerHTML=sapis.map(function(a,i){return '<div class="ak'+(i===cur?' on':'')+'"><div class="akl" id="akl'+i+'"></div><div class="akb"><button type="button" class="btn" data-add="'+i+'">+ Add key</button>'+'</div></div>'}).join('')||'<p class="note" style="margin:18px 0">No API yet. Tap + to add one.</p>';
   sapis.forEach(function(a,i){drawL(i)});
   centerTab();
 }
 function centerTab(){var t=$('#atabs'),b=t.querySelector('[data-at="'+cur+'"]');if(!b)return;var l=t.scrollLeft;if(b.offsetLeft<l||b.offsetLeft+b.offsetWidth>l+t.clientWidth+1)t.scrollLeft=b.offsetLeft}
 function setTab(n){if(n===cur)return;cur=n;document.querySelectorAll('#atabs [data-at]').forEach(function(b){b.setAttribute('aria-pressed',String(+b.dataset.at===n))});document.querySelectorAll('#aks .ak').forEach(function(p,i){p.classList.toggle('on',i===n)});centerTab()}
-$('#atabs').addEventListener('click',function(e){var b=e.target.closest('[data-at]');if(b)setTab(+b.dataset.at)});
-$('#apiadd').onclick=function(){
+$('#atabs').addEventListener('click',function(e){if(e.target.closest('#apiadd')){addApi();return}var b=e.target.closest('[data-at]');if(b)setTab(+b.dataset.at)});
+function addApi(){
   if(sapis.length>=20){toast('Up to 20 APIs');return}
   modal({title:'New API',text:'Name it, then add its keys.',input:true,placeholder:'API name',ok:'Add'}).then(function(n){
     if(!n)return;n=n.slice(0,24);var id={tmdb:'tmdb',imdb:'omdb',omdb:'omdb',xmdb:'xmdb'}[n.toLowerCase()]||('c'+uid());
     if(sapis.some(function(x){return x.id===id||x.name.toLowerCase()===n.toLowerCase()})){toast('That API is already added');return}
     sapis.push({id:id,name:n,keys:['']});cur=sapis.length-1;drawA()})
-};
+}
 $('#aks').addEventListener('input',function(e){var k=e.target.dataset.ki;if(!k)return;k=k.split('.');sapis[+k[0]].keys[+k[1]]=e.target.value});
 $('#aks').addEventListener('click',function(e){
   var a=e.target.closest('[data-add]');
@@ -2375,6 +2423,8 @@ document.addEventListener('click',function(e){var tp=e.target.closest('[data-tap
 document.addEventListener('contextmenu',function(e){e.preventDefault()},true);
 document.addEventListener('dragstart',function(e){e.preventDefault()},true);
 document.addEventListener('selectstart',function(e){var t=e.target;if(t&&t.nodeType===3)t=t.parentNode;if(!(t&&t.closest&&t.closest('input,textarea')))e.preventDefault()},true)})();
+
 </script>
+<script>(function(){var e=document.getElementById('cyr');if(e)e.textContent=new Date().getFullYear()})();</script>
 </body>
 </html>
