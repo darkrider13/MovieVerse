@@ -33,7 +33,7 @@ jobs:
           cat > $res/drawable/splash.xml <<'XML'
           <?xml version="1.0" encoding="utf-8"?>
           <shape xmlns:android="http://schemas.android.com/apk/res/android">
-              <solid android:color="#0a0b18"/>
+              <solid android:color="#000000"/>
           </shape>
           XML
       - name: Black window background (no grey screen when the app restarts after a long time in background)
