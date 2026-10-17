@@ -429,6 +429,7 @@ dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 #dlg .ov2.open .ovi{overscroll-behavior-y:auto}
 /* API key copy button: the cast-card rule (.cp) was also hitting it and pushing the icon to the top */
 .eye.cp{position:absolute;right:40px;top:50%;transform:translateY(-50%);flex:none;display:inline-flex;flex-direction:row;align-items:center;justify-content:center;width:34px;height:34px;padding:0;margin:0;font:inherit}
+#pvt{cursor:pointer;padding:14px 10px!important;margin:-14px -10px!important;border-radius:10px;-webkit-tap-highlight-color:transparent}
 </style>
 <script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("library.theme")||"dark");document.querySelector("meta[name=theme-color]").content=document.documentElement.getAttribute("data-theme")==="dark"?"#000000":"#eceefb"}catch(e){}</script>
 </head>
@@ -478,7 +479,7 @@ dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
     </div>
   </div>
   <div id="form" hidden>
-    <div class="pv"><div id="pvimg"></div><div><h2 id="pvt" style="margin:0"></h2><p class="ov2" id="pvov" hidden></p></div></div>
+    <div class="pv"><div id="pvimg"></div><div><h2 id="pvt" data-tap="1" style="margin:0"></h2><p class="ov2" id="pvov" hidden></p></div></div>
     <div class="trow"><label for="ft">Title</label><p class="note" id="dupn" hidden></p></div>
     <div class="pw one"><input type="text" id="ft"><button type="button" class="eye" id="trl" aria-label="YouTube trailer" hidden><svg viewBox="0 0 24 24" width="28" height="28" shape-rendering="geometricPrecision"><rect x="1.6" y="4.8" width="20.8" height="14.4" rx="4.6" fill="none" stroke="#ff0000" stroke-width="1"/><path d="M10.2 9.3l4.6 2.7-4.6 2.7z" fill="none" stroke="#ff0000" stroke-width="1" stroke-linejoin="round"/></svg></button></div>
     <div class="row" style="align-items:flex-start;flex-wrap:nowrap">
@@ -747,7 +748,12 @@ function enrichWiki(m,force){
     else if(go){m.wrev=go.v;m.wcur=go.c;m.wpg=r.page;delete m.wbud}
     else{delete m.wbud;delete m.wrev;delete m.wcur;delete m.wpg}
     return true}).catch(function(){return false})}
-function needsAny(m){return needsE(m)||needsOtt(m)||needsWiki(m)}
+/* poster refresh: TMDB poster is re-checked about once a week, so a new poster shows up without deleting and re-adding the movie */
+function needsPoster(m){return !!(key&&m.tmdbId&&Date.now()-(m.pchk||0)>6048e5)}
+function enrichPoster(m,force){
+  if(!force&&!needsPoster(m))return Promise.resolve(false);
+  return tmdb(tp(m.tmdbId)).then(function(d){m.pchk=Date.now();if(d&&d.poster_path)m.poster=d.poster_path;return true}).catch(function(){return false})}
+function needsAny(m){return needsE(m)||needsOtt(m)||needsWiki(m)||needsPoster(m)}
 /* XMDb: optional second source for the IMDb rating (used only when OMDb has none and an XMDb key is added in Settings) */
 function xmParse(j){
   if(!j||typeof j!=='object')return null;
@@ -810,7 +816,7 @@ function openRefresh(m){
   hotMode(m,1);
   if(Date.now()-(m.fopen||0)<6e4)return [enrich(m),wkChain(m)];
   m.fopen=Date.now();
-  return [enrichOtt(m,true).then(function(a){return enrich(m,true).then(function(x){return enrichWiki(m,true).then(function(c){return a||x||c})})}),Promise.resolve(false)]}
+  return [enrichOtt(m,true).then(function(a){return enrich(m,true).then(function(x){return enrichWiki(m,true).then(function(c){return enrichPoster(m,true).then(function(pp){return a||x||c||pp})})})}),Promise.resolve(false)]}
 function needsE(m){return !!((omdb||apiKeys('xmdb').some(Boolean))&&key&&m.tmdbId&&(m.rt===undefined||(omdb&&m.om===undefined)||(apiKeys('xmdb').some(Boolean)&&!m.xmc)||(!m.xm&&Date.now()-(m.chk||0)>((+m.year||0)>=new Date().getFullYear()-1?216e5:2592e5))))}
 function enrich(m,force){
   if(!force&&!needsE(m))return Promise.resolve(false);
@@ -838,7 +844,7 @@ function backfill(){
   function worker(){
     if(i>=todo.length){if(--live===0){bfBusy=false;if(ch.length){putMany(ch);render()}}return}
     var m=todo[i++];
-    Promise.all([enrich(m),wkChain(m)]).catch(function(){return [false,false]}).then(function(x){if(x[0]||x[1])ch.push(m);setTimeout(worker,20)})}
+    Promise.all([enrich(m),wkChain(m),enrichPoster(m)]).catch(function(){return [false,false,false]}).then(function(x){if(x[0]||x[1]||x[2])ch.push(m);setTimeout(worker,20)})}
   for(var k=0,n=live;k<n;k++)worker()}
 /* rating priority: XMDb first, then OMDb (never TMDB); neither = N/A. Label always reads IMDb. */
 function rr(m){return m.xm?['IMDb',m.xm]:(m.om?['IMDb',m.om]:null)}
