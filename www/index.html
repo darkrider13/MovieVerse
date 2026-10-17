@@ -88,6 +88,9 @@ h2 small{color:var(--mut);font-weight:500;font-size:14px;margin-left:6px}
 .rate{font-size:10px;line-height:1.3;font-weight:700;background:rgba(8,10,20,.78);color:#ffc857;border-radius:5px;padding:1px 5px}
 .s-watched{background:var(--w)}.s-plan{background:var(--p)}.s-watching{background:var(--n)}.s-up{background:rgba(8,10,20,.78)}
 .empty{padding:40px 10px;text-align:center;color:var(--mut)}
+input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;width:16px;height:16px;margin-left:8px;cursor:pointer;opacity:1;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center/contain no-repeat}
+input[type=search]::-ms-clear{display:none}
+.rtry{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
 .ldw{display:inline-flex;align-items:center;gap:10px}.lds{width:18px;height:18px;border-radius:50%;border:2px solid var(--mut);border-top-color:transparent;animation:ptrs .8s linear infinite}
 #list .empty,#ulist .empty{min-height:50vh;display:flex;align-items:center;justify-content:center;padding:24px}
 dialog{position:fixed;border:0;border-radius:16px;padding:18px;width:min(94vw,480px);background:var(--s);color:var(--ink);max-height:90vh;overflow:hidden}
@@ -137,7 +140,7 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 .dsc{padding:4px;margin:-4px;overflow-y:auto;max-height:calc(90vh - 36px);overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .dsc{--fb:0px;-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fb)),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fb)),transparent)}
 #dlg .dsc,#sdlg .dsc{max-height:calc(90vh - 32px)}
-#dlg .pv,#find h2,#sdlg h2,#mdlg h2,#fdlg h2,#sfdlg h2{padding-right:40px}
+#dlg .pv,#sdlg h2,#mdlg h2,#fdlg h2,#sfdlg h2{padding-right:40px}
 #dlg h2{font-size:16px;margin:0 0 6px}
 #dlg label{font-size:13px;margin:10px 0 4px}
 #dlg input[type=text],#dlg input[type=search],#dlg input[type=number],#dlg textarea,#dlg .btn{font-size:13px}
@@ -468,7 +471,6 @@ dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 
 <dialog id="pdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="pdsc dsc" id="pbody"></div></dialog>
 <dialog id="dlg">
-  <button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   <div class="dsc">
   <div id="find">
     <h2 style="margin-top:0">Add to Library</h2>
@@ -477,6 +479,7 @@ dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
     <div class="row" style="margin-top:12px" hidden>
       <button class="btn pri" id="manual">Add</button>
     </div>
+    <div class="row" style="margin-top:14px"><button type="button" class="btn red" data-close style="width:100%">Cancel</button></div>
   </div>
   <div id="form" hidden>
     <div class="pv"><div id="pvimg"></div><div><h2 id="pvt" data-tap="1" style="margin:0"></h2><p class="ov2" id="pvov" hidden></p></div></div>
@@ -495,6 +498,7 @@ dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
     <div class="row" style="flex-wrap:nowrap;gap:12px"><input type="number" id="fr" min="0" max="10" step="0.1" inputmode="decimal"><div class="rs" id="rs"></div><span class="note" id="rst"></span></div></div>
     <div class="row" style="margin-top:16px">
       <button class="btn pri" id="save">Save</button>
+      <button type="button" class="btn red" data-close>Cancel</button>
       <button class="btn del" id="del" hidden style="margin-left:auto">Delete</button>
     </div>
     <p class="note" id="addedn" hidden style="margin:14px 0 0;text-align:center"></p>
@@ -1114,6 +1118,9 @@ function tvGenres(g){var M={'28':'10759','12':'10759','14':'10765','878':'10765'
 var tvc={};
 function tvKind(d){return 'TV'}
 function tvLoad(list){list.forEach(function(x){x.kind='TV'});return Promise.resolve(list)}
+function rtry(msg,k){return '<div class="rtry"><span>'+msg+'</span><button type="button" class="btn pri" data-retry="'+k+'">Retry</button></div>'}
+var RETRY={up:function(){loadUp(true)},usearch:function(){usearch()},search:function(){search()},person:function(){personOpen(pCur)},trend:function(){trendLoad(true)}};
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-retry]');if(!b)return;var f=RETRY[b.getAttribute('data-retry')];if(f){e.preventDefault();f()}});
 var usq='',uresT,ures=[],usgen=0;
 function usearch(){
   var t=usq,g=++usgen;
@@ -1130,24 +1137,26 @@ function usearch(){
     /* Theaters = movies only; OTT follows the Type filter */
     if(umode!=='cin'||utype!=='tv')tv=[];
     if(umode==='cin'&&utype==='tv')mv=[];
-    if(!mv.length&&!tv.length&&err){$('#ulist').innerHTML='<div class="empty">'+esc(err.message)+'</div>';return}
+    if(!mv.length&&!tv.length&&err){$('#ulist').innerHTML='<div class="empty">'+rtry(esc(err.message),'usearch')+'</div>';return}
     return Promise.all([umode==='cin'?cinLoad(mv,true):Promise.resolve(mv),tvLoad(tv)]).then(function(r){
       if(g!==usgen)return;
       ures=r[0].concat(r[1]).sort(function(x,y){return y.popularity-x.popularity});
       if(!ures.length){$('#ulist').innerHTML='<div class="empty">Nothing found in '+(umode==='cin'?'On OTT':'In Cinemas')+' for "'+esc(t)+'".</div>';return}
       var on=movies.map(function(m){return m.tmdbId});
       $('#ulist').innerHTML='<div class="grid">'+ures.map(function(m){return upCard(m,on)}).join('')+'</div>'})
-  }).catch(function(e){if(g===usgen)$('#ulist').innerHTML='<div class="empty">'+esc(e.message)+'</div>'})
+  }).catch(function(e){if(g===usgen)$('#ulist').innerHTML='<div class="empty">'+rtry(esc(e.message),'usearch')+'</div>'})
 }
 $('#usq').oninput=function(){
   var t=this.value.trim();clearTimeout(uresT);
   if(!t){if(usq){usq='';usgen++;ures=[];$('#ufil').style.display='';$('#more').style.display='';drawUp()}return}
   usq=t;$('#ufil').style.display='none';$('#more').style.display='none';
   uresT=setTimeout(usearch,450)};
+var uhasMore=false;
 function loadUp(reset){
-  if(reset){upage=1;uitems=[]}
+  if(reset){upage=1;uitems=[];uhasMore=false}
+  $('#more').hidden=!!reset;$('#more').textContent='Loading more…';
   drawFilters();
-  if(!key){$('#ulist').innerHTML='<div class="empty">Add your TMDB API key in Settings to see coming soon movies.</div>';$('#more').hidden=true;return}
+  if(!key){$('#ulist').innerHTML='<div class="empty">Add your TMDB API key in Settings to see coming soon movies.</div>';$('#more').hidden=true;uhasMore=false;return}
   var gen=reset?(++ugen):ugen;uload=true;uerr=false;
   if(reset)$('#ulist').innerHTML='<div class="empty">Loading…</div>';
   var p={'primary_release_date.gte':today(),include_adult:'false',page:upage,sort_by:'popularity.desc'};
@@ -1172,14 +1181,14 @@ function loadUp(reset){
     rs.forEach(function(r){r.results.forEach(function(m){if(!seen[m.id]){seen[m.id]=1;d.results.push(m)}})});
     if(gen!==ugen)return;
     var got0=d.results.filter(function(m){return m.poster_path});
-    $('#more').hidden=upage>=d.total_pages;
+    uhasMore=upage<d.total_pages;
     return (ucs.length&&umode!=='cin'?ctryLoad(got0):Promise.resolve(got0)).then(function(got){
       if(gen!==ugen)return;
       if(umode!=='cin'){addUp(got);return}
       return Promise.all([cinLoad(got),tvLoad(tvItems)]).then(function(r){if(gen!==ugen)return;addUp(r[0].concat(r[1]))});
     });
-  }).catch(function(e){if(gen!==ugen)return;uerr=true;if(reset||!uitems.length)$('#ulist').innerHTML='<div class="empty">'+esc(e.message)+'</div>';else{upage--;toast(e.message)}})
-  .then(function(){if(gen===ugen){uload=false;setTimeout(checkMore,60)}});
+  }).catch(function(e){if(gen!==ugen)return;uerr=true;if(reset||!uitems.length)$('#ulist').innerHTML='<div class="empty">'+rtry(esc(e.message),'up')+'</div>';else{upage--;toast(e.message)}})
+  .then(function(){if(gen===ugen){uload=false;var mb=$('#more');if(uerr&&uitems.length&&uhasMore){mb.textContent='Couldn’t load. Tap to retry';mb.hidden=false}else mb.hidden=true;setTimeout(checkMore,60)}});
 }
 var ccache={};
 /* real country of a movie: first origin country that is also a production country, else the first production country */
@@ -1201,8 +1210,8 @@ function ctryLoad(list){
 }
 function checkMore(){
   var m=$('#more');
-  if(!m||m.hidden||usq||uload||uerr||$('#up').hidden||!key||document.querySelector('dialog[open]'))return;
-  if(m.getBoundingClientRect().top<innerHeight+700){upage++;loadUp(false)}
+  if(!m||!uhasMore||usq||uload||uerr||$('#up').hidden||!key||document.querySelector('dialog[open]'))return;
+  if(m.parentNode.getBoundingClientRect().top<innerHeight+700){upage++;loadUp(false)}
 }
 document.addEventListener('scroll',checkMore,{capture:true,passive:true});
 function cinLoad(list,noC){
@@ -1365,7 +1374,7 @@ function personOpen(pid){
       $('#pmh').textContent=t?'Top Rated ('+top.length+')':'Movies ('+all.length+')';
       var L=t?top:dn,v=$('#pmv');v.innerHTML=L.map(function(x){return row(x,t)}).join('')||'<p class="note">No credits found.</p>';v.scrollTop=0;pFade()}});
     awards((p.external_ids||{}).wikidata_id,all,p.name)
-  }).catch(function(){pSet('<p class="note">Could not load details.</p>')})}
+  }).catch(function(){pSet('<div class="note">'+rtry('Could not load details.','person')+'</div>')})}
 /* Awards: Wikipedia's "List of awards and nominations received by <name>" first (category + nominated work), Wikidata only as fallback */
 function awEl(h,list){var e=$('#paw');if(!e)return;e.innerHTML=h;var hd=$('#pawh');if(hd){var t=e.querySelectorAll('.pc').length,w=e.querySelectorAll('.awW').length;hd.textContent='Awards'+(list?(w&&t>w?' ('+w+' won · '+(t-w)+' nominated)':t>w?' ('+t+' nominated)':' ('+t+' won)'):'')}e.className=list?'snv':'note';if(list)e.style.setProperty('--rh','70px');pFade()}
 function awRow(n,c,w,ch,won){return '<div class="pc '+(won?'awW':'awN')+'"><span><b>'+esc(n)+'</b><small><span class="bdg'+(won?' won':'')+'">'+(won?'Won':'Nominee')+'</span>'+esc(c||'')+'</small>'+(w?'<small class="aw2">'+esc(w+(ch?' · as '+ch:''))+'</small>':'')+'</span></div>'}
@@ -1422,7 +1431,7 @@ function awards(q,all,name){
   wkAwList(name).catch(function(){return wkAwList(name)}).then(function(L){
     if(!L)return awardsWD(q,all);
     awEl(L.map(function(x){return awRow(x.n||'Award',x.c&&wkNorm(x.c)!==wkNorm(x.n)?x.c:'',x.w,awChar(all,x.w,x.y),x.r)}).join(''),1)
-  }).catch(function(){awEl('Could not load awards from Wikipedia. Check your connection and open this person again.',0)})}
+  }).catch(function(){awEl(rtry('Could not load awards from Wikipedia. Check your connection and try again.','person'),0)})}
 function awardsWD(q,all){
   var el=function(h,list){var e=$('#paw');if(!e)return;e.innerHTML=h;var hd=$('#pawh');if(hd)hd.textContent='Awards'+(list?' ('+e.querySelectorAll('.pc').length+')':'');e.className=list?'snv':'note';if(list)e.style.setProperty('--rh','70px');pFade()};
   if(!q)return el('No award data found.');
@@ -1435,7 +1444,7 @@ function awardsWD(q,all){
     return wkApi({action:'wbgetentities',ids:ids.join('|'),props:'labels',languages:'en'},WDA).then(function(r){
       var L=function(i){var e=(r.entities||{})[i];return e&&e.labels&&e.labels.en?e.labels.en.value:''};
       el(it.map(function(x){var n=L(x.a)||'Award',r='',m=n.match(/^(.+?)\s+for\s+(.+)$/i);if(m){n=m[1];r=m[2]}var w=x.w&&L(x.w)?L(x.w):'',ch='';if(w&&all){var c=all.filter(function(k){return wkNorm(k.t)===wkNorm(w)&&/^as /.test(k.r)}).sort(function(a,b){return Math.abs((+a.d.slice(0,4))-(+x.y||0))-Math.abs((+b.d.slice(0,4))-(+x.y||0))})[0];if(c)ch=c.r.slice(3)}return '<div class="pc"><span><b>'+esc(n)+'</b>'+(r?'<small>'+esc(r)+'</small>':'')+(w?'<small class="aw2">'+esc(w+(ch?' · as '+ch:''))+'</small>':'')+'</span></div>'}).join(''),1)})
-  }).catch(function(){el('Could not load awards.')})}
+  }).catch(function(){el(rtry('Could not load awards.','person'))})}
 function showForm(m,isEdit,dup,keepSeg){
   var lock=!!m.tmdbId;pick=m;
   $('.dsc').scrollTop=0;
@@ -1465,9 +1474,9 @@ function search(){
   Promise.all([sp('/search/movie',0),sp('/search/tv',1)]).then(function(a){
     if(t!==$('#qs').value.trim())return;
     var r=a[0].concat(a[1]).sort(function(x,y){return y.popularity-x.popularity}).slice(0,10);sres=r;
-    if(!r.length&&err){$('#res').innerHTML='<p class="note">'+esc(err.message)+'</p>';return}
+    if(!r.length&&err){$('#res').innerHTML='<div class="note">'+rtry(esc(err.message),'search')+'</div>';return}
     $('#res').innerHTML=r.length?r.map(function(x){var ex=movies.filter(function(m){return m.tmdbId===x.id})[0];return '<button class="hit" data-t="'+x.id+'">'+(x.poster_path?'<img src="'+IMG+'w92'+x.poster_path+'" alt="">':'<div class="ph"></div>')+'<span><b>'+esc(x.title)+'</b><br><span class="note">'+esc((x.release_date||'').slice(0,4))+(x.tv?' · TV':'')+'</span>'+(x.overview?'<span class="hov">'+esc(x.overview)+'</span>':'')+(ex?'<br><span class="dupb">Already added · '+esc(SL[ex.status]||ex.status)+'</span>':'')+'</span></button>'}).join(''):'<p class="note">No results. Try another spelling, or add it without a poster.</p>';
-  }).catch(function(e){$('#res').innerHTML='<p class="note">'+esc(e.message)+'</p>'});
+  }).catch(function(e){$('#res').innerHTML='<div class="note">'+rtry(esc(e.message),'search')+'</div>'});
 }
 function choose(id,status,fromUp,fold){
   id=+id;
@@ -1494,7 +1503,7 @@ function choose(id,status,fromUp,fold){
         var fin2=function(){delete p0._ld;if(pick===p0&&dg.open&&!$('#form').hidden){$('#info').innerHTML=infoH(p0)}};var wkp=function(){return enrichWiki(p0).then(function(){if(pick===p0&&dg.open&&!$('#form').hidden){$('#info').innerHTML=infoH(p0)}},function(){})};if((omdb||apiKeys('xmdb').some(Boolean))&&!unrel(p0))enrich(p0).then(fin2,fin2).then(wkp);else{delete p0._ld;wkp()}}
     };
     done(null);
-  }).catch(function(e){dg.classList.remove('busy');$('#save').disabled=false;if(tok!==choose.t)return;if(fromUp){if(dg.open)dg.close();toast(e.message)}else{$('#form').hidden=true;$('#find').hidden=false;$('#res').innerHTML='<p class="note">'+esc(e.message)+'</p>'}});
+  }).catch(function(e){dg.classList.remove('busy');$('#save').disabled=false;if(tok!==choose.t)return;if(fromUp){if(dg.open)dg.close();toast(e.message)}else{$('#form').hidden=true;$('#find').hidden=false;$('#res').innerHTML='<div class="note">'+rtry(esc(e.message),'search')+'</div>'}});
 }
 
 /* ---------- events ---------- */
@@ -1761,7 +1770,7 @@ function trendLoad(force){
   var draw=function(D){[D.m,D.d,D.w,D.t,D.x].forEach(function(l,i){trDraw(TRS[i][0],TRS[i][1],l)})};
   if(C&&!force&&Date.now()-C.t<108e5){draw(C.d);trEnrich([C.d.m,C.d.d,C.d.w,C.d.t,C.d.x]);return Promise.resolve()}
   else{
-    var D={},f=function(k,i,pr){return pr.catch(function(){return null}).then(function(l){D[k]=l;trDraw(TRS[i][0],TRS[i][1],l)})};
+    var D={},f=function(k,i,pr){return pr.then(function(l){D[k]=l;trDraw(TRS[i][0],TRS[i][1],l)},function(){D[k]=null;var el=$('#'+TRS[i][0]);if(el)el.innerHTML='<div class="ph3 tt">'+TRS[i][1]+'</div><div class="note">'+rtry('Could not load.','trend')+'</div>'})};
     return Promise.all([f('m',0,trCombined()),f('d',1,tget('/trending/all/day')),f('w',2,tget('/trending/all/week')),f('t',3,tget('/trending/tv/week',1)),f('x',4,tget('/movie/top_rated'))]).then(function(){if(D.m&&D.m.length){try{LS.setItem(TRK,JSON.stringify({t:Date.now(),d:D}))}catch(e){}}trEnrich([D.m,D.d,D.w,D.t,D.x]);if(D.x&&D.x.length)trBlend(D.x).then(function(l){if(!trSame(l,D.x)){D.x=l;trDraw('tr-x','Top Rated Movies',l);if(D.m&&D.m.length){try{LS.setItem(TRK,JSON.stringify({t:Date.now(),d:D}))}catch(e){}}}})})}
 }
 function selTrend(){home='trend';try{LS.setItem('library.home','trend')}catch(e){}
