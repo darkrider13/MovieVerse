@@ -260,6 +260,8 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 .info:empty{display:none}
 .tile{background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:7px 10px}
 .tile.wide{grid-column:1/-1}
+.pair{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#dlg .pair{gap:6px}
 .tile a{color:var(--acc);text-decoration:none;font-weight:600}
 .tile small{display:block;color:var(--mut);font-size:12px}
 .dupb{display:inline-block;background:none;color:var(--w);padding:0;font-size:10px;line-height:16px;font-weight:700;white-space:nowrap}
@@ -686,7 +688,8 @@ function boxTiles(m){
   var p=boxOf(m);if(!p)return '';
   if(p.go)return '<div class="tile'+cfc(m,'Collection')+'"><small>Collection · '+p.src+'</small><b>'+esc(moneyF(p.r,p.c))+'</b></div>';
   var bt='<div class="tile'+cfc(m,'Budget')+'"><small>Budget</small><b>'+esc(moneyF(p.b,p.c))+'</b></div>';if(p.bo)return bt;
-  return bt+'<div class="tile'+cfc(m,'Collection')+'"><small>Collection · '+p.src+'</small><b>'+esc(moneyF(p.r,p.c))+'</b></div>'}
+  /* Budget + Collection always stay side by side as one locked pair */
+  return '<div class="pair">'+bt.replace('class="tile','class="tile in')+'<div class="tile in'+cfc(m,'Collection')+'"><small>Collection · '+p.src+'</small><b>'+esc(moneyF(p.r,p.c))+'</b></div></div>'}
 /* ===== Wikipedia box office: budget + box office from the film's infobox (editor-maintained, keeps the real currency) ===== */
 function isInd(m){return /india|bangladesh/i.test(String(m&&m.country||''))||/^(hindi|tamil|telugu|malayalam|kannada|bengali|bangla|marathi|punjabi|gujarati|odia|bhojpuri|assamese)$/i.test(String(m&&m.lang||''))}
 function wkCur(sy){var t=sy.toLowerCase();if(t==='₹'||/^rs|^inr/.test(t))return 'INR';if(t==='৳'||/^(bdt|tk)/.test(t))return 'BDT';if(t==='£')return 'GBP';if(t==='€')return 'EUR';if(t==='a$')return 'AUD';if(t==='ca$')return 'CAD';return 'USD'}
@@ -1162,11 +1165,12 @@ function relTiles(m){
   if(m.tmdbId<0){
     return ''}
   if(!m.tmdbId||!m.ottChk)return '';
-  var st=ottState(m),T=function(a,b,w){return '<div class="tile'+(w?' wide':'')+cfc(m,a)+'"><small>'+a+'</small><b>'+esc(b)+'</b></div>'};
+  var st=ottState(m),T=function(a,b,w,pr){return '<div class="tile'+(w?' wide':'')+(pr?' in':'')+cfc(m,a)+'"><small>'+a+'</small><b>'+esc(b)+'</b></div>'};
   var cin=(m.rel&&!m.direct)?fmt(m.rel)+(m.rel>today()?' (coming soon)':''):'N/A';
   var od=st==='tba'?'N/A':(m.ottDate?fmt(m.ottDate):'Streaming now');
   var pf=m.ott&&m.ott.length?m.ott.join(', '):(st==='live'?'Not listed yet':'N/A');
-  var h=m.direct?T('OTT release',od):T('In cinemas',cin)+T('OTT release',od);
+  /* In cinemas + OTT release always stay side by side as one locked pair (N/A tiles still count as tiles); a lone OTT tile (direct-to-OTT) is a normal half tile */
+  var h=m.direct?T('OTT release',od):'<div class="pair">'+T('In cinemas',cin,0,1)+T('OTT release',od,0,1)+'</div>';
   return h}
 function tvGenres(g){var M={'28':'10759','12':'10759','14':'10765','878':'10765','10752':'10768'},OK={'16':1,'35':1,'80':1,'99':1,'18':1,'10751':1,'9648':1,'37':1,'10759':1,'10765':1,'10768':1},o=[];(g||[]).forEach(function(x){x=String(x);var t=M[x]||x;if(OK[t]&&o.indexOf(t)<0)o.push(t)});return o}
 var tvc={};
