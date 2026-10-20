@@ -300,6 +300,7 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 .sh{display:inline-block;width:54px;height:14px;border-radius:6px;vertical-align:middle;background:linear-gradient(90deg,rgba(255,255,255,.07),rgba(255,255,255,.22),rgba(255,255,255,.07));background-size:200% 100%;animation:shm 1.1s linear infinite}
 :root[data-theme=light] .sh{background:linear-gradient(90deg,rgba(20,24,70,.06),rgba(20,24,70,.16),rgba(20,24,70,.06));background-size:200% 100%}
 #dlg.busy #form{pointer-events:none;opacity:.8}
+#dlg.busy #form .xw,#dlg.busy #form .xw .xb{pointer-events:auto;opacity:1;touch-action:manipulation}
 #dlg.hold #info~*{display:none!important}
 #save:disabled{opacity:.5}
 #save.wide{width:100%}
@@ -1943,16 +1944,18 @@ function trBlend(list){
     return list.slice().sort(function(a,b){return b.f-a.f})})}
 function trSame(a,b){return a.length===b.length&&a.every(function(o,i){return o.id===b[i].id})}
 var TRS=[['tr-m','Trending Movies'],['tr-d','Trending Today'],['tr-w','Weekly Trending'],['tr-t','Trending TV Shows'],['tr-x','Top Rated Movies']];
-function trendLoad(force){
+function trendLoad0(force){
   if(!key){keys=apiKeys('tmdb').filter(Boolean);ki=0;pickKeys()}
   if(!key){$('#tr-m').innerHTML='<p class="note tnone">Add your TMDB key in Settings to see Trending.</p>';return Promise.resolve()}
   var C=null;try{C=JSON.parse(LS.getItem(TRK)||'null')}catch(e){}
   var draw=function(D){[D.m,D.d,D.w,D.t,D.x].forEach(function(l,i){trDraw(TRS[i][0],TRS[i][1],l)})};
-  if(C&&!force&&Date.now()-C.t<108e5){draw(C.d);trEnrich([C.d.m,C.d.d,C.d.w,C.d.t,C.d.x]);return Promise.resolve()}
+  if(C&&!force&&Date.now()-C.t<108e5){window.__trD=C.d;draw(C.d);trEnrich([C.d.m,C.d.d,C.d.w,C.d.t,C.d.x]);return Promise.resolve()}
   else{
-    var D={},f=function(k,i,pr){return pr.then(function(l){D[k]=l;trDraw(TRS[i][0],TRS[i][1],l)},function(){D[k]=null;var el=$('#'+TRS[i][0]);if(el)el.innerHTML='<div class="ph3 tt">'+TRS[i][1]+'</div><div class="note">'+rtry('Could not load.','trend')+'</div>'})};
-    return Promise.all([f('m',0,trCombined()),f('d',1,tget('/trending/all/day')),f('w',2,tget('/trending/all/week')),f('t',3,tget('/trending/tv/week',1)),f('x',4,tget('/movie/top_rated'))]).then(function(){if(D.m&&D.m.length){try{LS.setItem(TRK,JSON.stringify({t:Date.now(),d:D}))}catch(e){}}trEnrich([D.m,D.d,D.w,D.t,D.x]);if(D.x&&D.x.length)trBlend(D.x).then(function(l){if(!trSame(l,D.x)){D.x=l;trDraw('tr-x','Top Rated Movies',l);if(D.m&&D.m.length){try{LS.setItem(TRK,JSON.stringify({t:Date.now(),d:D}))}catch(e){}}}})})}
+    trendLoad0.net=true;var D={},f=function(k,i,pr){return pr.then(function(l){D[k]=l;trDraw(TRS[i][0],TRS[i][1],l)},function(){D[k]=null;var el=$('#'+TRS[i][0]);if(el)el.innerHTML='<div class="ph3 tt">'+TRS[i][1]+'</div><div class="note">'+rtry('Could not load.','trend')+'</div>'})};
+    return Promise.all([f('m',0,trCombined()),f('d',1,tget('/trending/all/day')),f('w',2,tget('/trending/all/week')),f('t',3,tget('/trending/tv/week',1)),f('x',4,tget('/movie/top_rated'))]).then(function(){window.__trD=D;if(D.m&&D.m.length){try{LS.setItem(TRK,JSON.stringify({t:Date.now(),d:D}))}catch(e){}}trEnrich([D.m,D.d,D.w,D.t,D.x]);if(D.x&&D.x.length)trBlend(D.x).then(function(l){if(!trSame(l,D.x)){D.x=l;trDraw('tr-x','Top Rated Movies',l);if(D.m&&D.m.length){try{LS.setItem(TRK,JSON.stringify({t:Date.now(),d:D}))}catch(e){}}}})})}
 }
+var trInF=null;
+function trendLoad(force){if(trInF&&trInF.net)return trInF;trendLoad0.net=false;var p=trendLoad0(force);p.net=trendLoad0.net;if(p.net){trInF=p;var cl=function(){if(trInF===p)trInF=null};p.then(cl,cl)}return p}
 /* Pull-down on Trending: refresh in the background, no spinner / toast / poster loading; a row is redrawn only if its list really changed (new posters are preloaded first) */
 function trSilent(){
   if(trSilent.b)return Promise.resolve();
@@ -2396,7 +2399,22 @@ document.querySelectorAll('.dsc').forEach(function(c){
 <script>
 (function(){var sp=document.getElementById('splash');if(!sp)return;
 sp.classList.add('fr');
-setTimeout(function(){sp.classList.add('hide');setTimeout(function(){sp.remove()},420)},Math.max(400,3100-performance.now()))})();
+var cap=function(p,ms){return Promise.race([p,new Promise(function(r){setTimeout(r,ms)})])};
+/* the splash stays until the whole Trending section is loaded fresh from TMDB (all 5 rows, IMDb ratings, posters); 25s safety limit so a dead network never traps the app */
+var gate=function(){return Promise.resolve().then(function(){return trendLoad(true)}).then(function(){
+  var D=window.__trD||{},C=null;try{C=JSON.parse(LS.getItem(TRK)||'null')}catch(x){}
+  var ks=['m','d','w','t','x'];
+  ks.forEach(function(k,i){if((!D[k]||!D[k].length)&&C&&C.d&&C.d[k]&&C.d[k].length){D[k]=C.d[k];trDraw(TRS[i][0],TRS[i][1],D[k])}});
+  var seen={},rs=[],ps=[];
+  ks.forEach(function(k){(D[k]||[]).slice(0,k==='m'?10:20).forEach(function(o){
+    if(!o||seen[k+o.id])return;seen[k+o.id]=1;
+    if(o.p)ps.push(new Promise(function(r){var im=new Image();im.onload=im.onerror=r;im.src=IMG+'w185'+o.p}));
+    if(!seen['r'+o.id]){seen['r'+o.id]=1;if(!o.x&&trHasSrc())rs.push(trxGet(o).then(function(v){if(v){o.x=v;trPatch(o)}},function(){}))}})});
+  return Promise.all([cap(Promise.all(rs),12000),cap(Promise.all(ps),10000)])
+}).then(function(){return new Promise(function(r){setTimeout(r,250)})}).then(function(){return waitImgs(4000)})};
+var minWait=new Promise(function(r){setTimeout(r,Math.max(400,3100-performance.now()))});
+var g;try{g=gate()}catch(x){g=Promise.resolve()}
+Promise.all([minWait,cap(g.catch(function(){}),25000)]).then(function(){sp.classList.add('hide');setTimeout(function(){sp.remove()},420)})})();
 </script>
 <script>
 /* leaving the app clears the green 'updated' blink */
