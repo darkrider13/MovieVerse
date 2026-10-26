@@ -1043,7 +1043,7 @@ function render(){var app=appendMode;appendMode=false;try{trTagLib()}catch(e){}
     yn:function(a,b){return yr(b)-yr(a)||b.added-a.added},yo:function(a,b){return yr(a)-yr(b)||b.added-a.added},
     az:function(a,b){return a.title.localeCompare(b.title)},za:function(a,b){return b.title.localeCompare(a.title)}}[tab!=='all'?ff.s:'new'];
   var upAuto=tab==='upcoming'&&ff.s==='new';if(upAuto)cmp=upCmp;
-  if(tab==='all'){var W1=list.filter(function(m){return m.status==='watching'}).sort(cmp)[0]||null,RK={watching:1.5,upcoming:1,plan:2,favourite:3,watched:4},rk=function(m){if(m===W1)return -1;if(RK[m.status]!=null)return RK[m.status];var k=0;statuses.forEach(function(x,i){if(x.id===m.status)k=i});return 5+k};list.sort(function(a,b){return rk(a)-rk(b)||(a.status==='upcoming'&&b.status==='upcoming'?upCmp(a,b):cmp(a,b))})}
+  if(tab==='all'){var WT=list.filter(function(m){return m.status==='watching'}).sort(cmp).slice(0,2),RK={watching:1.5,upcoming:1,plan:2,favourite:3,watched:4},rk=function(m){var wi=WT.indexOf(m);if(wi>=0)return wi-2;if(RK[m.status]!=null)return RK[m.status];var k=0;statuses.forEach(function(x,i){if(x.id===m.status)k=i});return 5+k};list.sort(function(a,b){return rk(a)-rk(b)||(a.status==='upcoming'&&b.status==='upcoming'?upCmp(a,b):cmp(a,b))})}
   else list.sort(cmp);
   ordCtx=(tab!=='all'&&!upAuto&&!flat&&(!folder||ff.s==='new'))?inTab.slice().sort(cmp).map(function(m){return m.id}):null;
   var total=list.length;list=list.slice(0,lim);
@@ -1697,6 +1697,7 @@ $('#save').onclick=function(){
   fmtFr();
   var sv=parseFloat($('#fr').value);sv=isNaN(sv)?0:Math.max(0,Math.min(10,Math.round(sv*10)/10));
   if(!editId&&pick&&pick.tmdbId){var dx=movies.filter(function(m){return m.tmdbId===pick.tmdbId})[0];if(dx)editId=dx.id}
+  if(fstat==='watching'){var wc=movies.filter(function(m){return m.status==='watching'&&m.id!==editId}).length;if(wc>=2){toast('Your Watching list is full (2 of 2). Please finish watching your current movies before adding another.',5000);return}}
   var d={title:title,year:$('#fy').value.trim(),country:$('#fc').value.trim(),status:fstat,folder:fsel,score:sv,rating:sv/2};
   var mv;
   if(editId){mv=movies.filter(function(m){return m.id===editId})[0];if(mv.status!==d.status||(mv.folder||null)!==(d.folder||null))delete mv.ord;Object.assign(mv,d)}
