@@ -301,6 +301,8 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 :root[data-theme=light] .sh{background:linear-gradient(90deg,rgba(20,24,70,.06),rgba(20,24,70,.16),rgba(20,24,70,.06));background-size:200% 100%}
 #dlg.busy #form{pointer-events:none;opacity:.8}
 #dlg.busy #form .xw,#dlg.busy #form .xw .xb{pointer-events:auto;opacity:1;touch-action:manipulation}
+/* while details are still loading: the movie name (tap / long-press to copy) and the YouTube trailer icon stay usable */
+#dlg.busy #form #pvt,#dlg.busy #form #trl{pointer-events:auto;touch-action:manipulation}
 #dlg.hold #info~*{display:none!important}
 #save:disabled{opacity:.5}
 #save.wide{width:100%}
