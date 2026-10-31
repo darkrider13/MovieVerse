@@ -2450,8 +2450,7 @@ render();paintDirty();
     var a=document.activeElement;if(!a||!/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
     if(e.target.closest('input,textarea,select,label'))return;
     if(e.target.closest('button,a,[data-tab],[data-id],[data-up],[data-close]'))hideKb()},true);
-  document.addEventListener('visibilitychange',hideKb);
-  window.addEventListener('pagehide',hideKb);
+  /* going to the background no longer blurs the input: the cursor/keyboard stays as it was when you come back */
 })();
 
 /* close button pinned inside the scrolling area so it never scrolls away */
@@ -2490,10 +2489,8 @@ var g;try{g=gate()}catch(x){g=Promise.resolve()}
 Promise.all([minWait,cap(g.catch(function(){}),25000)]).then(function(){sp.classList.add('hide');setTimeout(function(){sp.remove()},420)})})();
 </script>
 <script>
-/* leaving the app clears the green 'updated' blink */
-(function(){function clr(){chgSet={};chgF={};document.querySelectorAll('.card.chg').forEach(function(c){c.classList.remove('chg')})}
-document.addEventListener('visibilitychange',function(){if(document.hidden)clr()});
-window.addEventListener('pagehide',clr);
+/* the 'updated' blink stays while the app is only in the background; it is gone after a full close + fresh launch (chgSet starts empty) or once the movie is opened */
+(function(){
 var dg=document.getElementById('dlg');if(dg)dg.addEventListener('close',function(){if(lastOpen){delete chgF[lastOpen];lastOpen=null}})})();
 /* copy buttons (.cpb) and long-press (about half a second) on a name/title = copy it */
 function copyName(t,anchor){
