@@ -1936,8 +1936,8 @@ var home='trend';
 function showView(v){var u=v==='up';$('#up').hidden=!u;$('#hsw').hidden=u;$('#hero').hidden=u;$('#library').hidden=u||home!=='lib';$('#trend').hidden=u||home!=='trend';$('#upb').textContent=u?'Home':'Releases';if(u&&(!uitems.length||udate!==today()||Date.now()-ustamp>UTTL))loadUp(true);if(!u&&home==='trend')trendLoad()}
 function setHome(h){home=h;try{LS.setItem('library.home',h)}catch(e){}document.querySelectorAll('#hsw [data-h]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.h===h))});showView($('#up').hidden?'library':'up');window.scrollTo(0,0)}
 $('#hsw').onclick=function(e){var b=e.target.closest('[data-h]');if(!b)return;if(b.dataset.h==='lib'){tab='all';folder=null;country='all';lim=60}if(b.dataset.h!==home)setHome(b.dataset.h);else if(b.dataset.h==='lib')render()};
-/* leaving the app puts the Status bar back on All */
-var wasOut=false;document.addEventListener('visibilitychange',function(){if(document.hidden){wasOut=true;tab='all';folder=null;country='all';lim=60}else{if(wasOut){wasOut=false;try{render()}catch(e){}}setTimeout(function(){try{backfill()}catch(e){}},400)}});
+/* backgrounding the app keeps the Status bar where it was; a fresh launch starts on All (tab='all' at init) */
+document.addEventListener('visibilitychange',function(){if(!document.hidden){setTimeout(function(){try{backfill()}catch(e){}},400)}});
 setInterval(function(){if(!document.hidden){try{backfill()}catch(e){}}},18e5);
 /* ---------- trending: TMDB is the main source; XMDb IMDb rating is the extra signal for the combined ranking ---------- */
 var TRK='library.tr3';
