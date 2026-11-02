@@ -39,7 +39,7 @@ jobs:
       - name: Black window background (no grey screen when the app restarts after a long time in background)
         run: |
           s=android/app/src/main/res/values/styles.xml
-          sed -i '/<style name="AppTheme.NoActionBar"/a\        <item name="android:windowBackground">@android:color/black</item>' "$s"
+          sed -i '/<style name="AppTheme.NoActionBar"/a\        <item name="android:windowBackground">@android:color/black</item>\n        <item name="android:forceDarkAllowed">false</item>' "$s"
           grep -n -A4 'name="AppTheme.NoActionBar"' "$s"
       - name: Black system splash (Android 12+ draws its own splash first; its default background looks grey)
         run: |
@@ -53,10 +53,22 @@ jobs:
           cat > "$f" <<JAVA
           package $pkg;
 
+          import android.graphics.Color;
+          import android.os.Bundle;
           import android.view.View;
           import com.getcapacitor.BridgeActivity;
 
           public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  // black from the very first frame: no grey flash while the WebView paints for the first time
+                  getWindow().getDecorView().setBackgroundColor(Color.BLACK);
+                  if (getBridge() != null && getBridge().getWebView() != null) {
+                      getBridge().getWebView().setBackgroundColor(Color.BLACK);
+                  }
+              }
+
               @Override
               public void onStart() {
                   super.onStart();
