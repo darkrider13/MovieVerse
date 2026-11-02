@@ -1064,8 +1064,10 @@ function render(){var app=appendMode;appendMode=false;try{trTagLib()}catch(e){}
       if(ff.y&&String(m.year)!==ff.y)return false;
       return true});
   }
+  /* rating sort value: Watched tab = my own rating; every other tab = IMDb rating. Unrated / N/A always go last. */
+  var sv=function(m){return tab==='watched'?sc(m):(parseFloat((rr(m)||[])[1])||0)};
   var cmp={new:function(a,b){var ao=a.ord,bo=b.ord;if(ao==null&&bo==null)return b.added-a.added;if(ao==null)return -1;if(bo==null)return 1;return ao-bo},old:function(a,b){return a.added-b.added},
-    rh:function(a,b){return sc(b)-sc(a)||b.added-a.added},rl:function(a,b){return sc(a)-sc(b)||b.added-a.added},
+    rh:function(a,b){var x=sv(a),y=sv(b);if(!x!==!y)return x?-1:1;return y-x||b.added-a.added},rl:function(a,b){var x=sv(a),y=sv(b);if(!x!==!y)return x?-1:1;return x-y||b.added-a.added},
     yn:function(a,b){return yr(b)-yr(a)||b.added-a.added},yo:function(a,b){return yr(a)-yr(b)||b.added-a.added},
     az:function(a,b){return a.title.localeCompare(b.title)},za:function(a,b){return b.title.localeCompare(a.title)}}[tab!=='all'?ff.s:'new'];
   var upAuto=tab==='upcoming'&&ff.s==='new';if(upAuto)cmp=upCmp;
