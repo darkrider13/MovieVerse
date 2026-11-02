@@ -101,7 +101,7 @@ input::selection,textarea::selection{background:rgba(255,255,255,.28);color:inhe
 #list .empty,#ulist .empty{min-height:50vh;display:flex;align-items:center;justify-content:center;padding:24px}
 dialog{position:fixed;border:0;border-radius:16px;padding:18px;width:min(94vw,480px);background:var(--s);color:var(--ink);max-height:90vh;overflow:hidden}
 html.dlgo,html.dlgo body{overflow:hidden!important;overscroll-behavior:none}
-dialog::backdrop{background:rgba(5,7,15,.32);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
+dialog::backdrop{background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
 label{display:block;font-weight:700;margin:12px 0 4px}
 .res{display:grid;gap:8px;margin-top:10px}
 .hit{display:flex;gap:10px;align-items:center;padding:6px;border-radius:10px;border:1px solid var(--line);background:none;text-align:left;cursor:pointer;width:100%}
@@ -431,10 +431,10 @@ img{-webkit-user-drag:none;user-drag:none}
 /* rows off screen are not laid out/painted; row height is fixed so snap positions stay exact */
 .snv .pc{content-visibility:auto;contain-intrinsic-size:auto var(--rh,69px)}
 /* dialog glass: blur lives on the static ::backdrop only, not on the box that scrolls */
-dialog{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:rgba(18,20,40,.62)}
+dialog{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:#000}
 :root[data-theme=light] dialog{background:rgba(255,255,255,.72)}
 /* cast / person popup: nearly solid so the red of the page behind never glows through at the bottom */
-#pdlg{background:rgba(14,16,32,.96)}
+#pdlg{background:#000}
 :root[data-theme=light] #pdlg{background:rgba(255,255,255,.96)}
 dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 /* movies | awards: two pages side by side, swipe left/right; each page keeps its own 5-row vertical snap list */
@@ -472,6 +472,21 @@ dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 /* API key copy button: the cast-card rule (.cp) was also hitting it and pushing the icon to the top */
 .eye.cp{position:absolute;right:40px;top:50%;transform:translateY(-50%);flex:none;display:inline-flex;flex-direction:row;align-items:center;justify-content:center;width:34px;height:34px;padding:0;margin:0;font:inherit}
 #pvt{cursor:pointer;width:fit-content;max-width:100%;-webkit-tap-highlight-color:transparent}
+/* trailer popup: slider of all official trailers (or teasers when no trailer exists) */
+#tdlg h2{margin:0 34px 4px 0;font-size:17px;line-height:1.25}
+#tdlg .tsub{margin:0 0 12px;color:var(--mut);font-size:12.5px}
+.tvl{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+.tvl::-webkit-scrollbar{display:none}
+.tvc{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;border:1px solid var(--line);background:var(--s);border-radius:12px;padding:0;overflow:hidden;cursor:pointer;text-align:left;display:block}
+.tvc .tth{position:relative;aspect-ratio:16/9;background:#000 center/cover no-repeat}
+.tvc .tth img{width:100%;height:100%;object-fit:cover;display:block}
+.tvc .tpl{position:absolute;left:50%;top:50%;width:54px;height:38px;margin:-19px 0 0 -27px;border-radius:11px;background:#ff0000;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.tvc .tmt{display:flex;align-items:center;gap:12px;padding:13px 14px 14px;border-top:1px solid var(--line);background:linear-gradient(to bottom,rgba(255,255,255,.04),rgba(255,255,255,0))}
+.tvc .tmt .tx{flex:1;min-width:0}
+.tvc .tmt b{font-size:14.5px;font-weight:700;line-height:1.3;letter-spacing:.1px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.tvc .tmt .mt{display:flex;align-items:center;gap:8px;margin-top:7px;color:var(--mut);font-size:12px;font-weight:500}
+.tvc .tmt .mt em{font-style:normal;font-size:10px;font-weight:700;letter-spacing:.7px;line-height:1;padding:3px 6px;border-radius:6px;border:1px solid var(--line);background:var(--s2);color:var(--ink)}
+.tcnt{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:7px;min-height:8px;margin-top:12px}.tcnt:empty{display:none}.tcnt i{width:7px;height:7px;border-radius:99px;background:var(--line);cursor:pointer;transition:width .2s,background .2s}.tcnt i.on{width:20px;background:var(--acc)}
 </style>
 <script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("library.theme")||"dark");document.querySelector("meta[name=theme-color]").content=document.documentElement.getAttribute("data-theme")==="dark"?"#000000":"#eceefb"}catch(e){}</script>
 </head>
@@ -564,6 +579,7 @@ dialog::backdrop{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 </dialog>
 
 <dialog id="mdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="mt" style="margin-top:0"></h2><p class="note" id="mx"></p><input type="text" id="mi" hidden><div id="mc" hidden></div><div class="row" style="margin-top:14px;justify-content:center"><button class="btn del" id="mdl" hidden>Delete</button><button class="btn pri" id="mok">OK</button></div></dialog>
+<dialog id="tdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="tdt"></h2><p class="tsub" id="tds"></p><div class="tvl" id="tvl"></div><div class="tcnt" id="tcn"></div></dialog>
 <dialog id="fdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="ft2" style="margin-top:0"></h2><input type="search" id="fsr" placeholder="Search country" hidden><div class="fopts" id="fo"></div><div class="row" style="margin-top:14px;justify-content:space-between"><button class="btn" id="fclr">Reset</button><button class="btn pri" id="fok">Done</button></div></dialog>
 <dialog id="sfdlg"><button type="button" class="xb" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 id="sft" style="margin-top:0"></h2><div class="fopts" id="sfo"></div><div class="row" style="margin-top:14px;justify-content:space-between"><button class="btn" id="sfclr">Reset</button><button class="btn pri" id="sfok">Done</button></div></dialog>
 
@@ -1139,29 +1155,64 @@ function trailerInfo(m){
         l.sort(function(a,b){return sc(b)-sc(a)});
         return l[0]?l[0].key:'';
       };
-      return {t:pick('Trailer'),s:pick('Teaser')};
+      /* every video of one kind: official ones only when at least one is marked official; newest first within the same language score */
+      var mk=function(type){
+        var l=all.filter(function(x){return x.type===type});
+        var of=l.filter(function(x){return x.official});if(of.length)l=of;
+        var sc=function(x){return x.iso_639_1===lg?2:!x.iso_639_1?1:0};
+        var dt=function(x){return String(x.published_at||'')};
+        /* "main" trailer = plain "Official Trailer" (not teaser / trailer 2 / final / international ...) */
+        var ms=function(x){var n=String(x.name||'').toLowerCase().trim();
+          if(/teaser|tv spot|clip|featurette|international|red band|final|\bnew\b|trailer\s*#?\s*([2-9]|ii)\b/.test(n))return 0;
+          if(/^(official\s+)?(main\s+)?trailer(\s*[\[(].*[\])])?$/.test(n))return 3;
+          if(n.indexOf('official trailer')>=0)return 2;
+          return n.indexOf('trailer')>=0?1:0};
+        l.sort(function(a,b){return (ms(b)-ms(a))||(sc(b)-sc(a))||dt(a).localeCompare(dt(b))});
+                return l;
+      };
+      var tl=mk('Trailer'),list=tl.length?tl:mk('Teaser');
+      return {t:pick('Trailer'),s:pick('Teaser'),list:list,kind:tl.length?'Trailer':'Teaser'};
     });
   });
   pr.then(function(i){if(!i||!i.t)setTimeout(function(){delete tcache[id]},3e5)},function(){delete tcache[id]});
   return tcache[id]=pr;
 }
-function openTrailer(m){
-  var go=function(id){
-    var web='https://www.youtube.com/watch?v='+id;
-    var C=window.Capacitor,AL=C&&C.Plugins&&C.Plugins.AppLauncher;
-    var browser=function(){
-      if(AL)AL.openUrl({url:web}).catch(function(){window.open(web,'_blank')});
-      else window.open(web,'_blank');
-    };
-    if(!AL){browser();return}
-    /* 1st priority: official YouTube app. 2nd: browser */
-    var ios=C.getPlatform&&C.getPlatform()==='ios';
-    var app=ios?'youtube://www.youtube.com/watch?v='+id:'vnd.youtube:'+id;
-    AL.openUrl({url:app}).then(function(r){if(!r||r.completed!==true)browser()}).catch(browser);
+function ytGo(id){
+  var web='https://www.youtube.com/watch?v='+id;
+  var C=window.Capacitor,AL=C&&C.Plugins&&C.Plugins.AppLauncher;
+  var browser=function(){
+    if(AL)AL.openUrl({url:web}).catch(function(){window.open(web,'_blank')});
+    else window.open(web,'_blank');
   };
+  if(!AL){browser();return}
+  /* 1st priority: official YouTube app. 2nd: browser */
+  var ios=C.getPlatform&&C.getPlatform()==='ios';
+  var app=ios?'youtube://www.youtube.com/watch?v='+id:'vnd.youtube:'+id;
+  AL.openUrl({url:app}).then(function(r){if(!r||r.completed!==true)browser()}).catch(browser);
+}
+/* trailer button -> popup with a slider of every official trailer (teasers when no trailer is released); tap a card -> plays on YouTube */
+/* sharpest thumbnail first (1280x720), falls back to 640x480, then 480x360 */
+function ytFb(i){var u=i.src;if(u.indexOf('maxresdefault')>-1)i.src=u.replace('maxresdefault','sddefault');else if(u.indexOf('sddefault')>-1)i.src=u.replace('sddefault','hqdefault');else i.style.display='none'}
+function openTrailer(m){
   trailerInfo(m).then(function(i){
-    if(!i){toast('Trailer not found');return}
-    if(i.t||i.s)go(i.t||i.s);else toast('Trailer not found');
+    var l=(i&&i.list)||[];
+    if(!l.length){toast('Trailer not found');return}
+    var d=$('#tdlg'),isT=i.kind==='Trailer',n=l.length;
+    $('#tdt').textContent=(isT?'Official Trailers':'Teasers')+(m.title?' · '+m.title:'');
+    $('#tds').textContent=isT?(n+(n>1?' trailers':' trailer')+' released'):('No trailer released yet · '+n+(n>1?' teasers':' teaser'));
+    var box=$('#tvl');box.scrollLeft=0;
+    box.innerHTML=l.map(function(v,k){
+      var dt=(v.published_at||'').slice(0,10),lang=v.iso_639_1?String(v.iso_639_1).toUpperCase():'';
+      if(dt.length===10)dt=(+dt.slice(8,10))+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+dt.slice(5,7)-1]+' '+dt.slice(0,4);
+      return '<button type="button" class="tvc" data-k="'+esc(v.key)+'"><div class="tth"><img src="https://i.ytimg.com/vi/'+esc(v.key)+'/maxresdefault.jpg" alt="" loading="lazy" onload="if(this.naturalWidth<200)ytFb(this)" onerror="ytFb(this)"><div class="tpl"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 5.5v13l11-6.5z" fill="#fff"/></svg></div></div><div class="tmt"><div class="tx"><b>'+esc(v.name||(isT?'Trailer':'Teaser'))+'</b><div class="mt">'+(dt?'<span>'+esc(dt)+'</span>':'')+(lang?'<em>'+esc(lang)+'</em>':'')+'</div></div></div></button>';
+    }).join('');
+    var cn=$('#tcn');
+    cn.innerHTML=n>1?l.map(function(v,k){return '<i data-d="'+k+'"></i>'}).join(''):'';
+    var upd=function(){var w=box.firstChild?box.firstChild.getBoundingClientRect().width+10:1;var k=Math.min(n-1,Math.max(0,Math.round(box.scrollLeft/w)));var ds=cn.children;for(var q=0;q<ds.length;q++)ds[q].className=q===k?'on':''};
+    box.onscroll=upd;upd();
+    cn.onclick=function(e){var t=e.target.closest('i');if(!t||!box.firstChild)return;box.scrollTo({left:(box.firstChild.getBoundingClientRect().width+10)*(+t.getAttribute('data-d')),behavior:'smooth'})};
+    box.onclick=function(e){var c=e.target.closest('.tvc');if(c)ytGo(c.getAttribute('data-k'))};
+    if(!d.open)d.showModal();
   }).catch(function(e){toast(e.message||'Trailer not found')});
 }
 function needsOtt(m){return !!(key&&m.tmdbId>0&&(!m.ottChk||m.ov===undefined||m.runtime===undefined||m.direct===undefined||m.cert===undefined||(ottState(m)!=='live'&&Date.now()-m.ottChk>((m.status==='upcoming'&&ottState(m)==='tba')?108e5:864e5)&&!(m.rel&&Date.now()-new Date(m.rel+'T00:00:00').getTime()>365*864e5))))}
