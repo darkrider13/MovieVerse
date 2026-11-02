@@ -284,7 +284,7 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 .fopts.g3{display:grid;grid-template-columns:repeat(3,1fr)}
 .fopts.g5{display:grid;grid-template-columns:repeat(5,1fr)}
 .fopts.g2 .pill,.fopts.g3 .pill,.fopts.g5 .pill{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;padding:9px 6px}
-.fopts.rows3{max-height:130px;overflow-y:auto;align-content:start;scroll-snap-type:y proximity;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.fopts.rows3{max-height:136px;padding:3px 0;box-sizing:border-box;scroll-padding:3px 0;overflow-y:auto;align-content:start;scroll-snap-type:y mandatory;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 .fopts.rows3 .pill{height:38px;line-height:36px;padding:0 6px;scroll-snap-align:start}
 #tabs{position:relative;flex-wrap:nowrap;gap:6px;overflow-x:auto;scroll-snap-type:x proximity;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 #tabs::-webkit-scrollbar{display:none}
