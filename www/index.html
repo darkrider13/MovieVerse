@@ -341,12 +341,11 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 #splash .sn{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-weight:800;font-size:30px;letter-spacing:-.03em;color:#f1f2fc;line-height:1}
 #splash .sn i{color:#ff1a1a;font-style:normal}
 #splash .st{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-weight:400;letter-spacing:.02em;color:#a3a9c9;font-size:16px;line-height:1.2;text-align:center;padding:0 24px}
-#splash .sn,#splash .st{opacity:0;filter:blur(10px);will-change:opacity,filter;transition:opacity 1s cubic-bezier(.22,.61,.36,1),filter 1.1s cubic-bezier(.22,.61,.36,1)}
-#splash.fr .sn,#splash.fr .st{opacity:1;filter:blur(0)}
-#splash.fr .st{transition-delay:.15s}
-/* intro: starts as the native splash icon leaves; everything comes in softly blurred and eases to sharp (opacity + blur only, GPU-friendly) */
-#splash img{will-change:opacity,filter;animation:splin 1.2s cubic-bezier(.22,.61,.36,1) .12s backwards}
-@keyframes splin{0%{opacity:0;filter:blur(10px)}100%{opacity:1;filter:blur(0)}}
+#splash img,#splash .sn,#splash .st{opacity:0;filter:blur(12px);transform:translateY(8px) scale(.96);will-change:opacity,filter,transform;transition:opacity 1.1s cubic-bezier(.22,.61,.36,1),filter 1.2s cubic-bezier(.22,.61,.36,1),transform 1.3s cubic-bezier(.22,.61,.36,1)}
+#splash.fr img,#splash.fr .sn,#splash.fr .st{opacity:1;filter:blur(0);transform:none}
+/* staggered: logo first, then name, then tagline - starts only when the JS adds .fr (after the native splash is gone and a frame is painted) */
+#splash.fr .sn{transition-delay:.35s}
+#splash.fr .st{transition-delay:.7s}
 /* poster collage behind the splash logo */
 #splash #slogo,#splash .sn,#splash .st{position:relative;z-index:2}
 #splash .pg{position:absolute;left:-16%;right:-16%;top:-12%;bottom:-12%;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:min-content;align-content:center;gap:10px;transform:rotate(-7deg);opacity:0;transition:opacity .7s ease;z-index:0;pointer-events:none}
@@ -2529,7 +2528,11 @@ document.querySelectorAll('.dsc').forEach(function(c){
 </script>
 <script>
 (function(){var sp=document.getElementById('splash');if(!sp)return;
-sp.classList.add('fr');
+/* FIXED SPLASH TIME: the splash is shown for exactly SPLASH_MS (ms), counted from the moment the intro animation really starts
+   (native splash already gone, first frame painted). Intro animation takes ~1.9s, the rest is the hold so the logo + name + tagline can be seen. Change this one number to make it shorter/longer. */
+var SPLASH_MS=3600;
+void sp.offsetWidth;
+var t0=0,started=new Promise(function(go){requestAnimationFrame(function(){requestAnimationFrame(function(){t0=performance.now();sp.classList.add('fr');go()})})});
 var cap=function(p,ms){return Promise.race([p,new Promise(function(r){setTimeout(r,ms)})])};
 /* the splash stays until the whole Trending section is loaded fresh from TMDB (all 5 rows, IMDb ratings, posters); 25s safety limit so a dead network never traps the app */
 var gate=function(){return Promise.resolve().then(function(){return trendLoad(true)}).then(function(){
@@ -2543,8 +2546,8 @@ var gate=function(){return Promise.resolve().then(function(){return trendLoad(tr
     if(!seen['r'+o.id]){seen['r'+o.id]=1;if(!o.x&&trHasSrc())rs.push(trxGet(o).then(function(v){if(v){o.x=v;trPatch(o)}},function(){}))}})});
   return Promise.all([cap(Promise.all(rs),12000),cap(Promise.all(ps),10000)])
 }).then(function(){return new Promise(function(r){setTimeout(r,250)})}).then(function(){return waitImgs(4000)})};
-var minWait=new Promise(function(r){setTimeout(r,Math.max(400,3100-performance.now()))});
-var g;try{g=gate()}catch(x){g=Promise.resolve()}
+var minWait=started.then(function(){return new Promise(function(r){setTimeout(r,Math.max(0,SPLASH_MS-(performance.now()-t0)))})});
+var g=started.then(function(){return new Promise(function(r){setTimeout(r,150)})}).then(function(){return gate()});g=g.catch(function(){});
 Promise.all([minWait,cap(g.catch(function(){}),25000)]).then(function(){sp.classList.add('hide');setTimeout(function(){sp.remove()},420)})})();
 </script>
 <script>
