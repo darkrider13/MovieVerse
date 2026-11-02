@@ -1165,6 +1165,8 @@ function trailerInfo(m){
       var mk=function(type){
         var l=all.filter(function(x){return x.type===type});
         var of=l.filter(function(x){return x.official});if(of.length)l=of;
+        /* real trailers exist -> drop anything that is really a teaser / spot / clip even if TMDB typed it as "Trailer" */
+        if(type==='Trailer'){var nt=l.filter(function(x){return !/teaser|tv spot|clip|featurette|behind the scenes/i.test(String(x.name||''))});if(nt.length)l=nt}
         var sc=function(x){return x.iso_639_1===lg?2:!x.iso_639_1?1:0};
         var dt=function(x){return String(x.published_at||'')};
         /* "main" trailer = plain "Official Trailer" (not teaser / trailer 2 / final / international ...) */
@@ -1173,8 +1175,12 @@ function trailerInfo(m){
           if(/^(official\s+)?(main\s+)?trailer(\s*[\[(].*[\])])?$/.test(n))return 3;
           if(n.indexOf('official trailer')>=0)return 2;
           return n.indexOf('trailer')>=0?1:0};
-        l.sort(function(a,b){return (ms(b)-ms(a))||(sc(b)-sc(a))||dt(a).localeCompare(dt(b))});
-                return l;
+        /* 1st tab = the main Official Trailer; every other video follows in release order (oldest -> newest) */
+        if(!l.length)return l;
+        var best=l.slice().sort(function(a,b){return (ms(b)-ms(a))||(sc(b)-sc(a))||dt(a).localeCompare(dt(b))})[0];
+        var rest=l.filter(function(x){return x!==best});
+        rest.sort(function(a,b){return dt(a).localeCompare(dt(b))||(ms(b)-ms(a))});
+        return [best].concat(rest);
       };
       var tl=mk('Trailer'),list=tl.length?tl:mk('Teaser');
       return {t:pick('Trailer'),s:pick('Teaser'),list:list,kind:tl.length?'Trailer':'Teaser'};
