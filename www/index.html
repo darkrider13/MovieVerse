@@ -230,8 +230,10 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 .sw[aria-pressed=true]{border-color:var(--ink)}
 .swc{width:34px;height:34px;border:0;padding:0;background:none;border-radius:50%;cursor:pointer;overflow:hidden}
 .crumb2{display:flex;align-items:center;gap:8px;margin:12px 0 8px}
-.crumb2 .ic{padding:0;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;font-size:18px;color:var(--ink);flex:none}
-.crumb2 .del{color:#e24b4b}
+.crumb2 .ic{padding:0;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;font-size:18px;line-height:1;color:var(--ink);flex:none}
+.crumb2 .ic svg{display:block;margin:auto}
+.crumb2 .del{color:#ff0000}
+.crumb2 .del svg{stroke:#ff0000;stroke-width:2.4}
 .fname{display:inline-flex;align-items:center;gap:8px;min-width:0;font-size:18px;font-weight:800;color:var(--ink);padding:7px 14px}
 .fname svg{color:var(--fc,var(--acc));flex:none}
 .fname span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1023,7 +1025,7 @@ function render(){var app=appendMode;appendMode=false;try{trTagLib()}catch(e){}
   if(tab!=='all'){
     if(folder){
       var cf=fo.filter(function(f){return f.id===folder})[0];
-      h='<div class="crumb2" style="--fc:'+(cf.color||'var(--acc)')+'"><button class="pill ic" data-fa="back" aria-label="Back to '+esc(SL[tab])+'">←</button><button class="pill fname" data-fa="ren" aria-label="Rename folder">'+FI+'<span>'+esc(cf.name)+'</span></button><span class="grow"></span><button class="pill ic del" data-fa="del" aria-label="Delete folder">'+TRASH+'</button></div>'+fRow();
+      h='<div class="crumb2" style="--fc:'+(cf.color||'var(--acc)')+'"><button class="pill ic" data-fa="back" aria-label="Back to '+esc(SL[tab])+'"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H5M11 5l-7 7 7 7"/></svg></button><button class="pill fname" data-fa="ren" aria-label="Rename folder">'+FI+'<span>'+esc(cf.name)+'</span></button><span class="grow"></span><button class="pill ic del" data-fa="del" aria-label="Delete folder">'+TRASH+'</button></div>'+fRow();
     }else{
       h=fRow()+(flat?'':'<div class="folders">'+fo.map(function(f){var n=movies.filter(function(m){return m.folder===f.id}).length;return '<button class="fold" data-f="'+f.id+'" style="'+fst(f)+'">'+FI+'<b>'+esc(f.name)+'</b><small>'+n+'</small></button>'}).join('')+'<button class="fold new" data-fa="new">+ New folder</button></div>');
     }
