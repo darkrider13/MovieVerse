@@ -2541,7 +2541,7 @@ document.querySelectorAll('.dsc').forEach(function(c){
    (native splash already gone, first frame painted). Intro animation takes ~1.9s, the rest is the hold so the logo + name + tagline can be seen. Change this one number to make it shorter/longer. */
 var SPLASH_MS=3600;
 void sp.offsetWidth;
-var INTRO_GAP=200; /* black gap (ms) between the native bootloader icon leaving and our logo animation starting - raise it if they still clash */
+var INTRO_GAP=0; /* black gap (ms) between the native bootloader icon leaving and our logo animation starting - raise it if they still clash */
 var t0=0,started=new Promise(function(go){requestAnimationFrame(function(){requestAnimationFrame(function(){setTimeout(function(){requestAnimationFrame(function(){t0=performance.now();sp.classList.add('fr');go()})},INTRO_GAP)})})});
 var cap=function(p,ms){return Promise.race([p,new Promise(function(r){setTimeout(r,ms)})])};
 /* the splash stays until the whole Trending section is loaded fresh from TMDB (all 5 rows, IMDb ratings, posters); 25s safety limit so a dead network never traps the app */
