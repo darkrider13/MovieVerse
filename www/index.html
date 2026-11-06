@@ -865,11 +865,11 @@ function todayL(){var d=new Date(),z=function(n){return (n<10?'0':'')+n};return 
 var lsNew=[];
 function hotMode(m,anySt){
   if(!m||!m.tmdbId||(!anySt&&m.status!=='upcoming')||!m.rel||unrel(m))return 0;
-  if(ottState(m)!=='live'){
+  /* no real OTT date has arrived yet (nothing announced, date still in future, or only "Streaming now" with no date): keep full refresh so a newly announced OTT date is never missed */
+  if(!ottConfirmed(m)){
     if(Date.now()-new Date(m.rel+'T00:00:00').getTime()>365*864e5)return 0;
     return 'all'}
-  var st=(m.ottDate&&m.ottDate<=today())?new Date(m.ottDate+'T00:00:00').getTime():m.liveSince;
-  if(!st){m.liveSince=Date.now();lsNew.push(m);return 'rating'}
+  var st=new Date(m.ottDate+'T00:00:00').getTime();
   return Date.now()-st<=7*864e5?'rating':0}
 function hot(m){return !!hotMode(m)}
 /* Coming Soon order:
@@ -878,7 +878,7 @@ function hot(m){return !!hotMode(m)}
    3) not in cinemas yet (earliest cinema date first, no date last)
    4) already streaming (newest first) */
 function upGrp(m){
-  if(ottState(m)==='live')return 3;
+  if(ottState(m)==='live'&&!(m.ottDate&&m.ottDate>today()))return 3;
   if(m.rel&&m.rel<=todayL())return m.ottDate?0:1;
   return 2}
 function upCmp(a,b){
@@ -1149,6 +1149,8 @@ function applyRel(m,d){var r=ottInfo(d);m.runtime=d.runtime||0;m.rel=d.release_d
   var hc=false,hd=false;(((d.release_dates||{}).results)||[]).forEach(function(c){(c.release_dates||[]).forEach(function(r){if(r.type===2||r.type===3)hc=true;else if(r.type===4)hd=true})});m.direct=!hc&&hd;return m}
 /* live = streaming now, soon = OTT date announced, tba = nothing announced yet */
 function ottState(m){if(m.ott&&m.ott.length)return 'live';if(m.ottDate&&m.ottDate<=today())return 'live';return m.ottDate?'soon':'tba'}
+/* confirmed streaming = the OTT date has really arrived. Provider names alone ("Streaming now" with no date) do NOT count: the real OTT date can still be announced later */
+function ottConfirmed(m){return !!(m.ottDate&&m.ottDate<=today())}
 function tp(id){return id<0?'/tv/'+(-id):'/movie/'+id}
 var tcache={};
 function trailerInfo(m){
@@ -1229,7 +1231,7 @@ function openTrailer(m){
     if(!d.open)d.showModal();
   }).catch(function(e){toast(e.message||'Trailer not found')});
 }
-function needsOtt(m){return !!(key&&m.tmdbId>0&&(!m.ottChk||m.ov===undefined||m.runtime===undefined||m.direct===undefined||m.cert===undefined||(ottState(m)!=='live'&&Date.now()-m.ottChk>((m.status==='upcoming'&&ottState(m)==='tba')?108e5:864e5)&&!(m.rel&&Date.now()-new Date(m.rel+'T00:00:00').getTime()>365*864e5))))}
+function needsOtt(m){return !!(key&&m.tmdbId>0&&(!m.ottChk||m.ov===undefined||m.runtime===undefined||m.direct===undefined||m.cert===undefined||((ottState(m)!=='live'||(m.status==='upcoming'&&!ottConfirmed(m)))&&Date.now()-m.ottChk>((m.status==='upcoming'&&!m.ottDate)?108e5:864e5)&&!(m.rel&&Date.now()-new Date(m.rel+'T00:00:00').getTime()>365*864e5))))}
 function enrichOtt(m,force){
   if(m.tmdbId<0){if(!key||(!force&&m.seasons!=null&&m.sl&&m.kind&&m.ottChk&&m.runtime!==undefined))return Promise.resolve(false);return tmdb(tp(m.tmdbId),{append_to_response:'watch/providers,content_ratings'}).then(function(d){m.cert=tvCert(d);m.rel=d.first_air_date||m.rel||'';m.ott=tvProv(d);m.ottChk=Date.now();m.runtime=tvRt(d);m.kind=tvKind(d);m.seasons=d.number_of_seasons||0;m.eps=d.number_of_episodes||0;m.sl=slOf(d);return true}).catch(function(){return false})}
   if(!force&&!needsOtt(m))return Promise.resolve(false);
@@ -2539,7 +2541,7 @@ document.querySelectorAll('.dsc').forEach(function(c){
 (function(){var sp=document.getElementById('splash');if(!sp)return;
 /* FIXED SPLASH TIME: the splash is shown for exactly SPLASH_MS (ms), counted from the moment the intro animation really starts
    (native splash already gone, first frame painted). Intro animation takes ~1.9s, the rest is the hold so the logo + name + tagline can be seen. Change this one number to make it shorter/longer. */
-var SPLASH_MS=3600;
+var SPLASH_MS=2200;
 void sp.offsetWidth;
 var INTRO_GAP=0; /* black gap (ms) between the native bootloader icon leaving and our logo animation starting - raise it if they still clash */
 var t0=0,started=new Promise(function(go){requestAnimationFrame(function(){requestAnimationFrame(function(){setTimeout(function(){requestAnimationFrame(function(){t0=performance.now();sp.classList.add('fr');go()})},INTRO_GAP)})})});
@@ -2558,7 +2560,8 @@ var gate=function(){return Promise.resolve().then(function(){return trendLoad(tr
 }).then(function(){return new Promise(function(r){setTimeout(r,250)})}).then(function(){return waitImgs(4000)})};
 var minWait=started.then(function(){return new Promise(function(r){setTimeout(r,Math.max(0,SPLASH_MS-(performance.now()-t0)))})});
 var g=started.then(function(){return new Promise(function(r){setTimeout(r,150)})}).then(function(){return gate()});g=g.catch(function(){});
-Promise.all([minWait,cap(g.catch(function(){}),25000)]).then(function(){sp.classList.add('hide');setTimeout(function(){sp.remove()},420)})})();
+/* splash no longer waits for Trending: it hides after SPLASH_MS, Trending keeps loading in the background */
+minWait.then(function(){sp.classList.add('hide');setTimeout(function(){sp.remove()},420)})})();
 </script>
 <script>
 /* the 'updated' blink stays while the app is only in the background; it is gone after a full close + fresh launch (chgSet starts empty) or once the movie is opened */
