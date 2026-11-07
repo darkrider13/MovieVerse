@@ -1833,11 +1833,11 @@ $('#save').onclick=function(){
   var title=$('#ft').value.trim();if(!title){$('#ft').focus();return}if(!fstat){toast('Select a status first');return}
   fmtFr();
   var sv=parseFloat($('#fr').value);sv=isNaN(sv)?0:Math.max(0,Math.min(10,Math.round(sv*10)/10));
-  if(!editId&&pick&&pick.tmdbId){var dx=movies.filter(function(m){return m.tmdbId===pick.tmdbId})[0];if(dx)editId=dx.id}
+  var reAdd=false;if(!editId&&pick&&pick.tmdbId){var dx=movies.filter(function(m){return m.tmdbId===pick.tmdbId})[0];if(dx){editId=dx.id;reAdd=true}}
   if(fstat==='watching'){var wc=movies.filter(function(m){return m.status==='watching'&&m.id!==editId}).length;if(wc>=2){$('#dlg').close();toast('Watchlist Full (2/2)\nFinish a movie before adding another.',4000);return}}
   var d={title:title,year:$('#fy').value.trim(),country:$('#fc').value.trim(),status:fstat,folder:fsel,score:sv,rating:sv/2};
   var mv;
-  if(editId){mv=movies.filter(function(m){return m.id===editId})[0];if(mv.status!==d.status||(mv.folder||null)!==(d.folder||null))delete mv.ord;Object.assign(mv,d)}
+  if(editId){mv=movies.filter(function(m){return m.id===editId})[0];if(reAdd||mv.status!==d.status||(mv.folder||null)!==(d.folder||null)){delete mv.ord;mv.added=Date.now()}Object.assign(mv,d)}
   else{mv=Object.assign(d,{id:uid(),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,lang:pick&&pick.lang,genres:pick&&pick.genres,imdb:pick&&pick.imdb,tr:pick&&pick.tr,rt:pick&&pick.rt,vc:pick&&pick.vc,imdbId:pick&&pick.imdbId,chk:pick&&pick.chk,rel:pick&&pick.rel,ottDate:pick&&pick.ottDate,ottC:pick&&pick.ottC,ott:pick&&pick.ott,ottChk:pick&&pick.ottChk,direct:pick&&pick.direct,cert:pick&&pick.cert,runtime:pick&&pick.runtime,xm:pick&&pick.xm,xvc:pick&&pick.xvc,om:pick&&pick.om,omvc:pick&&pick.omvc,wbud:pick&&pick.wbud,wrev:pick&&pick.wrev,wcur:pick&&pick.wcur,wpg:pick&&pick.wpg,wkc:pick&&pick.wkc,wkv:pick&&pick.wkv,wkt:pick&&pick.wkt,ov:pick&&pick.ov,seasons:pick&&pick.seasons,eps:pick&&pick.eps,sl:pick&&pick.sl,kind:pick&&pick.kind,added:Date.now()});movies.push(mv)}
   putMany([mv]);$('#dlg').close();render();if(!$('#up').hidden)drawUp();
 };
