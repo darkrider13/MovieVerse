@@ -136,6 +136,17 @@ label{display:block;font-weight:700;margin:12px 0 4px}
 .fold b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fold small{color:var(--mut)}
 .fold.new{border-style:dashed;color:var(--mut);justify-content:center;font-weight:700}
+.fchips{display:flex;align-items:center;gap:8px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;padding:2px 0 8px;margin-top:8px}
+.fchips::-webkit-scrollbar{display:none}
+.fch{flex:0 0 calc((100% - 8px)/2);min-width:0;scroll-snap-align:start;scroll-snap-stop:always;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--s);color:var(--ink);border-radius:99px;padding:8px 12px;font-weight:600;font-size:13px;cursor:pointer}
+.fch .fn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fch small{color:var(--mut);font-weight:600;font-size:12px;flex:none}
+.fch.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.fch.on small{color:var(--bg);opacity:.65}
+.fdot{width:9px;height:9px;border-radius:50%;background:var(--fc,var(--acc));flex:none}
+.fch[data-f].on{background-color:var(--s)!important;background-image:linear-gradient(135deg,color-mix(in srgb,var(--fc) 60%,transparent),color-mix(in srgb,var(--fc) 18%,transparent))!important;border-color:var(--fc);color:var(--ink)}
+.fch[data-f].on small{color:var(--ink);opacity:.75}
+.fch.new{border-style:dashed;color:var(--mut)}
 .crumb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
 .crumb b{font-size:20px}.grow{flex:1}
 #mdlg{width:min(90vw,380px)}
@@ -931,6 +942,9 @@ function rr(m){return m.xm?['IMDb',m.xm]:(m.om?['IMDb',m.om]:null)}
 function fmtTs(t){var d=new Date(t);return d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getFullYear()}
 function sc(m){return m.score!=null?m.score:(m.rating?m.rating*2:0)}
 var COUNTRIES=[['BD','Bangladesh'],['IN','India'],['IN-BN','India (Bengali)'],['US','United States'],['GB','United Kingdom'],['KR','South Korea'],['JP','Japan'],['CN','China'],['FR','France'],['DE','Germany'],['IT','Italy'],['ES','Spain'],['TR','Turkey'],['TH','Thailand'],['PK','Pakistan'],['NP','Nepal'],['LK','Sri Lanka'],['ID','Indonesia'],['MY','Malaysia'],['PH','Philippines'],['VN','Vietnam'],['HK','Hong Kong'],['TW','Taiwan'],['RU','Russia'],['UA','Ukraine'],['PL','Poland'],['SE','Sweden'],['NO','Norway'],['DK','Denmark'],['FI','Finland'],['NL','Netherlands'],['BE','Belgium'],['CH','Switzerland'],['AT','Austria'],['IE','Ireland'],['PT','Portugal'],['GR','Greece'],['CZ','Czechia'],['HU','Hungary'],['RO','Romania'],['IL','Israel'],['IR','Iran'],['EG','Egypt'],['SA','Saudi Arabia'],['AE','United Arab Emirates'],['NG','Nigeria'],['ZA','South Africa'],['KE','Kenya'],['MA','Morocco'],['BR','Brazil'],['MX','Mexico'],['AR','Argentina'],['CO','Colombia'],['CL','Chile'],['PE','Peru'],['CA','Canada'],['AU','Australia'],['NZ','New Zealand']];
+var ISO2={"ascension island":"AC","andorra":"AD","united arab emirates":"AE","afghanistan":"AF","antigua & barbuda":"AG","anguilla":"AI","albania":"AL","armenia":"AM","angola":"AO","antarctica":"AQ","argentina":"AR","american samoa":"AS","austria":"AT","australia":"AU","aruba":"AW","åland islands":"AX","azerbaijan":"AZ","bosnia & herzegovina":"BA","barbados":"BB","bangladesh":"BD","belgium":"BE","burkina faso":"BF","bulgaria":"BG","bahrain":"BH","burundi":"BI","benin":"BJ","st. barthélemy":"BL","bermuda":"BM","brunei":"BN","bolivia":"BO","caribbean netherlands":"BQ","brazil":"BR","bahamas":"BS","bhutan":"BT","bouvet island":"BV","botswana":"BW","belarus":"BY","belize":"BZ","canada":"CA","cocos (keeling) islands":"CC","congo - kinshasa":"CD","central african republic":"CF","congo - brazzaville":"CG","switzerland":"CH","côte d’ivoire":"CI","cook islands":"CK","chile":"CL","cameroon":"CM","china":"CN","colombia":"CO","clipperton island":"CP","sark":"CQ","costa rica":"CR","cuba":"CU","cape verde":"CV","curaçao":"CW","christmas island":"CX","cyprus":"CY","czechia":"CZ","germany":"DE","diego garcia":"DG","djibouti":"DJ","denmark":"DK","dominica":"DM","dominican republic":"DO","algeria":"DZ","ceuta & melilla":"EA","ecuador":"EC","estonia":"EE","egypt":"EG","western sahara":"EH","eritrea":"ER","spain":"ES","ethiopia":"ET","finland":"FI","fiji":"FJ","falkland islands":"FK","micronesia":"FM","faroe islands":"FO","france":"FR","gabon":"GA","united kingdom":"GB","grenada":"GD","georgia":"GE","french guiana":"GF","guernsey":"GG","ghana":"GH","gibraltar":"GI","greenland":"GL","gambia":"GM","guinea":"GN","guadeloupe":"GP","equatorial guinea":"GQ","greece":"GR","south georgia & south sandwich islands":"GS","guatemala":"GT","guam":"GU","guinea-bissau":"GW","guyana":"GY","hong kong sar china":"HK","heard & mcdonald islands":"HM","honduras":"HN","croatia":"HR","haiti":"HT","hungary":"HU","canary islands":"IC","indonesia":"ID","ireland":"IE","israel":"IL","isle of man":"IM","india":"IN","british indian ocean territory":"IO","iraq":"IQ","iran":"IR","iceland":"IS","italy":"IT","jersey":"JE","jamaica":"JM","jordan":"JO","japan":"JP","kenya":"KE","kyrgyzstan":"KG","cambodia":"KH","kiribati":"KI","comoros":"KM","st. kitts & nevis":"KN","north korea":"KP","south korea":"KR","kuwait":"KW","cayman islands":"KY","kazakhstan":"KZ","laos":"LA","lebanon":"LB","st. lucia":"LC","liechtenstein":"LI","sri lanka":"LK","liberia":"LR","lesotho":"LS","lithuania":"LT","luxembourg":"LU","latvia":"LV","libya":"LY","morocco":"MA","monaco":"MC","moldova":"MD","montenegro":"ME","st. martin":"MF","madagascar":"MG","marshall islands":"MH","north macedonia":"MK","mali":"ML","myanmar (burma)":"MM","mongolia":"MN","macao sar china":"MO","northern mariana islands":"MP","martinique":"MQ","mauritania":"MR","montserrat":"MS","malta":"MT","mauritius":"MU","maldives":"MV","malawi":"MW","mexico":"MX","malaysia":"MY","mozambique":"MZ","namibia":"NA","new caledonia":"NC","niger":"NE","norfolk island":"NF","nigeria":"NG","nicaragua":"NI","netherlands":"NL","norway":"NO","nepal":"NP","nauru":"NR","niue":"NU","new zealand":"NZ","oman":"OM","panama":"PA","peru":"PE","french polynesia":"PF","papua new guinea":"PG","philippines":"PH","pakistan":"PK","poland":"PL","st. pierre & miquelon":"PM","pitcairn islands":"PN","puerto rico":"PR","palestinian territories":"PS","portugal":"PT","palau":"PW","paraguay":"PY","qatar":"QA","réunion":"RE","romania":"RO","serbia":"RS","russia":"RU","rwanda":"RW","saudi arabia":"SA","solomon islands":"SB","seychelles":"SC","sudan":"SD","sweden":"SE","singapore":"SG","st. helena":"SH","slovenia":"SI","svalbard & jan mayen":"SJ","slovakia":"SK","sierra leone":"SL","san marino":"SM","senegal":"SN","somalia":"SO","suriname":"SR","south sudan":"SS","são tomé & príncipe":"ST","el salvador":"SV","sint maarten":"SX","syria":"SY","eswatini":"SZ","tristan da cunha":"TA","turks & caicos islands":"TC","chad":"TD","french southern territories":"TF","togo":"TG","thailand":"TH","tajikistan":"TJ","tokelau":"TK","timor-leste":"TL","turkmenistan":"TM","tunisia":"TN","tonga":"TO","türkiye":"TR","trinidad & tobago":"TT","tuvalu":"TV","taiwan":"TW","tanzania":"TZ","ukraine":"UA","uganda":"UG","u.s. outlying islands":"UM","united states":"US","uruguay":"UY","uzbekistan":"UZ","vatican city":"VA","st. vincent & grenadines":"VC","venezuela":"VE","british virgin islands":"VG","u.s. virgin islands":"VI","vietnam":"VN","vanuatu":"VU","wallis & futuna":"WF","samoa":"WS","kosovo":"XK","yemen":"YE","mayotte":"YT","south africa":"ZA","zambia":"ZM","zimbabwe":"ZW","usa":"US","us":"US","united states of america":"US","america":"US","uk":"GB","great britain":"GB","britain":"GB","england":"GB","scotland":"GB","uae":"AE","korea":"KR","south korean":"KR","republic of korea":"KR","russian federation":"RU","czech republic":"CZ","ivory coast":"CI","turkey":"TR","turkiye":"TR","burma":"MM","swaziland":"SZ","east timor":"TL","holland":"NL","viet nam":"VN","hong kong":"HK","macau":"MO","palestine":"PS","congo":"CG","dr congo":"CD","drc":"CD","macedonia":"MK","vatican":"VA","bangla":"BD","srilanka":"LK"};
+function fitChips(){document.querySelectorAll('#fold .fch[data-f]').forEach(function(b){var n=b.querySelector('.fn');if(!n)return;var full=b.dataset.full||(b.dataset.full=n.textContent);n.textContent=full;var code=ISO2[full.trim().toLowerCase()];if(code&&n.scrollWidth>n.clientWidth+1)n.textContent=code})}
+window.addEventListener('resize',fitChips);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitChips);
 var GENRES=[['28','Action'],['12','Adventure'],['16','Animation'],['35','Comedy'],['80','Crime'],['99','Documentary'],['18','Drama'],['10751','Family'],['14','Fantasy'],['36','History'],['27','Horror'],['10402','Music'],['9648','Mystery'],['10749','Romance'],['878','Science Fiction'],['53','Thriller'],['10752','War'],['37','Western']];
 var CY=new Date().getFullYear(),YEARS=[0,1,2,3,4].map(function(i){return [String(CY+i),String(CY+i)]});
 var ucs=[],ugs=[],uy='',utype='movie',fk=null,ftmp=[],iid=null;
@@ -1039,23 +1053,24 @@ function render(){var app=appendMode;appendMode=false;try{trTagLib()}catch(e){}
   if(act&&(act.offsetLeft<tsl||act.offsetLeft+act.offsetWidth>tsl+tabs.clientWidth+1))tabs.scrollLeft=act.offsetLeft;
   var fctx=tab+':'+(folder||'');if(ffor!==fctx){ff={g:[],r:'',y:'',s:'new'};ffor=fctx}
   var anyF=!!(ff.g.length||ff.r||ff.y||ff.s!=='new'),flat=tab!=='all'&&!folder&&anyF;
-  var inTab=movies.filter(function(m){return tab==='all'||(m.status===tab&&(folder?m.folder===folder:(flat?true:!m.folder)))});
+  var allw=tab!=='all'&&!folder&&fo.length>0;
+  var inTab=movies.filter(function(m){return tab==='all'||(m.status===tab&&(folder?m.folder===folder:((flat||allw)?true:!m.folder)))});
   var h='';
   var fRow=function(){var sl=SORTS.filter(function(x){return x[0]===ff.s})[0][1];
     var fp=function(k,t,on){return '<button type="button" class="pill'+(on?' on':'')+'" data-ff="'+k+'">'+esc(t)+' ▾</button>'};
     return '<div class="ffil">'+fp('g','Genre',ff.g.length)+fp('r',ff.r?(ff.r==='0'?'Unrated':'Rating '+ff.r+'+'):'Rating',ff.r)+fp('y',ff.y||'Year',ff.y)+fp('s','Sort',ff.s!=='new')+(anyF?'<button type="button" class="pill" data-ff="x">Reset</button>':'')+'</div>'};
   if(tab!=='all'){
-    if(folder){
-      var cf=fo.filter(function(f){return f.id===folder})[0];
-      h='<div class="crumb2" style="--fc:'+(cf.color||'var(--acc)')+'"><button class="pill ic" data-fa="back" aria-label="Back to '+esc(SL[tab])+'"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H5M11 5l-7 7 7 7"/></svg></button><button class="pill fname" data-fa="ren" aria-label="Rename folder">'+FI+'<span>'+esc(cf.name)+'</span></button><span class="grow"></span><button class="pill ic del" data-fa="del" aria-label="Delete folder">'+TRASH+'</button></div>'+fRow();
-    }else{
-      h=fRow()+(flat?'':'<div class="folders">'+fo.map(function(f){var n=movies.filter(function(m){return m.folder===f.id}).length;return '<button class="fold" data-f="'+f.id+'" style="'+fst(f)+'">'+FI+'<b>'+esc(f.name)+'</b><small>'+n+'</small></button>'}).join('')+'<button class="fold new" data-fa="new">+ New folder</button></div>');
-    }
+    var chips='<div class="fchips"><button class="fch'+(folder?'':' on')+'" data-fa="all"><span class="fn">All</span><small>'+movies.filter(function(m){return m.status===tab}).length+'</small></button>'+fo.map(function(f){var n=movies.filter(function(m){return m.folder===f.id}).length;return '<button class="fch'+(folder===f.id?' on':'')+'" data-f="'+f.id+'" style="'+(fst(f)||'--fc:var(--acc)')+'"><i class="fdot"></i><span class="fn">'+esc(f.name)+'</span><small>'+n+'</small></button>'}).join('')+'<button class="fch new" data-fa="new">+ Folder</button></div>';
+    var bar=folder?'<div class="crumb2" style="margin:2px 0 8px"><button class="pill" data-fa="ren">Rename folder</button><span class="grow"></span><button class="pill ic del" data-fa="del" aria-label="Delete folder">'+TRASH+'</button></div>':'';
+    h=chips+bar+fRow();
   }
+  var oc=$('#fold .fchips'),osl=oc?oc.scrollLeft:0;
   $('#fold').innerHTML=h;
+  var nc=$('#fold .fchips');if(nc&&osl){nc.style.scrollSnapType='none';nc.scrollLeft=osl;requestAnimationFrame(function(){nc.style.scrollSnapType=''})}
+  fitChips();
   var list=inTab.filter(function(m){return (country==='all'||(m.country||'Other')===country)&&m.title.toLowerCase().indexOf(q.toLowerCase())>-1});
   var yr=function(m){return parseInt(m.year,10)||0};
-  if(folder||flat){
+  if(folder||flat||allw){
     list=list.filter(function(m){
       if(ff.g.length&&!(m.genres||[]).some(function(x){return ff.g.indexOf(x)>-1}))return false;
       var rv0=tab==='watched'?sc(m):(parseFloat((rr(m)||[])[1])||0);
@@ -1071,9 +1086,10 @@ function render(){var app=appendMode;appendMode=false;try{trTagLib()}catch(e){}
     yn:function(a,b){return yr(b)-yr(a)||b.added-a.added},yo:function(a,b){return yr(a)-yr(b)||b.added-a.added},
     az:function(a,b){return a.title.localeCompare(b.title)},za:function(a,b){return b.title.localeCompare(a.title)}}[tab!=='all'?ff.s:'new'];
   var upAuto=tab==='upcoming'&&ff.s==='new';if(upAuto)cmp=upCmp;
+  if(allw&&!upAuto&&ff.s==='new')cmp=function(a,b){return (b.added||0)-(a.added||0)};
   if(tab==='all'){var WT=list.filter(function(m){return m.status==='watching'}).sort(cmp).slice(0,2),RK={watching:1.5,upcoming:1,plan:2,favourite:3,watched:4},rk=function(m){var wi=WT.indexOf(m);if(wi>=0)return wi-2;if(RK[m.status]!=null)return RK[m.status];var k=0;statuses.forEach(function(x,i){if(x.id===m.status)k=i});return 5+k};list.sort(function(a,b){return rk(a)-rk(b)||(a.status==='upcoming'&&b.status==='upcoming'?upCmp(a,b):cmp(a,b))})}
   else list.sort(cmp);
-  ordCtx=(tab!=='all'&&!upAuto&&!flat&&(!folder||ff.s==='new'))?inTab.slice().sort(cmp).map(function(m){return m.id}):null;
+  ordCtx=(tab!=='all'&&!upAuto&&!flat&&!allw&&(!folder||ff.s==='new'))?inTab.slice().sort(cmp).map(function(m){return m.id}):null;
   var total=list.length;list=list.slice(0,lim);
   var qc=$('#qcnt');if(qc)qc.textContent=fmtK(inTab.length);
   if(!list.length){$('#list').innerHTML='<div class="empty">'+(flat?'No movies match these filters.':folder?(inTab.length?'No movies match these filters.':'This folder is empty. Tap Add to Library to put the first film in it.'):(!ready?'<span class="ldw"><i class="lds"></i>Loading your library…</span>':movies.length?'No movies match this view.':'Your library is empty. Tap Add to Library, or browse Coming Soon.'))+'</div>';return}
@@ -2135,7 +2151,7 @@ function keyLoad(){return (key?tmdb('/configuration'):Promise.resolve()).then(fu
 $('#trend').onclick=function(e){$('#ulist').onclick(e)};
 /* side-swipe: only between status tabs inside Your Library; Trending <-> Your Library is button-only */
 (function(){var sx=0,sy=0,t0=0,ok=false,bad=false;
-  document.addEventListener('touchstart',function(e){ok=false;bad=false;if(e.touches.length!==1||document.querySelector('dialog[open]')||!$('#up').hidden||(home==='lib'&&folder))return;if(e.target.closest&&e.target.closest('#tabs,.crow,.ffil,input,textarea,select,.fly'))return;sx=e.touches[0].clientX;sy=e.touches[0].clientY;t0=Date.now();ok=true},{passive:true});
+  document.addEventListener('touchstart',function(e){ok=false;bad=false;if(e.touches.length!==1||document.querySelector('dialog[open]')||!$('#up').hidden||(home==='lib'&&folder))return;if(e.target.closest&&e.target.closest('#tabs,.crow,.ffil,.fchips,input,textarea,select,.fly'))return;sx=e.touches[0].clientX;sy=e.touches[0].clientY;t0=Date.now();ok=true},{passive:true});
   document.addEventListener('touchmove',function(){if((typeof dr!=='undefined'&&dr&&dr.on)||(typeof cdr!=='undefined'&&cdr&&cdr.on))bad=true},{passive:true});
   document.addEventListener('touchend',function(e){if(!ok||bad)return;ok=false;var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;if(Math.abs(dx)<70||Math.abs(dx)<2*Math.abs(dy)||Date.now()-t0>700)return;go(dx<0?1:-1)},{passive:true});
   function go(d){
@@ -2435,7 +2451,7 @@ $('#fold').onclick=function(e){
     return}
   var f=e.target.closest('[data-f]');if(f){folder=f.dataset.f;country='all';lim=60;render();return}
   var a=e.target.closest('[data-fa]');if(!a)return;var k=a.dataset.fa;
-  if(k==='back'){folder=null;lim=60;render();return}
+  if(k==='all'||k==='back'){folder=null;lim=60;render();return}
   if(k==='new'){modal({title:'New folder in '+SL[tab],input:true,placeholder:'Folder name',colors:true,color:FPAL[folders.length%FPAL.length],ok:'Create'}).then(function(r){if(r){folders.push({id:uid(),name:r.n,status:tab,color:r.c});saveF();render()}});return}
   var cf=folders.filter(function(x){return x.id===folder})[0];
   if(k==='ren')modal({title:'Edit folder',input:true,value:cf.name,colors:true,color:cf.color,ok:'Save'}).then(function(r){if(r){cf.name=r.n;cf.color=r.c;saveF();render()}});
