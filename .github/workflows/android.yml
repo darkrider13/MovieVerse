@@ -127,6 +127,16 @@ jobs:
           for n in ('ic_launcher', 'ic_launcher_round'):
               open(res + '/mipmap-anydpi-v26/' + n + '.xml', 'w').write('<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n    <background android:drawable="@color/ic_launcher_background"/>\n    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n</adaptive-icon>\n')
           PY
+      - name: Signing key from GitHub Secret + rising version code (so every new APK installs over the old one)
+        env:
+          KS: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KS" || { echo "Secret SIGNING_KEYSTORE_BASE64 is missing (Settings > Secrets and variables > Actions)"; exit 1; }
+          mkdir -p ~/.android
+          echo "$KS" | base64 -d > ~/.android/debug.keystore
+          g=android/app/build.gradle
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" "$g"
+          grep -n "versionCode" "$g"
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - name: Publish APK to release
         env:
