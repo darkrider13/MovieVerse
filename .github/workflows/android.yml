@@ -130,14 +130,43 @@ jobs:
       - name: Signing key from GitHub Secret + rising version code (so every new APK installs over the old one)
         env:
           KS: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          KS_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KS_PASS: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
           test -n "$KS" || { echo "Secret SIGNING_KEYSTORE_BASE64 is missing (Settings > Secrets and variables > Actions)"; exit 1; }
           mkdir -p ~/.android
-          echo "$KS" | base64 -d > ~/.android/debug.keystore
+          # tolerate spaces / line breaks / Windows CRLF pasted into the secret
+          echo "$KS" | tr -d ' \r\n' | base64 -d > ~/.android/debug.keystore
+          # defaults match the standard Android debug key; set the optional secrets only if your keystore uses other values
+          export KS_ALIAS="${KS_ALIAS:-androiddebugkey}" KS_PASS="${KS_PASS:-android}"
+          export KEY_PASS="${KEY_PASS:-$KS_PASS}"
+          echo "KS_ALIAS=$KS_ALIAS" >> "$GITHUB_ENV"; echo "KS_PASS=$KS_PASS" >> "$GITHUB_ENV"; echo "KEY_PASS=$KEY_PASS" >> "$GITHUB_ENV"
+          echo "== Keystore fingerprint (must be the same on every build) =="
+          keytool -list -v -keystore ~/.android/debug.keystore -storepass "$KS_PASS" -alias "$KS_ALIAS" | grep -E "Alias name|SHA256|Valid" \
+            || { echo "Cannot open keystore: wrong alias or password. Add secrets SIGNING_KEY_ALIAS / SIGNING_STORE_PASSWORD / SIGNING_KEY_PASSWORD."; exit 1; }
           g=android/app/build.gradle
-          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" "$g"
+          # sign the debug build explicitly with this keystore (not whatever Gradle would pick)
+          python3 - <<'PY'
+          p = 'android/app/build.gradle'
+          s = open(p).read()
+          cfg = ("    signingConfigs {\n        mv {\n"
+                 "            storeFile file(System.getProperty('user.home') + '/.android/debug.keystore')\n"
+                 "            storePassword System.getenv('KS_PASS')\n"
+                 "            keyAlias System.getenv('KS_ALIAS')\n"
+                 "            keyPassword System.getenv('KEY_PASS')\n        }\n    }\n")
+          s = s.replace('    buildTypes {', cfg + '    buildTypes {\n        debug {\n            signingConfig signingConfigs.mv\n        }', 1)
+          open(p, 'w').write(s)
+          PY
+          # version code always rises (minutes since 1970), even if the repo or run counter is ever reset
+          vc=$(( $(date +%s) / 60 ))
+          sed -i "s/versionCode [0-9]*/versionCode $vc/" "$g"
           grep -n "versionCode" "$g"
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+      - name: Show APK signature (compare with the keystore fingerprint above)
+        run: |
+          bt=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n1)
+          $bt/apksigner verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk | grep -E "SHA-256|Signer #1 certificate DN"
       - name: Publish APK to release
         env:
           GH_TOKEN: ${{ github.token }}
