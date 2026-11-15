@@ -273,14 +273,28 @@ input[type=number]{border:1px solid var(--line);background:var(--s2);border-radi
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 #ft.ro{pointer-events:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.pw.one[data-lp]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#ft.ro::selection{background:transparent;color:inherit}
 input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
-.info{display:grid;grid-template-columns:1fr 1fr;grid-auto-flow:dense;gap:8px;margin-top:10px}
+.info{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-auto-flow:dense;gap:8px;margin-top:10px}
 .info:empty{display:none}
 .tile{background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:7px 10px}
 .tile.wide{grid-column:1/-1}
-.pair{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pair{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
 #dlg .pair{gap:6px}
 .tile a{color:var(--acc);text-decoration:none;font-weight:600}
 .tile small{display:block;color:var(--mut);font-size:12px}
+/* Rating tile: swipe sideways IMDb <-> Letterboxd */
+.info>.tile{min-width:0}
+.lbsw{display:block;overflow:hidden;min-width:0;width:100%}
+.lbtr{display:flex;transition:transform .28s cubic-bezier(.3,.7,.2,1)}
+.lbp{flex:none;width:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:8px;white-space:nowrap;overflow:hidden;line-height:20px}
+.lbp .rl{flex:none;text-align:left;white-space:nowrap;display:inline-flex;align-items:center;gap:7px}
+.lbp .ri{flex:none;width:16px;height:16px;display:block}
+.lbp .rv{flex:none;margin-left:auto;text-align:right;display:inline-flex;align-items:baseline;line-height:20px}
+.lbp .rv small{margin-left:2px;line-height:1}
+.lbp .rn{line-height:20px}
+.lbp small{display:inline;font-size:11px}
+.lbdots{position:absolute;right:10px;top:10px;display:flex;gap:4px}
+.lbdots i{width:5px;height:5px;border-radius:50%;background:var(--mut);opacity:.4;transition:opacity .2s,background .2s}
+.lbdots i.on{background:var(--ink);opacity:1}
 .dupb{display:inline-block;background:none;color:var(--w);padding:0;font-size:10px;line-height:16px;font-weight:700;white-space:nowrap}
 .trow{display:flex;align-items:center;gap:8px;margin:12px 0 4px}
 #dlg .trow{margin:10px 0 4px}
@@ -628,8 +642,8 @@ var apis=null;
 try{apis=JSON.parse(LS.getItem('library.apis'))}catch(e){}
 if(!Array.isArray(apis)){apis=[];
 [['tmdb','TMDB',keys],['omdb','OMDb',omdbs]].forEach(function(d){apis.push({id:d[0],name:d[1],keys:d[2].slice()})})}
-[['tmdb','TMDB'],['xmdb','XMDb'],['omdb','OMDb']].forEach(function(d){if(!apis.some(function(a){return a.id===d[0]}))apis.push({id:d[0],name:d[1],keys:[]})});
-function normApis(){var want=[['tmdb','TMDB'],['xmdb','XMDb'],['omdb','OMDb']],out=[];want.forEach(function(d){var a=apis.filter(function(x){return x.id===d[0]})[0]||{id:d[0],keys:[]};a.name=d[1];out.push(a)});apis.forEach(function(a){if(['tmdb','xmdb','omdb'].indexOf(a.id)<0)out.push(a)});apis=out}
+[['tmdb','TMDB'],['mdblist','MDBList'],['xmdb','XMDb'],['omdb','OMDb']].forEach(function(d){if(!apis.some(function(a){return a.id===d[0]}))apis.push({id:d[0],name:d[1],keys:[]})});
+function normApis(){var want=[['tmdb','TMDB'],['mdblist','MDBList'],['xmdb','XMDb'],['omdb','OMDb']],out=[];want.forEach(function(d){var a=apis.filter(function(x){return x.id===d[0]})[0]||{id:d[0],keys:[]};a.name=d[1];out.push(a)});apis.forEach(function(a){if(['tmdb','xmdb','omdb','mdblist'].indexOf(a.id)<0)out.push(a)});apis=out}
 normApis();
 function apiKeys(id){var a=apis.filter(function(x){return x.id===id})[0];return a?a.keys.slice():[]}
 keys=apiKeys('tmdb');omdbs=apiKeys('omdb');
@@ -669,17 +683,136 @@ function parseO(j){
   if(j.imdbVotes&&j.imdbVotes!=='N/A')o.vc=fmtV(parseInt(j.imdbVotes.replace(/,/g,''),10));
   return o}
 function unrel(m){return !!(m&&m.rel&&m.rel>today())}
-var soOpen=false;
+
+/* ---------- MDBList = main rating source (one call: IMDb, Letterboxd, Rotten Tomatoes, Metacritic, Roger Ebert, MyAnimeList) + TMDB rating from the TMDB key ----------
+   m.md = {tr:Trakt /10, i:IMDb, v:IMDb votes, l:Letterboxd /5, rt:RT critics %, ra:RT audience %, mc:Metacritic, mu:Metacritic users /10, eb:Roger Ebert /4, ma:MyAnimeList /10}   m.tm = TMDB /10
+   MDBList keys: Settings > MDBList. Without a key (or when MDBList fails): IMDb (XMDb/OMDb) > Rotten Tomatoes critics > TMDB. */
+/* currency of the movie's country + USD rate (MDBList money is USD): live rates once per 12h, built-in rates as fallback */
+var CCUR={'india':'INR','bangladesh':'BDT','usa':'USD','uk':'GBP','canada':'CAD','australia':'AUD','new zealand':'NZD','japan':'JPY','south korea':'KRW','china':'CNY','pakistan':'PKR','nepal':'NPR','sri lanka':'LKR','russia':'RUB','brazil':'BRL','mexico':'MXN','turkey':'TRY','thailand':'THB','indonesia':'IDR','uae':'AED','saudi arabia':'SAR','hong kong':'HKD','taiwan':'TWD','sweden':'SEK','denmark':'DKK','norway':'NOK','switzerland':'CHF','poland':'PLN','south africa':'ZAR','egypt':'EGP','nigeria':'NGN','singapore':'SGD','malaysia':'MYR','philippines':'PHP','vietnam':'VND','israel':'ILS'};
+'france germany italy spain netherlands belgium austria ireland portugal finland greece luxembourg estonia latvia lithuania slovakia slovenia croatia malta cyprus'.split(' ').forEach(function(n){CCUR[n]='EUR'});
+var FXD={INR:88,BDT:122,GBP:.75,EUR:.86,CAD:1.38,AUD:1.53,NZD:1.7,JPY:150,KRW:1400,CNY:7.1,PKR:281,NPR:140,LKR:300,RUB:80,BRL:5.4,MXN:18.5,TRY:41,THB:33,IDR:16500,AED:3.67,SAR:3.75,HKD:7.8,TWD:31,SEK:9.5,DKK:6.4,NOK:10.2,CHF:.8,PLN:3.7,ZAR:17.5,EGP:48,NGN:1500,SGD:1.3,MYR:4.2,PHP:58,VND:26000,ILS:3.3},FXL=null;
+function fxLoad(){try{var c=JSON.parse(LS.getItem('library.fx')||'null');if(c&&c.r){FXL=c.r;if(Date.now()-c.t<432e5)return}}catch(e){}
+  try{mdHttp('https://open.er-api.com/v6/latest/USD').then(function(r){if(r.s!==200)return;var j=JSON.parse(r.t);if(j&&j.rates&&j.rates.INR){FXL=j.rates;try{LS.setItem('library.fx',JSON.stringify({t:Date.now(),r:j.rates}))}catch(e){}}}).catch(function(){})}catch(e){}}
+function cCur(m){var c=String(m&&m.country||'').split(/[,\/&]/)[0].trim().toLowerCase();return CCUR[c]||'USD'}
+function fxRate(c){return c==='USD'?1:((FXL&&FXL[c])||FXD[c]||1)}
+fxLoad();
+var mdBad={};
+function mdHttp(u){
+  var C=window.Capacitor,H=C&&C.Plugins&&C.Plugins.CapacitorHttp;
+  if(H&&H.get)return H.get({url:u,responseType:'text',connectTimeout:8000,readTimeout:8000,headers:{'Accept':'application/json'}}).then(function(r){return {s:r.status,t:typeof r.data==='string'?r.data:JSON.stringify(r.data||'')}});
+  return fetch(u).then(function(r){return r.text().then(function(t){return {s:r.status,t:t}})})}
+var MDS={imdb:'i',letterboxd:'l',tomatoes:'rt',rottentomatoes:'rt',tomatometer:'rt',popcorn:'ra',tomatoesaudience:'ra',audience:'ra',rottentomatoesaudience:'ra',metacritic:'mc',metacriticuser:'mu',rogerebert:'eb',myanimelist:'ma',mal:'ma',trakt:'tr'};
+function mdNum(x){x=parseFloat(x);return x>0?x:0}
+function mdParse(j){
+  var o={};
+  ((j&&j.ratings)||[]).forEach(function(x){
+    var k=MDS[String(x.source||'').toLowerCase().replace(/[^a-z]/g,'')];if(!k||o[k])return;
+    var sc=mdNum(x.score),v=mdNum(x.value),t;
+    var vt0=parseInt(x.votes,10);if(vt0>0){o.vt=o.vt||{};o.vt[k]=fmtV(vt0)}
+    if(k==='i'){t=(v>0&&v<=10)?v:sc/10;if(t>0)o.i=t.toFixed(1);var vt=parseInt(x.votes,10);if(vt>0)o.v=fmtV(vt);return}
+    if(k==='l'){t=sc?sc/20:(v>5?v/2:v);if(t>0&&t<=5)o.l=t.toFixed(1);return}
+    if(k==='rt'||k==='ra'||k==='mc'){t=sc||v;if(t>0&&t<=100)o[k]=String(Math.round(t));return}
+    if(k==='mu'||k==='ma'||k==='tr'){t=sc?sc/10:v;if(t>0&&t<=10)o[k]=t.toFixed(1);return}
+    if(k==='eb'){t=sc?sc/25:v;if(t>0&&t<=4)o.eb=(Math.round(t*2)/2).toFixed(1)}});
+  var bn=mdNum(j&&j.budget),rn=mdNum(j&&j.revenue);if(bn>0)o.bud=bn;if(rn>0)o.rev=rn;o.bv=1;o.vv=1; /* MDBList budget / revenue (USD): used only when Wikipedia has none */
+  var dd=String((j&&j.released_digital)||'');if(/^\d{4}-\d{2}-\d{2}/.test(dd))o.d=dd.slice(0,10); /* digital (OTT) release date: used only when TMDB has none */
+  return o}
+/* resolves: undefined = no MDBList key, null = failed / limit, {} or {...} = ratings */
+function mdFetch(m){
+  var ks=apiKeys('mdblist').filter(Boolean);if(!ks.length)return Promise.resolve(undefined);
+  var tv=m.tmdbId<0,kind=tv?'show':'movie',path=m.imdbId?'imdb/'+kind+'/'+m.imdbId:'tmdb/'+kind+'/'+Math.abs(m.tmdbId);
+  function go(i){
+    if(i>=ks.length)return Promise.resolve(null);
+    return mdHttp('https://api.mdblist.com/'+path+'?apikey='+encodeURIComponent(ks[i])).then(function(r){
+      if(r.s===429||r.s===401||r.s===403)return go(i+1);
+      if(r.s===404)return {};
+      if(r.s!==200)return null;
+      var j;try{j=JSON.parse(r.t)}catch(e){return null}
+      return mdParse(j)}).catch(function(){return go(i+1)})}
+  return go(0)}
+function mdSkip(m){return !m||!m.tmdbId||(mdBad[m.id]&&Date.now()-mdBad[m.id]<6e5)}
+function needsMd(m){var ttl=(m.status==='upcoming'||unrel(m))?108e5:((+m.year||0)>=new Date().getFullYear()-1?216e5:6048e5);if(m.md&&!m.md.l&&!unrel(m))ttl=Math.min(ttl,864e5); if(m.md&&(!m.md.vv||(!m.md.bv&&!(m.wbud>0||m.wrev>0))))ttl=0; /* no Letterboxd yet: look again at least once a day */
+  return !mdSkip(m)&&(!!key||apiKeys('mdblist').some(Boolean))&&(m.mdc===undefined||Date.now()-m.mdc>ttl)}
+function enrichMd(m,force){
+  if(mdSkip(m)||(!force&&!needsMd(m)))return Promise.resolve(false);
+  var tmv=0,tmP=key?tmdb(tp(m.tmdbId)).then(function(d){tmv=(d&&d.vote_count>0)?d.vote_count:0;return d&&d.vote_count>0&&d.vote_average>0?d.vote_average.toFixed(1):''}).catch(function(){return null}):Promise.resolve(undefined);
+  return Promise.all([mdFetch(m),tmP]).then(function(r){
+    var o=r[0],t=r[1],okM=!!o&&typeof o==='object',okT=typeof t==='string';
+    if(!okM&&!okT){if(o===null||t===null)mdBad[m.id]=Date.now();return false}
+    if(okM){m.md=o;mdOtt(m)}if(okT){m.tm=t;m.tmv=tmv}
+    m.mdc=Date.now();return true
+  }).catch(function(){mdBad[m.id]=Date.now();return false})}
+/* OTT date (library movies): TMDB's digital date (m.ottT) and MDBList's digital date (m.md.d); whichever is EARLIER is shown; on the same date or when only one exists MDBList has priority, then TMDB. Every refresh of either source re-runs this, so a changed date updates. m.ottS='md' marks that MDBList's date won. */
+function mdOtt(m){
+  if(!m||!(m.tmdbId>0))return;
+  var t=m.ottT!==undefined?m.ottT:(m.ottS==='md'?'':(m.ottDate||'')),d=(m.md&&m.md.d)||'';
+  m.ottT=t;
+  if(d&&(!t||d<=t)){m.ottDate=d;m.ottC='';m.ottS='md'}
+  else{m.ottDate=t;m.ottC=t?(m.ottCT||''):'';m.ottS=''}}
+/* the swipe pages of the Rating tile, in order */
+var RI={
+'IMDb':'<rect width="24" height="24" rx="5" fill="#F5C518"/><text x="12" y="15.2" font-size="8.6" font-weight="900" text-anchor="middle" fill="#000" font-family="Arial,sans-serif">IMDb</text>',
+'Letterboxd':'<circle cx="12" cy="12" r="12" fill="#14181c"/><circle cx="7" cy="12" r="3.1" fill="#ff8000"/><circle cx="17" cy="12" r="3.1" fill="#40bcf4"/><circle cx="12" cy="12" r="3.1" fill="#00e054"/>',
+'Tomatoes':'<circle cx="12" cy="13.5" r="9.5" fill="#fa320a"/><path d="M12 6c-.8-2.6-3.2-3.3-5-2.6 1.3.2 2.2.9 2.6 2-1.7-.6-3.4.2-3.9 1.2 1.7-.1 3 .3 3.9 1.1z" fill="#00912d"/><path d="M12 6c.8-2.6 3.2-3.3 5-2.6-1.3.2-2.2.9-2.6 2 1.7-.6 3.4.2 3.9 1.2-1.7-.1-3 .3-3.9 1.1z" fill="#00912d"/>',
+'Popcorn':'<circle cx="7.5" cy="8.5" r="3.4" fill="#ffe27a"/><circle cx="12" cy="6.8" r="3.6" fill="#fff0a8"/><circle cx="16.5" cy="8.5" r="3.4" fill="#ffe27a"/><path d="M5.5 10.5h13l-1.6 12h-9.8z" fill="#fa320a"/><path d="M9.6 10.5l.5 12M14.4 10.5l-.5 12" stroke="#fff" stroke-width="1.6"/>',
+'Metacritic':'<circle cx="12" cy="12" r="11" fill="#1c1c1c" stroke="#ffbd3f" stroke-width="2"/><text x="12" y="16.4" font-size="12" font-weight="900" text-anchor="middle" fill="#ffbd3f" font-family="Arial,sans-serif">M</text>',
+'Metacritic Users':'<circle cx="12" cy="12" r="11" fill="#1c1c1c" stroke="#ffbd3f" stroke-width="2"/><text x="12" y="16.4" font-size="12" font-weight="900" text-anchor="middle" fill="#ffbd3f" font-family="Arial,sans-serif">M</text>',
+'TMDb':'<rect width="24" height="24" rx="5" fill="#0d253f"/><text x="12" y="14.6" font-size="7.4" font-weight="900" text-anchor="middle" fill="#01b4e4" font-family="Arial,sans-serif">TMDb</text>',
+'Trakt':'<rect width="24" height="24" rx="6" fill="#b01fd0"/><circle cx="12" cy="12" r="6.6" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M8.6 12.2l2.5 2.5 4.6-4.9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+'RogerEbert':'<path d="M3.5 10.5h4v10h-4zM9.5 20.5h7.6a2 2 0 0 0 1.95-1.55l1.2-5.6A2 2 0 0 0 18.3 10.9h-3.9l.8-3.6a1.8 1.8 0 0 0-3.2-1.4L9.5 10.5z" fill="#fff"/>',
+'MyAnimeList':'<rect width="24" height="24" rx="5" fill="#2e51a2"/><text x="12" y="15.2" font-size="8.4" font-weight="900" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif">MAL</text>'
+};
+function rIco(l){var d=RI[l];return d?'<svg class="ri" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">'+d+'</svg>':''}
+var rateVS=[];
+function ratePages(m){
+  var P=[],md=m.md||null,vt=(md&&md.vt)||{};rateVS=[];
+  function add(l,v,c,suf,vv,vl){rateVS.push({v:vv||'',l:vl||'Votes'});P.push('<span class="lbp" data-v="'+esc(vv||'')+'" data-vl="'+(vl||'Votes')+'"><span class="rl">'+rIco(l)+'<span class="rn">'+esc(l)+'</span></span><span class="rv"><span class="'+c+'">'+esc(v)+'</span>'+(suf?'<small> '+suf+'</small>':'')+'</span></span>')}
+  var rv=rr(m);if(rv)add(rv[0],rv[1],rcls(parseFloat(rv[1])*10),'',(md&&md.i&&md.v)||m.vc);
+  if(md&&md.l)add('Letterboxd',md.l,rcls(parseFloat(md.l)*20),'/5',vt.l);
+  var rtc=(md&&md.rt)||(m.rt?String(parseInt(m.rt,10)):'');
+  if(rtc&&rtc!=='NaN')add('Tomatoes',rtc+'%',rcls(parseInt(rtc,10),1),'',vt.rt,'Reviews');
+  if(md&&md.ra)add('Popcorn',md.ra+'%',rcls(parseInt(md.ra,10),1),'',vt.ra);
+  if(md&&md.mc)add('Metacritic',md.mc,rcls(parseInt(md.mc,10),1),'',vt.mc,'Reviews');
+  if(md&&md.mu)add('Metacritic Users',md.mu,rcls(parseFloat(md.mu)*10),'',vt.mu);
+  if(m.tm)add('TMDb',m.tm,rcls(parseFloat(m.tm)*10),'',m.tmv>0?fmtV(m.tmv):'');
+  if(md&&md.tr)add('Trakt',md.tr,rcls(parseFloat(md.tr)*10),'',vt.tr);
+  if(md&&md.eb)add('RogerEbert',md.eb,rcls(parseFloat(md.eb)*25),'/4','','Reviews');
+  if(md&&md.ma)add('MyAnimeList',md.ma,rcls(parseFloat(md.ma)*10),'',vt.ma);
+  return P}
+
+/* Rating tile auto-fit: a long source name shrinks (down to 10px) until it fits; the tile itself never changes size */
+function rsFit(){var L=document.querySelectorAll('#info .lbp'),fs=0,i;
+  for(i=0;i<L.length;i++){var l=L[i].querySelector('.rl');if(l)l.style.fontSize=''}
+  for(i=0;i<L.length;i++){var p=L[i],l=p.querySelector('.rl'),v=p.querySelector('.rv');if(!l||!v||!p.clientWidth)continue;
+    var f=parseFloat(getComputedStyle(l).fontSize)||13,av=p.clientWidth-v.offsetWidth-10;
+    while(l.offsetWidth>av&&f>10){f-=0.5;l.style.fontSize=f+'px'}
+    l.style.fontSize='';if(!fs||f<fs)fs=f}
+  /* one common size for every page of the tile: only shrinks when the longest name needs it */
+  if(fs&&fs<(parseFloat(getComputedStyle(L[0].querySelector('.rl')).fontSize)||13))for(i=0;i<L.length;i++){var q=L[i].querySelector('.rl');if(q)q.style.fontSize=fs+'px'}}
+(function(){var I=document.getElementById('info');if(!I||!window.MutationObserver)return;var busy=false;
+  new MutationObserver(function(){if(busy)return;busy=true;requestAnimationFrame(function(){try{rsFit()}catch(e){}busy=false})}).observe(I,{childList:true,subtree:true});
+  window.addEventListener('resize',function(){try{rsFit()}catch(e){}})})();
+function rsGo(el,p){
+  var n=+el.dataset.n||1;p=Math.max(0,Math.min(n-1,p));rsPage=p;
+  var tr=el.querySelector('.lbtr');if(tr)tr.style.transform='translateX(-'+(p*100)+'%)';
+  var pe=el.querySelectorAll('.lbp')[p],vtl=el.parentNode&&el.parentNode.querySelector('[data-vt]');
+  if(pe&&vtl){var vs=vtl.querySelector('small'),vb=vtl.querySelector('b');if(vs)vs.textContent=pe.dataset.vl||'Votes';if(vb)vb.textContent=pe.dataset.v||'N/A'}
+  var d=el.querySelectorAll('.lbdots i');for(var i=0;i<d.length;i++)d[i].classList.toggle('on',i===p)}
+var soOpen=false,rsPage=0;
 function slOf(d){return (d.seasons||[]).filter(function(x){return x.season_number>0}).map(function(x){return [x.season_number,x.episode_count||0]})}
 function infoH(m){
   var t=[],ld=!!m._ld&&!unrel(m),rv=(unrel(m)||ld)?null:rr(m),SH='<span class="sh"></span>';
   if(m.lang)t.push(['Language',esc(m.lang)]);
   if(m.tmdbId<0&&m.seasons!=null){t.push(['Seasons',esc(m.seasons)+(m.sl&&m.sl.length?' '+(soOpen?'▴':'▾'):''),m.sl&&m.sl.length?' data-so="1" style="cursor:pointer"':'']);t.push(['Episodes',esc(m.eps)])}
-  if(ld){t.push(['Rating',SH]);t.push(['Votes',SH]);t.push(['Rotten Tomatoes',SH])}
-  if(rv)t.push(['Rating',esc(rv[0])+' <span class="'+rcls(parseFloat(rv[1])*10)+'">'+esc(rv[1])+'</span>']);
+  if(ld){t.push(['Rating',SH]);t.push(['Votes',SH])}
+  var RP=(unrel(m)||ld)?[]:ratePages(m);
+  if(RP.length>1){
+    var pg=Math.min(rsPage,RP.length-1),dots='';for(var di=0;di<RP.length;di++)dots+='<i'+(di===pg?' class="on"':'')+'></i>';
+    t.push(['Rating','<span class="lbsw"><span class="lbtr" style="transform:translateX(-'+(pg*100)+'%)">'+RP.join('')+'</span></span><span class="lbdots">'+dots+'</span>',' data-lbs="1" data-n="'+RP.length+'" style="position:relative;touch-action:pan-y"'])}
+  else if(RP.length)t.push(['Rating','<span class="lbsw">'+RP[0]+'</span>']);
   else if(!ld)t.push(['Rating','<span style="color:var(--mut)">N/A</span>']);
-  if(m.vc&&rr(m)&&!unrel(m)&&!ld)t.push(['Votes',esc(m.vc)]);
-  if(m.rt&&!unrel(m)&&!ld)t.push(['Rotten Tomatoes','<span class="'+rcls(parseInt(m.rt,10),1)+'">'+esc(m.rt)+'</span>']);
+  var vv=(m.md&&m.md.i&&m.md.v)||m.vc;
+  if(RP.length&&rateVS.some(function(x){return x.v})){var vi=Math.min(rsPage,RP.length-1);t.push([rateVS[vi].l,esc(rateVS[vi].v||'N/A'),' data-vt="1"'])}
   if(m.tmdbId<0&&m.ottChk){var od1=m.rel?fmt(m.rel)+(m.rel>today()?' (coming soon)':''):'N/A';t.push(['OTT release',esc(od1),'',t.length%2===0])}
   var h=t.map(function(x){return '<div class="tile'+(x[3]?' wide':'')+cfc(m,x[0])+'"'+(x[2]||'')+'><small>'+x[0]+'</small><b>'+x[1]+'</b></div>'}).join('');
   if(soOpen&&m.tmdbId<0&&m.sl&&m.sl.length)h+='<div class="tile wide"><small>Episodes per season</small><b>'+m.sl.map(function(x){return 'Season '+x[0]+' · '+x[1]+' episode'+(x[1]===1?'':'s')}).join('<br>')+'</b></div>';
@@ -688,7 +821,7 @@ function infoH(m){
 /* no empty holes in the 2-column grid: half tiles back-fill gaps (grid dense); if one half tile would be left alone, it spans the full row */
 function fillGaps(h){var re=/<div class="tile([^"]*)"/g,ix=[],m,L='<div class="tile'.length;while((m=re.exec(h))){if(m[1].split(' ').indexOf('wide')<0&&m[1].split(' ').indexOf('in')<0)ix.push(m.index+L)}if(ix.length%2){var i=ix[ix.length-1];h=h.slice(0,i)+' wide'+h.slice(i)}return h}
 function moneyF(n,c){
-  var sy={USD:'$',EUR:'€',GBP:'£',INR:'₹',BDT:'৳',AUD:'A$',CAD:'C$'}[c];if(sy===undefined)sy=c?c+' ':'';
+  var sy={USD:'$',EUR:'€',GBP:'£',INR:'₹',BDT:'৳',AUD:'A$',CAD:'C$',JPY:'¥',KRW:'₩',CNY:'CN¥',NZD:'NZ$'}[c];if(sy===undefined)sy=c?c+' ':'';
   if(c==='INR'||c==='BDT'){if(n>=1e7)return sy+(n/1e7).toFixed(n>=1e9?0:1).replace(/\.0$/,'')+' Cr';if(n>=1e5)return sy+(n/1e5).toFixed(1).replace(/\.0$/,'')+' L'}
   if(n>=1e9)return sy+(n/1e9).toFixed(2).replace(/\.?0+$/,'')+'B';
   if(n>=1e6)return sy+(n/1e6).toFixed(n>=1e8?0:1).replace(/\.0$/,'')+'M';
@@ -698,9 +831,14 @@ function moneyF(n,c){
 function boxOf(m){
   if(!m||!m.tmdbId||m.tmdbId<0||unrel(m))return null;
   /* box office comes only from Wikipedia (budget and collection from the same infobox, same currency); nothing is shown when it is not found */
-  if(m.wbud>0&&!(m.wrev>0))return {b:m.wbud,r:0,c:m.wcur||'',src:'Wikipedia',bo:1};
-  if(m.wrev>0&&!(m.wbud>0))return {b:0,r:m.wrev,c:m.wcur||'',src:'Wikipedia',go:1};
-  var p=(m.wbud>0&&m.wrev>0)?{b:m.wbud,r:m.wrev,c:m.wcur||'',src:'Wikipedia'}:null;
+  /* priority: MDBList first (budget + collection, USD converted to the currency of the movie's country), then Wikipedia (its own currency). Sources are never mixed. */
+  var mB=m.md&&m.md.bud>0?m.md.bud:0,mR=m.md&&m.md.rev>0?m.md.rev:0,wB=m.wbud>0?m.wbud:0,wR=m.wrev>0?m.wrev:0,B,R,C,SRC;
+  if(mB||mR){C=cCur(m);var fr=fxRate(C);B=mB*fr;R=mR*fr;SRC='MDBList'}
+  else if(wB||wR){B=wB;R=wR;C=m.wcur||'';SRC='Wikipedia'}
+  else return null;
+  if(B>0&&!(R>0))return {b:B,r:0,c:C,src:SRC,bo:1};
+  if(R>0&&!(B>0))return {b:0,r:R,c:C,src:SRC,go:1};
+  var p={b:B,r:R,c:C,src:SRC};
   if(!p)return null;
   var x=p.r/p.b,age=m.rel?(Date.now()-new Date(m.rel+'T00:00:00').getTime())/864e5:999,v,col;
   if(age<21){v='Running';col='#a855f7'}
@@ -847,7 +985,7 @@ function needsPoster(m){return !!(key&&m.tmdbId&&Date.now()-(m.pchk||0)>6048e5)}
 function enrichPoster(m,force){
   if(!force&&!needsPoster(m))return Promise.resolve(false);
   return tmdb(tp(m.tmdbId)).then(function(d){m.pchk=Date.now();if(d&&d.poster_path)m.poster=d.poster_path;return true}).catch(function(){return false})}
-function needsAny(m){return needsE(m)||needsOtt(m)||needsWiki(m)||needsPoster(m)}
+function needsAny(m){return needsE(m)||needsOtt(m)||needsWiki(m)||needsPoster(m)||needsMd(m)}
 /* XMDb: optional second source for the IMDb rating (used only when OMDb has none and an XMDb key is added in Settings) */
 function xmParse(j){
   if(!j||typeof j!=='object')return null;
@@ -908,9 +1046,9 @@ function stTag(m){return m.status==='upcoming'&&m.ottDate?'OTT '+fmt(m.ottDate):
 /* opening a movie (any status) inside its update window force-refreshes it by the same phase rules; at most once per 10 minutes per movie */
 function openRefresh(m){
   hotMode(m,1);
-  if(Date.now()-(m.fopen||0)<6e4)return [enrich(m),wkChain(m)];
+  if(Date.now()-(m.fopen||0)<6e4)return [enrich(m).then(function(a){return enrichMd(m).then(function(l){return a||l})}),wkChain(m)];
   m.fopen=Date.now();
-  return [enrichOtt(m,true).then(function(a){return enrich(m,true).then(function(x){return enrichWiki(m,true).then(function(c){return enrichPoster(m,true).then(function(pp){return a||x||c||pp})})})}),Promise.resolve(false)]}
+  return [enrichOtt(m,true).then(function(a){return enrich(m,true).then(function(x){return enrichWiki(m,true).then(function(c){return enrichPoster(m,true).then(function(pp){return enrichMd(m,true).then(function(l){return a||x||c||pp||l})})})})}),Promise.resolve(false)]}
 function needsE(m){return !!((omdb||apiKeys('xmdb').some(Boolean))&&key&&m.tmdbId&&(m.rt===undefined||(omdb&&m.om===undefined)||(apiKeys('xmdb').some(Boolean)&&!m.xmc)||(!m.xm&&Date.now()-(m.chk||0)>((+m.year||0)>=new Date().getFullYear()-1?216e5:2592e5))))}
 function enrich(m,force){
   if(!force&&!needsE(m))return Promise.resolve(false);
@@ -938,10 +1076,10 @@ function backfill(){
   function worker(){
     if(i>=todo.length){if(--live===0){bfBusy=false;if(ch.length){putMany(ch);render()}}return}
     var m=todo[i++],bf=window.__snapF?window.__snapF(m):null;
-    Promise.all([enrich(m),wkChain(m),enrichPoster(m)]).catch(function(){return [false,false,false]}).then(function(x){if(x[0]||x[1]||x[2]){ch.push(m);if(bf){var af=window.__snapF(m),cf=chgF[m.id]||{},any=false;Object.keys(af).forEach(function(k){if(String(af[k])!==String(bf[k])){cf[k]=1;any=true}});if(any){chgF[m.id]=cf;chgSet[m.id]=1}}}setTimeout(worker,20)})}
+    Promise.all([enrich(m),wkChain(m),enrichPoster(m),enrichMd(m)]).catch(function(){return [false,false,false,false]}).then(function(x){if(x[0]||x[1]||x[2]||x[3]){ch.push(m);if(bf){var af=window.__snapF(m),cf=chgF[m.id]||{},any=false;Object.keys(af).forEach(function(k){if(String(af[k])!==String(bf[k])){cf[k]=1;any=true}});if(any){chgF[m.id]=cf;chgSet[m.id]=1}}}setTimeout(worker,20)})}
   for(var k=0,n=live;k<n;k++)worker()}
-/* rating priority: XMDb first, then OMDb (never TMDB); neither = N/A. Label always reads IMDb. */
-function rr(m){return m.xm?['IMDb',m.xm]:(m.om?['IMDb',m.om]:null)}
+/* IMDb rating priority: MDBList first, then XMDb (optional), then OMDb; none = N/A. Label always reads IMDb. */
+function rr(m){return m.md&&m.md.i?['IMDb',m.md.i]:(m.xm?['IMDb',m.xm]:(m.om?['IMDb',m.om]:null))}
 function fmtTs(t){var d=new Date(t);return d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getFullYear()}
 function sc(m){return m.score!=null?m.score:(m.rating?m.rating*2:0)}
 var COUNTRIES=[['BD','Bangladesh'],['IN','India'],['IN-BN','India (Bengali)'],['US','United States'],['GB','United Kingdom'],['KR','South Korea'],['JP','Japan'],['CN','China'],['FR','France'],['DE','Germany'],['IT','Italy'],['ES','Spain'],['TR','Turkey'],['TH','Thailand'],['PK','Pakistan'],['NP','Nepal'],['LK','Sri Lanka'],['ID','Indonesia'],['MY','Malaysia'],['PH','Philippines'],['VN','Vietnam'],['HK','Hong Kong'],['TW','Taiwan'],['RU','Russia'],['UA','Ukraine'],['PL','Poland'],['SE','Sweden'],['NO','Norway'],['DK','Denmark'],['FI','Finland'],['NL','Netherlands'],['BE','Belgium'],['CH','Switzerland'],['AT','Austria'],['IE','Ireland'],['PT','Portugal'],['GR','Greece'],['CZ','Czechia'],['HU','Hungary'],['RO','Romania'],['IL','Israel'],['IR','Iran'],['EG','Egypt'],['SA','Saudi Arabia'],['AE','United Arab Emirates'],['NG','Nigeria'],['ZA','South Africa'],['KE','Kenya'],['MA','Morocco'],['BR','Brazil'],['MX','Mexico'],['AR','Argentina'],['CO','Colombia'],['CL','Chile'],['PE','Peru'],['CA','Canada'],['AU','Australia'],['NZ','New Zealand']];
@@ -1175,7 +1313,7 @@ function tvRt(d){return (d.episode_run_time&&d.episode_run_time[0])||(d.last_epi
 /* dates always mirror TMDB: new date -> new date, date removed on TMDB -> removed here too (shows N/A) */
 function applyRel(m,d){var r=ottInfo(d);m.runtime=d.runtime||0;m.rel=d.release_date||'';m.ottDate=r.date?r.date.t:'';m.ottC=r.date?r.date.c:'';m.ott=r.names;m.cert=certOf(d);m.ottChk=Date.now();m.ov=d.overview||'';
   /* direct-to-OTT movie: has a digital/streaming release but never a cinema (type 2/3) release */
-  var hc=false,hd=false;(((d.release_dates||{}).results)||[]).forEach(function(c){(c.release_dates||[]).forEach(function(r){if(r.type===2||r.type===3)hc=true;else if(r.type===4)hd=true})});m.direct=!hc&&hd;return m}
+  var hc=false,hd=false;(((d.release_dates||{}).results)||[]).forEach(function(c){(c.release_dates||[]).forEach(function(r){if(r.type===2||r.type===3)hc=true;else if(r.type===4)hd=true})});m.direct=!hc&&hd;m.ottT=m.ottDate;m.ottCT=m.ottC;mdOtt(m);return m}
 /* live = streaming now, soon = OTT date announced, tba = nothing announced yet */
 function ottState(m){if(m.ott&&m.ott.length)return 'live';if(m.ottDate&&m.ottDate<=today())return 'live';return m.ottDate?'soon':'tba'}
 /* confirmed streaming = the OTT date has really arrived. Provider names alone ("Streaming now" with no date) do NOT count: the real OTT date can still be announced later */
@@ -1709,7 +1847,7 @@ function showForm(m,isEdit,dup,keepSeg){
   $('#pvt').textContent=m.title?m.title+(m.year?' ('+m.year+')':''):'New movie';var cpT=m.title?m.title+(m.year?' ('+m.year+')':''):'';$('#pvt').dataset.lp=cpT;$('#pvt').setAttribute('data-nofx','1');var tb=$('#trl');tb.hidden=true;tb.parentNode.classList.remove('tl');tb._m=m;tb.onclick=function(){openTrailer(m)};if(m.tmdbId)trailerInfo(m).then(function(i){if(tb._m===m&&i&&(i.t||i.s)){tb.hidden=false;tb.parentNode.classList.add('tl');placeAge(m)}},function(){});setOv(m);$('#yrbox').hidden=!!m.tmdbId;$('#durbox').hidden=!m.tmdbId;
   ['#ft','#fy','#fc'].forEach(function(k){$(k).readOnly=lock;$(k).classList.toggle('ro',lock)});
   $('#ft').value=m.title||'';$('#fy').value=m.year||'';$('#fc').value=shortC(m.country);
-  soOpen=false;$('#info').innerHTML=infoH(m);castLoad(m);
+  soOpen=false;rsPage=0;$('#info').innerHTML=infoH(m);castLoad(m);
   $('#dupn').hidden=!dup;if(dup)$('#dupn').innerHTML='<span class="dupb">Already added · '+esc(SL[m.status]||m.status)+'</span>';
   fstat=SL[m.status]?m.status:(SL.watched?'watched':statuses[0].id);if(fstat==='upcoming'&&!upOk(m))fstat=SL.plan?'plan':(SL.watched?'watched':statuses[0].id);fsel=m.folder||null;drawSeg(keepSeg);
   $('#fr').value=(sc(m)||0).toFixed(2);updRs();$('#del').hidden=!isEdit;
@@ -1831,7 +1969,7 @@ function choose(id,status,fromUp,fold){
       if(id<0){pick.cert=tvCert(d);pick.runtime=tvRt(d);pick.seasons=d.number_of_seasons||0;pick.eps=d.number_of_episodes||0;pick.sl=slOf(d);pick.kind=tvKind(d)}
       editId=null;pick._ld=!!((omdb||apiKeys('xmdb').some(Boolean))&&!unrel(pick));showForm(pick,false,false,true);
       {var p0=pick;$('#save').textContent=fromUp?'Add':'Save';$('#save').disabled=false;if(!dg.open)dg.showModal();
-        var fin2=function(){delete p0._ld;if(pick===p0&&dg.open&&!$('#form').hidden){$('#info').innerHTML=infoH(p0)}};var wkp=function(){return enrichWiki(p0).then(function(){if(pick===p0&&dg.open&&!$('#form').hidden){$('#info').innerHTML=infoH(p0)}},function(){})};var PL=((omdb||apiKeys('xmdb').some(Boolean))&&!unrel(p0))?enrich(p0).then(fin2,fin2).then(wkp):(delete p0._ld,wkp());
+        var fin2=function(){delete p0._ld;if(pick===p0&&dg.open&&!$('#form').hidden){$('#info').innerHTML=infoH(p0)}};var wkp=function(){return enrichMd(p0,true).then(function(){return enrichWiki(p0)}).then(function(){if(pick===p0&&dg.open&&!$('#form').hidden){$('#info').innerHTML=infoH(p0)}},function(){})};var PL=((omdb||apiKeys('xmdb').some(Boolean))&&!unrel(p0))?enrich(p0).then(fin2,fin2).then(wkp):(delete p0._ld,wkp());
         /* status / folder / rating / Add-Save / cast stay hidden until everything (rating, wiki, cast) is loaded and at least 2 seconds have passed */
         var gate=Promise.race([Promise.all([PL,castP]).catch(function(){}),new Promise(function(r){setTimeout(r,8000)})]),wait=new Promise(function(r){setTimeout(r,Math.max(0,MS-(Date.now()-t0)))});
         Promise.all([gate,wait]).then(function(){if(tok!==choose.t||!dg.open)return;dg.classList.remove('busy','hold');$('#fsb').style.visibility='';drawSeg(true);var cb=$('#cast');if(cb&&!cb.hidden)fitCast(cb)})}
@@ -1867,11 +2005,17 @@ $('#save').onclick=function(){
   var d={title:title,year:$('#fy').value.trim(),country:$('#fc').value.trim(),status:fstat,folder:fsel,score:sv,rating:sv/2};
   var mv;
   if(editId){mv=movies.filter(function(m){return m.id===editId})[0];if(reAdd||mv.status!==d.status||(mv.folder||null)!==(d.folder||null)){delete mv.ord;mv.added=Date.now()}Object.assign(mv,d)}
-  else{mv=Object.assign(d,{id:uid(),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,lang:pick&&pick.lang,genres:pick&&pick.genres,imdb:pick&&pick.imdb,tr:pick&&pick.tr,rt:pick&&pick.rt,vc:pick&&pick.vc,imdbId:pick&&pick.imdbId,chk:pick&&pick.chk,rel:pick&&pick.rel,ottDate:pick&&pick.ottDate,ottC:pick&&pick.ottC,ott:pick&&pick.ott,ottChk:pick&&pick.ottChk,direct:pick&&pick.direct,cert:pick&&pick.cert,runtime:pick&&pick.runtime,xm:pick&&pick.xm,xvc:pick&&pick.xvc,om:pick&&pick.om,omvc:pick&&pick.omvc,wbud:pick&&pick.wbud,wrev:pick&&pick.wrev,wcur:pick&&pick.wcur,wpg:pick&&pick.wpg,wkc:pick&&pick.wkc,wkv:pick&&pick.wkv,wkt:pick&&pick.wkt,ov:pick&&pick.ov,seasons:pick&&pick.seasons,eps:pick&&pick.eps,sl:pick&&pick.sl,kind:pick&&pick.kind,added:Date.now()});movies.push(mv)}
+  else{mv=Object.assign(d,{id:uid(),poster:pick&&pick.poster,tmdbId:pick&&pick.tmdbId,lang:pick&&pick.lang,genres:pick&&pick.genres,imdb:pick&&pick.imdb,tr:pick&&pick.tr,rt:pick&&pick.rt,vc:pick&&pick.vc,imdbId:pick&&pick.imdbId,chk:pick&&pick.chk,rel:pick&&pick.rel,ottDate:pick&&pick.ottDate,ottC:pick&&pick.ottC,ott:pick&&pick.ott,ottChk:pick&&pick.ottChk,direct:pick&&pick.direct,cert:pick&&pick.cert,runtime:pick&&pick.runtime,xm:pick&&pick.xm,xvc:pick&&pick.xvc,md:pick&&pick.md,mdc:pick&&pick.mdc,tm:pick&&pick.tm,ottS:pick&&pick.ottS,ottT:pick&&pick.ottT,ottCT:pick&&pick.ottCT,om:pick&&pick.om,omvc:pick&&pick.omvc,wbud:pick&&pick.wbud,wrev:pick&&pick.wrev,wcur:pick&&pick.wcur,wpg:pick&&pick.wpg,wkc:pick&&pick.wkc,wkv:pick&&pick.wkv,wkt:pick&&pick.wkt,ov:pick&&pick.ov,seasons:pick&&pick.seasons,eps:pick&&pick.eps,sl:pick&&pick.sl,kind:pick&&pick.kind,added:Date.now()});movies.push(mv)}
   putMany([mv]);$('#dlg').close();render();if(!$('#up').hidden)drawUp();
 };
 $('#del').onclick=function(){modal({title:'Delete this movie?',text:'It will be removed from your library.',ok:'Delete',danger:true}).then(function(y){if(y){var did=editId;movies=movies.filter(function(m){return m.id!==did});delOne(did);$('#dlg').close();render()}})};
 $('#info').onclick=function(e){if(!e.target.closest('[data-so]'))return;soOpen=!soOpen;$('#info').innerHTML=infoH(pick)};
+/* rating tile: swipe left / right = next / previous rating (a tap goes to the next one) */
+(function(){var I=$('#info'),sx=0,sy=0,on=null;
+  I.addEventListener('touchstart',function(e){var t=e.target.closest&&e.target.closest('[data-lbs]');on=t&&e.touches.length===1?t:null;if(on){sx=e.touches[0].clientX;sy=e.touches[0].clientY}},{passive:true});
+  I.addEventListener('touchend',function(e){if(!on)return;var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy,el=on;on=null;if(Math.abs(dx)<28||Math.abs(dx)<1.5*Math.abs(dy))return;rsGo(el,rsPage+(dx<0?1:-1));el._sw=Date.now()},{passive:true});
+  I.addEventListener('touchcancel',function(){on=null},{passive:true});
+  I.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('[data-lbs]');if(!el||Date.now()-(el._sw||0)<400)return;rsGo(el,rsPage+1>=(+el.dataset.n||1)?0:rsPage+1)})})();
 var cdr=null,noClickC=0,ordCtx=null;
 (function(){
   var L=$('#list');
@@ -2211,7 +2355,7 @@ $('#atabs').addEventListener('click',function(e){if(e.target.closest('#apiadd'))
 function addApi(){
   if(sapis.length>=20){toast('Up to 20 APIs');return}
   modal({title:'New API',text:'Name it, then add its keys.',input:true,placeholder:'API name',ok:'Add'}).then(function(n){
-    if(!n)return;n=n.slice(0,24);var id={tmdb:'tmdb',imdb:'omdb',omdb:'omdb',xmdb:'xmdb'}[n.toLowerCase()]||('c'+uid());
+    if(!n)return;n=n.slice(0,24);var id={tmdb:'tmdb',imdb:'omdb',omdb:'omdb',xmdb:'xmdb',mdblist:'mdblist'}[n.toLowerCase()]||('c'+uid());
     if(sapis.some(function(x){return x.id===id||x.name.toLowerCase()===n.toLowerCase()})){toast('That API is already added');return}
     sapis.push({id:id,name:n,keys:['']});cur=sapis.length-1;drawA()})
 }
@@ -2232,7 +2376,7 @@ $('#set').onclick=function(){sapis=JSON.parse(JSON.stringify(apis));sapis.forEac
 $('#nm').oninput=function(){uname=this.value.trim();LS.setItem('library.name',uname);$('#uname').textContent=uname||'User'};
 $('#theme').onclick=function(){setTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')};
 $('#ksave').onclick=function(){var prevK=JSON.stringify(apis.map(function(a){return a.keys}));apis=sapis.map(function(a){var o={id:a.id,name:a.name,keys:a.keys.map(function(v){return a.id==='tmdb'?v.replace(/["'\s]/g,''):v.trim()}).filter(Boolean)};if(a.custom)o.custom=1;return o});keys=apiKeys('tmdb');omdbs=apiKeys('omdb');ki=0;oi=0;xi=0;pickKeys();LS.setItem('library.apis',JSON.stringify(apis));LS.setItem('library.keys',JSON.stringify(keys));LS.setItem('library.omdbs',JSON.stringify(omdbs));LS.setItem('library.key',key);LS.setItem('library.omdb',omdb);$('#sdlg').close();
-  var after=function(){uitems=[];if(!$('#up').hidden)loadUp(true);if(apiKeys('xmdb').some(Boolean))movies.forEach(function(m){if(!m.imdb&&!m.xm&&!m.om&&m.tmdbId&&m.rt!==undefined)m.chk=0});backfill()};
+  var after=function(){mdBad={};movies.forEach(function(m){if(!m.md)m.mdc=undefined});uitems=[];if(!$('#up').hidden)loadUp(true);if(apiKeys('xmdb').some(Boolean))movies.forEach(function(m){if(!m.imdb&&!m.xm&&!m.om&&m.tmdbId&&m.rt!==undefined)m.chk=0});backfill()};
   var ch=JSON.stringify(apis.map(function(a){return a.keys}))!==prevK,has=apis.some(function(a){return a.keys.length});
   if(ch)selTrend();
   if(!ch||!has){after();if(ch)trendLoad(true);return}
@@ -2490,9 +2634,9 @@ render();paintDirty();
 /* pull down on Trending: silent background refresh (trSilent). Pull down on Your Library: up to 10 times in each 6-hour slot (00-06, 06-12, 12-18, 18-24), refresh only Coming Soon titles (see hotMode) */
 (function(){
   var sy=0,sx=0,pull=0,on=false,busy=false,TH=70,buzz=false;
-  function snapF(m){return {'Rating':m.xm||m.om||'','Votes':m.vc||'','Rotten Tomatoes':m.rt||'','In cinemas':m.rel||'','OTT release':[m.ottDate,(m.ott||[]).join(','),m.tmdbId<0?m.rel:''].join('|'),'Budget':[m.wbud,m.wcur].join('|'),'Collection':[m.wrev,m.wcur].join('|'),'Seasons':m.seasons==null?'':m.seasons,'Episodes':m.eps==null?'':m.eps}}
+  function snapF(m){return {'Rating':(m.xm||m.om||'')+'|'+JSON.stringify(Object.assign({},m.md,{d:undefined}))+'|'+(m.tm||''),'Votes':m.vc||'','Rotten Tomatoes':m.rt||'','In cinemas':m.rel||'','OTT release':[m.ottDate,(m.ott||[]).join(','),m.tmdbId<0?m.rel:''].join('|'),'Budget':[m.wbud,m.wcur].join('|'),'Collection':[m.wrev,m.wcur].join('|'),'Seasons':m.seasons==null?'':m.seasons,'Episodes':m.eps==null?'':m.eps}}
   window.__snapF=snapF;
-  function sig(m){return [m.imdb,m.xm,m.om,m.vc,m.rt,m.wbud,m.wrev,m.wcur,(m.ott||[]).join(','),m.ottDate,m.rel,m.runtime].join('|')}
+  function sig(m){return [m.imdb,m.xm,m.om,JSON.stringify(m.md||''),m.tm,m.vc,m.rt,m.wbud,m.wrev,m.wcur,(m.ott||[]).join(','),m.ottDate,m.rel,m.runtime].join('|')}
   function mark(id,v){if(v)updSet[id]=1;else delete updSet[id];var c=$('#list').querySelector('[data-id="'+id+'"]');if(c){c.classList.toggle('upd',!!v);if(!v)c.classList.toggle('chg',!!chgSet[id])}}
   function refreshHot(){
     lsNew=[];var todo=movies.filter(hot),ch=lsNew.slice(),names=[],i=0;
@@ -2503,7 +2647,7 @@ render();paintDirty();
       function w(){
         if(i>=todo.length){if(--live===0){todo.forEach(function(x){mark(x.id,0)});if(ch.length){putMany(ch);render()}res(names)}return}
         var m=todo[i++],b=sig(m),bf=snapF(m);
-        (hotMode(m)==='all'?enrichOtt(m,true).then(function(a){return enrich(m,true).then(function(x){return enrichWiki(m,true).then(function(c){if((a||x||c)&&ch.indexOf(m)<0)ch.push(m)})})}):enrich(m,true).then(function(x){if(x&&ch.indexOf(m)<0)ch.push(m)})).catch(function(){}).then(function(){
+        (hotMode(m)==='all'?enrichOtt(m,true).then(function(a){return enrich(m,true).then(function(x){return enrichWiki(m,true).then(function(c){return enrichMd(m).then(function(l){if((a||x||c||l)&&ch.indexOf(m)<0)ch.push(m)})})})}):enrich(m,true).then(function(x){if(x&&ch.indexOf(m)<0)ch.push(m)})).catch(function(){}).then(function(){
           if(sig(m)!==b){names.push(m.title);chgSet[m.id]=1;var af=snapF(m),cf2=chgF[m.id]||{};Object.keys(af).forEach(function(k){if(String(af[k])!==String(bf[k]))cf2[k]=1});chgF[m.id]=cf2}
           setTimeout(w,20)})}
       for(var k=0,n=live;k<n;k++)w()})}
