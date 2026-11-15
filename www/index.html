@@ -285,13 +285,14 @@ input.ro{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1}
 .info>.tile{min-width:0}
 .lbsw{display:block;overflow:hidden;min-width:0;width:100%}
 .lbtr{display:flex;transition:transform .28s cubic-bezier(.3,.7,.2,1)}
-.lbp{flex:none;width:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:8px;white-space:nowrap;overflow:hidden;line-height:20px}
-.lbp .rl{flex:none;text-align:left;white-space:nowrap;display:inline-flex;align-items:center;gap:7px}
-.lbp .ri{flex:none;width:16px;height:16px;display:block}
-.lbp .rv{flex:none;margin-left:auto;text-align:right;display:inline-flex;align-items:baseline;line-height:20px}
-.lbp .rv small{margin-left:2px;line-height:1}
-.lbp .rn{line-height:20px}
-.lbp small{display:inline;font-size:11px}
+.lbp{flex:none;width:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:5px;white-space:nowrap;overflow:hidden;font-size:11px;line-height:16px;height:20px;padding:0 1px}
+.lbp .rl{flex:none;text-align:left;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;height:16px}
+.lbp .ri{flex:none;width:12px;height:12px;display:block;overflow:visible;margin:0;vertical-align:middle}
+.lbp .rv{flex:none;margin-left:auto;text-align:right;display:inline-flex;align-items:center;height:16px;line-height:16px}
+.lbp .rv>span{display:inline-block;line-height:16px}
+.lbp .rv small{margin-left:2px;line-height:16px;font-size:9px}
+.lbp .rn{display:inline-block;line-height:16px}
+.lbp small{display:inline;font-size:9px}
 .lbdots{position:absolute;right:10px;top:10px;display:flex;gap:4px}
 .lbdots i{width:5px;height:5px;border-radius:50%;background:var(--mut);opacity:.4;transition:opacity .2s,background .2s}
 .lbdots i.on{background:var(--ink);opacity:1}
@@ -781,7 +782,21 @@ function ratePages(m){
   return P}
 
 /* Rating tile auto-fit: a long source name shrinks (down to 10px) until it fits; the tile itself never changes size */
-function rsFit(){var L=document.querySelectorAll('#info .lbp'),fs=0,i;
+/* rating icons: re-centre every icon's artwork in its box, so the icon always sits exactly in the middle of the text line (popcorn etc. no longer look higher/lower) */
+function icFix(){var S=document.querySelectorAll('#info svg.ri:not([data-c])'),k;
+  for(k=0;k<S.length;k++){var v=S[k];try{var b=v.getBBox();if(b.width>0&&b.height>0){var sd=Math.min(26,Math.max(b.width,b.height)+3);
+    v.setAttribute('viewBox',(b.x+b.width/2-sd/2)+' '+(b.y+b.height/2-sd/2)+' '+sd+' '+sd);v.setAttribute('data-c','1')}}catch(e){}}}
+/* text optical centring: every font puts its letters a little higher or lower inside the line box (Roboto vs Inter etc.); measure the real cap-height of the font in use and shift the label and the % so their capitals sit on the icon's centre line on every phone */
+var _txc=null,_txr={};
+function txFix(){var T=document.querySelectorAll('#info .lbp .rn,#info .lbp .rv>span'),k;if(!T.length)return;
+  var f=T[0],cs=getComputedStyle(f),lh=parseFloat(cs.lineHeight)||18,fs=parseFloat(cs.fontSize)||12,key=cs.fontWeight+'|'+cs.fontFamily,r=_txr[key];
+  if(!r){_txc=_txc||document.createElement('canvas').getContext('2d');
+    _txc.font=cs.fontWeight+' 200px '+cs.fontFamily;var m=_txc.measureText('H');
+    if(!(m.fontBoundingBoxAscent>=0)||!(m.actualBoundingBoxAscent>0))return;
+    r=_txr[key]={a:m.fontBoundingBoxAscent/200,d:m.fontBoundingBoxDescent/200,c:m.actualBoundingBoxAscent/200}}
+  var fa=Math.round(r.a*fs),fd=Math.round(r.d*fs),cap=r.c*fs,base=(lh-(fa+fd))/2+fa,off=Math.round((base-cap/2-lh/2)*4)/4;
+  for(k=0;k<T.length;k++){T[k].style.position='relative';T[k].style.top=(-off)+'px'}}
+function rsFit(){try{icFix()}catch(e){}try{txFix()}catch(e){}var L=document.querySelectorAll('#info .lbp'),fs=0,i;
   for(i=0;i<L.length;i++){var l=L[i].querySelector('.rl');if(l)l.style.fontSize=''}
   for(i=0;i<L.length;i++){var p=L[i],l=p.querySelector('.rl'),v=p.querySelector('.rv');if(!l||!v||!p.clientWidth)continue;
     var f=parseFloat(getComputedStyle(l).fontSize)||13,av=p.clientWidth-v.offsetWidth-10;
