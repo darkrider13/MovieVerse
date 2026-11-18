@@ -1,1 +1,2 @@
-# MovieVerse-V2
+# MovieVerse (Kotlin)
+Native Android app (Kotlin + Jetpack Compose). Package: com.trackerxx.movieverse
