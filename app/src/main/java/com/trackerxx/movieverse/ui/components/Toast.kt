@@ -1,0 +1,106 @@
+package com.trackerxx.movieverse.ui.components
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.trackerxx.movieverse.ui.theme.EaseCss
+import com.trackerxx.movieverse.ui.theme.Mv
+import com.trackerxx.movieverse.ui.theme.MvFixed
+import com.trackerxx.movieverse.ui.theme.MvText
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+/** toast(text, ms): shows the text for ms (default 2600) and fades out. A new toast replaces the old one. */
+@Stable
+class ToastState(private val scope: CoroutineScope) {
+    var text by mutableStateOf("")
+        private set
+    var visible by mutableStateOf(false)
+        private set
+    private var job: Job? = null
+
+    fun show(message: String, ms: Long = 2600L) {
+        job?.cancel()
+        text = message
+        visible = true
+        job = scope.launch {
+            delay(ms)
+            visible = false
+        }
+    }
+}
+
+val LocalToast = staticCompositionLocalOf<ToastState> { error("ToastState not provided") }
+
+@Composable
+fun rememberToastState(): ToastState {
+    val scope = rememberCoroutineScope()
+    return remember { ToastState(scope) }
+}
+
+/** #toast : centered above the bottom, --bot background, glass border, radius 12, bold text, fade .2s. */
+@Composable
+fun ToastHost(state: ToastState) {
+    val c = Mv.c
+    val a by animateFloatAsState(
+        targetValue = if (state.visible) 1f else 0f,
+        animationSpec = tween(200, easing = EaseCss),
+        label = "toastAlpha"
+    )
+    if (a > 0f) {
+        BoxWithConstraints(
+            Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.systemBars)
+                .padding(bottom = 20.dp),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            val shape = RoundedCornerShape(12.dp)
+            Box(
+                Modifier
+                    .widthIn(max = this.maxWidth * 0.9f)
+                    .graphicsLayer { alpha = a }
+                    .shadow(
+                        elevation = 20.dp, shape = shape, clip = false,
+                        ambientColor = Color.Black.copy(alpha = 0.5f),
+                        spotColor = Color.Black.copy(alpha = 0.5f)
+                    )
+                    .clip(shape)
+                    .background(c.bot)
+                    .border(1.dp, MvFixed.GlassBorder, shape)
+                    .padding(horizontal = 17.dp, vertical = 11.dp)
+            ) {
+                MvText(state.text, weight = FontWeight.SemiBold, align = TextAlign.Center)
+            }
+        }
+    }
+}
