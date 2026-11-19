@@ -46,6 +46,8 @@ import com.trackerxx.movieverse.data.AppData
 import com.trackerxx.movieverse.data.Ls
 import com.trackerxx.movieverse.enrich.Enrich
 import com.trackerxx.movieverse.net.AppScope
+import com.trackerxx.movieverse.ui.add.AddDialog
+import com.trackerxx.movieverse.ui.add.AddFlow
 import com.trackerxx.movieverse.ui.components.LocalModal
 import com.trackerxx.movieverse.ui.components.LocalToast
 import com.trackerxx.movieverse.ui.components.MvApiLoadingDialog
@@ -79,6 +81,7 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
     var qBox by remember { mutableStateOf("") }
     var fkey by remember { mutableStateOf<String?>(null) } // open filter dialog: g | r | y | s
     val gridState = rememberLazyGridState()
+    val add = remember { AddFlow(scope, modal, toast) }
     val cardDrag = remember { DragState() }
     val tabDrag = remember { DragState() }
 
@@ -194,7 +197,7 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
                 ) {
                     if (view == "library") {
                         item(key = "hero", span = { GridItemSpan(maxLineSpan) }) {
-                            Box(Modifier.padding(bottom = 14.dp)) { Hero(AppData.uname, onAdd = { soon("Add to Library") }) }
+                            Box(Modifier.padding(bottom = 14.dp)) { Hero(AppData.uname, onAdd = { add.openAdd(lib.tab, folderEff) }) }
                         }
                         item(key = "hsw", span = { GridItemSpan(maxLineSpan) }) {
                             Box(Modifier.padding(bottom = 12.dp)) {
@@ -257,7 +260,10 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
                                 MovieCard(
                                     m, AppData.statuses, AppData.SL,
                                     onClick = {
-                                        if (!cardDrag.recentlyDragged()) toast.show(m.title + " (details open in a later step)")
+                                        if (!cardDrag.recentlyDragged()) {
+                                            Enrich.chgSet.remove(m.id)
+                                            add.openLib(m, false, 800L)
+                                        }
                                     },
                                     modifier = Modifier
                                         .padding(bottom = 14.dp)
@@ -317,6 +323,8 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
             onClose = { fkey = null }
         )
     }
+
+    AddDialog(add)
 
     if (splashGone && !loaded) {
         MvApiLoadingDialog(caption = progress, title = "Loading your library")
