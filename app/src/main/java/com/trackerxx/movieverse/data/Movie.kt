@@ -20,6 +20,10 @@ fun jsNumToString(d: Double): String {
  */
 class Movie(val j: JSONObject = JSONObject()) {
 
+    /** _ld : this movie is being refreshed right now (info tiles show a shimmer). Never saved. */
+    @Volatile
+    var ld: Boolean = false
+
     constructor(json: String) : this(JSONObject(json))
 
     // ---- generic access -------------------------------------------------
