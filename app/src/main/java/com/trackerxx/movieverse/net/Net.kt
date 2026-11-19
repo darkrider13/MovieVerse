@@ -8,4 +8,5 @@ object Net {
     val omdb: Omdb by lazy { Omdb(AppData.apis) }
     val mdblist: MdbList by lazy { MdbList(AppData.apis) }
     val xmdb: Xmdb by lazy { Xmdb(AppData.apis) }
+    val qsearch: QSearch by lazy { QSearch(tmdb) }
 }
