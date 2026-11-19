@@ -50,7 +50,12 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.PathOperation
@@ -122,6 +127,9 @@ fun MvDialog(
     padding: PaddingValues = PaddingValues(18.dp),
     solidBackground: Color? = null,
     onClose: (() -> Unit)? = null,
+    sideMargin: Dp = 18.dp,
+    fillHeight: Boolean = false,
+    dismissOnOutside: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val c = Mv.c
@@ -140,16 +148,19 @@ fun MvDialog(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.ime))
-                .pointerInput(Unit) { detectTapGestures { currentDismiss?.invoke() } },
+                .then(
+                    // a plain <dialog> does not close when the dark area around it is tapped
+                    if (dismissOnOutside) Modifier.pointerInput(Unit) { detectTapGestures { currentDismiss?.invoke() } } else Modifier
+                ),
             contentAlignment = Alignment.Center
         ) {
-            val boxW = minOf(this.maxWidth * widthFraction, widthMax, this.maxWidth - 36.dp)
+            val boxW = minOf(this.maxWidth * widthFraction, widthMax, this.maxWidth - sideMargin * 2)
             val boxMaxH = this.maxHeight * 0.9f
             val shape = RoundedCornerShape(16.dp)
             Box(
                 modifier
                     .width(boxW)
-                    .heightIn(max = boxMaxH)
+                    .then(if (fillHeight) Modifier.height(boxMaxH) else Modifier.heightIn(max = boxMaxH))
                     .shadow(
                         elevation = 24.dp, shape = shape, clip = false,
                         ambientColor = Color.Black.copy(alpha = 0.35f),
@@ -180,12 +191,27 @@ fun MvDialog(
                     end = (padding.calculateRightPadding(ld) - 4.dp).coerceAtLeast(0.dp),
                     bottom = (padding.calculateBottomPadding() - 4.dp).coerceAtLeast(0.dp)
                 )
+                val scroll = rememberScrollState()
                 Column(
                     Modifier
                         .fillMaxWidth()
                         .padding(1.dp)
                         .padding(outer)
-                        .verticalScroll(rememberScrollState())
+                        // soft fade at the bottom edge while there is more content below (--fb, 34px)
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                        .drawWithContent {
+                            drawContent()
+                            val fb = (scroll.maxValue - scroll.value).toFloat().coerceIn(0f, 34.dp.toPx())
+                            if (fb > 0f) {
+                                drawRect(
+                                    brush = Brush.verticalGradient(listOf(Color.Black, Color.Transparent), startY = size.height - fb, endY = size.height),
+                                    topLeft = Offset(0f, size.height - fb),
+                                    size = Size(size.width, fb),
+                                    blendMode = BlendMode.DstIn
+                                )
+                            }
+                        }
+                        .verticalScroll(scroll)
                         .padding(4.dp),
                     content = content
                 )
