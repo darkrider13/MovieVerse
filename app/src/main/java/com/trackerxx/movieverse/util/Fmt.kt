@@ -52,6 +52,14 @@ object Fmt {
         return c.get(Calendar.YEAR).toString() + "-" + z(c.get(Calendar.MONTH) + 1) + "-" + z(c.get(Calendar.DAY_OF_MONTH))
     }
 
+    /** fmtTs(t): "18 Nov 2026" */
+    fun fmtTs(t: Long): String {
+        val c = Calendar.getInstance()
+        c.timeInMillis = t
+        val mo = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+        return c.get(Calendar.DAY_OF_MONTH).toString() + " " + mo[c.get(Calendar.MONTH)] + " " + c.get(Calendar.YEAR)
+    }
+
     private val DATE_RE = Regex("^(\\d{4})-(\\d{2})-(\\d{2})$")
 
     /** new Date(rel + 'T00:00:00').getTime(): local midnight of a YYYY-MM-DD date in ms, NaN when it is not a date */
