@@ -1,6 +1,5 @@
 package com.trackerxx.movieverse.ui
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +28,7 @@ import com.trackerxx.movieverse.ui.components.LocalModal
 import com.trackerxx.movieverse.ui.components.LocalToast
 import com.trackerxx.movieverse.ui.components.ModalHost
 import com.trackerxx.movieverse.ui.components.ModalState
+import com.trackerxx.movieverse.ui.components.ToastBridge
 import com.trackerxx.movieverse.ui.components.ToastHost
 import com.trackerxx.movieverse.ui.components.rememberToastState
 import com.trackerxx.movieverse.ui.theme.Mv
@@ -39,14 +40,12 @@ fun MovieVerseApp() {
     // theme comes from storage ("library.theme", dark by default) and is saved when it changes
     val themeState = AppData.theme
     var showSplash by remember { mutableStateOf(true) }
-    // developer panel (long-press the Settings gear): the component / network checks of the earlier steps
-    var dev by remember { mutableStateOf(false) }
-    BackHandler(enabled = dev) { dev = false }
 
     MovieVerseTheme(themeState) {
         val c = Mv.c
         val toast = rememberToastState()
         val modal = remember { ModalState() }
+        SideEffect { ToastBridge.state = toast }
         CompositionLocalProvider(LocalToast provides toast, LocalModal provides modal) {
             Box(Modifier.fillMaxSize().background(c.bg)) {
                 // page area = the screen minus status bar / navigation bar (like the old non-overlay WebView)
@@ -55,8 +54,7 @@ fun MovieVerseApp() {
                         .fillMaxSize()
                         .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.ime))
                 ) {
-                    if (dev) ComponentPreview(onBack = { dev = false })
-                    else HomeScreen(splashGone = !showSplash, onDev = { dev = true })
+                    HomeScreen(splashGone = !showSplash)
                 }
 
                 // StatusBar.setBackgroundColor(--bg) and the body::after bottom strip (--bot)
