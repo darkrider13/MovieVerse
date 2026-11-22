@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -160,7 +161,13 @@ fun HomeScreen(splashGone: Boolean) {
     val lvHold = remember { arrayOfNulls<LibView>(1) }
     // The heavy part (filter + sort of the whole library) does NOT depend on lib.lim. Loading the next 60 cards while scrolling used to
     // filter + sort the whole library again on the main thread (a hitch every 60 cards). Now only the cheap cut (first lim cards) re-runs.
-    val lvFull = remember(rev, ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lvOn) {
+    // A background refresh (rev bump: ratings, posters, Trending...) must never rebuild the list while the finger is scrolling.
+    // The new rev is applied as soon as the scroll has stopped.
+    var revApplied by remember { mutableIntStateOf(AppData.rev) }
+    LaunchedEffect(gridState) {
+        snapshotFlow { Pair(AppData.rev, gridState.isScrollInProgress) }.collect { (r, scrolling) -> if (!scrolling) revApplied = r }
+    }
+    val lvFull = remember(revApplied, ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lvOn) {
         val held = lvHold[0]
         if (!lvOn && held != null) held
         else LibraryLogic.build(
@@ -349,12 +356,16 @@ fun HomeScreen(splashGone: Boolean) {
                                             add.openLib(m, false, 800L)
                                         }
                                     },
+                                    // the placement animation is only needed while a card is being dragged; the modifier costs
+                                    // time on every layout pass of every visible card, so normal scrolling does not carry it
                                     modifier = Modifier
                                         .padding(bottom = 14.dp)
-                                        .animateItem(
-                                            fadeInSpec = null,
-                                            placementSpec = if (cardDrag.active) tween(180, easing = EaseCss) else null,
-                                            fadeOutSpec = null
+                                        .then(
+                                            if (cardDrag.active) Modifier.animateItem(
+                                                fadeInSpec = null,
+                                                placementSpec = tween(180, easing = EaseCss),
+                                                fadeOutSpec = null
+                                            ) else Modifier
                                         ),
                                     placeholder = cardDrag.key == m.id
                                 )
