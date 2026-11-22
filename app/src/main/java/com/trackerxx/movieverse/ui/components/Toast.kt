@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -48,6 +49,9 @@ class ToastState(private val scope: CoroutineScope) {
         private set
     private var job: Job? = null
 
+    /** number of open dialogs (each dialog is its own window; the toast is drawn in the top one) */
+    var dialogs by mutableIntStateOf(0)
+
     fun show(message: String, ms: Long = 2600L) {
         job?.cancel()
         text = message
@@ -69,14 +73,16 @@ fun rememberToastState(): ToastState {
 
 /** #toast : centered above the bottom, --bot background, glass border, radius 12, bold text, fade .2s. */
 @Composable
-fun ToastHost(state: ToastState) {
+fun ToastHost(state: ToastState, inDialog: Boolean = false, visibleHere: Boolean = true) {
     val c = Mv.c
+    // while a dialog is open the toast is drawn by that dialog instead (see MvDialog)
+    val hidden = if (inDialog) !visibleHere else state.dialogs > 0
     val a by animateFloatAsState(
         targetValue = if (state.visible) 1f else 0f,
         animationSpec = tween(200, easing = EaseCss),
         label = "toastAlpha"
     )
-    if (a > 0f) {
+    if (a > 0f && !hidden) {
         BoxWithConstraints(
             Modifier
                 .fillMaxSize()
@@ -102,5 +108,15 @@ fun ToastHost(state: ToastState) {
                 MvText(state.text, weight = FontWeight.SemiBold, align = TextAlign.Center)
             }
         }
+    }
+}
+
+/** lets code outside the screens (loaders) show a toast */
+object ToastBridge {
+    @Volatile
+    var state: ToastState? = null
+
+    fun show(message: String, ms: Long = 2600L) {
+        state?.show(message, ms)
     }
 }

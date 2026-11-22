@@ -7,6 +7,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -36,7 +37,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -130,10 +134,18 @@ fun MvDialog(
     sideMargin: Dp = 18.dp,
     fillHeight: Boolean = false,
     dismissOnOutside: Boolean = false,
+    scrollState: ScrollState? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val c = Mv.c
     val currentDismiss by rememberUpdatedState(onDismiss)
+    val toast = LocalToast.current
+    var myDepth by remember { mutableIntStateOf(0) }
+    DisposableEffect(toast) {
+        toast.dialogs = toast.dialogs + 1
+        myDepth = toast.dialogs
+        onDispose { toast.dialogs = toast.dialogs - 1 }
+    }
     Dialog(
         onDismissRequest = { currentDismiss?.invoke() },
         properties = DialogProperties(
@@ -191,7 +203,7 @@ fun MvDialog(
                     end = (padding.calculateRightPadding(ld) - 4.dp).coerceAtLeast(0.dp),
                     bottom = (padding.calculateBottomPadding() - 4.dp).coerceAtLeast(0.dp)
                 )
-                val scroll = rememberScrollState()
+                val scroll = scrollState ?: rememberScrollState()
                 Column(
                     Modifier
                         .fillMaxWidth()
@@ -225,6 +237,8 @@ fun MvDialog(
                     )
                 }
             }
+            // #toast is above every dialog: only the top dialog draws it
+            ToastHost(toast, inDialog = true, visibleHere = myDepth == toast.dialogs)
         }
     }
 }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -15,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
@@ -51,6 +53,7 @@ fun MvTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     endExtra: Dp = 0.dp,
+    fixedHeight: Dp? = null,
     trailing: (@Composable BoxScope.() -> Unit)? = null
 ) {
     val c = Mv.c
@@ -73,13 +76,15 @@ fun MvTextField(
             Box(
                 Modifier
                     .fillMaxWidth()
+                    .then(if (fixedHeight != null) Modifier.height(fixedHeight) else Modifier)
                     .clip(shape)
                     .background(c.s2)
                     .border(1.dp, if (focused) c.mut else c.line, shape)
                     .padding(
                         start = size.padH + 1.dp, end = size.padH + 1.dp + endExtra,
                         top = size.padV + 1.dp, bottom = size.padV + 1.dp
-                    )
+                    ),
+                contentAlignment = if (fixedHeight != null) Alignment.CenterStart else Alignment.TopStart
             ) {
                 if (value.isEmpty() && placeholder.isNotEmpty()) {
                     MvText(placeholder, size = size.font, color = MvFixed.Placeholder, maxLines = 1)

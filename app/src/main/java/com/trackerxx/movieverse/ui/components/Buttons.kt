@@ -41,7 +41,8 @@ enum class BtnSize(val font: TextUnit, val padH: Dp, val padV: Dp, val icPadH: D
     Page(15.sp, 13.dp, 8.dp, 10.dp),
     Nav(14.sp, 11.dp, 7.dp, 9.dp),
     Dialog(13.sp, 14.dp, 7.dp, 9.dp),
-    Settings(13.sp, 14.dp, 8.dp, 14.dp)
+    Settings(13.sp, 14.dp, 8.dp, 14.dp),
+    SettingsSmall(12.sp, 10.dp, 6.dp, 10.dp)   // #sdlg .srow.ex .btn (Export / Import)
 }
 
 @Composable
@@ -54,6 +55,7 @@ fun MvButton(
     danger: Boolean = false,           // .btn.del
     enabled: Boolean = true,
     spacing: Dp = 6.dp,
+    borderColor: Color? = null,
     content: @Composable RowScope.() -> Unit
 ) {
     val c = Mv.c
@@ -65,7 +67,7 @@ fun MvButton(
         BtnKind.Normal -> Triple(c.s, c.line, if (danger) MvFixed.Del else c.ink)
     }
     val bg = colors.first
-    val bd = colors.second
+    val bd = borderColor ?: colors.second
     val fg = colors.third
     Row(
         modifier = modifier
@@ -92,9 +94,10 @@ fun MvButton(
     kind: BtnKind = BtnKind.Normal,
     size: BtnSize = BtnSize.Page,
     danger: Boolean = false,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    borderColor: Color? = null
 ) {
-    MvButton(onClick, modifier, kind, size, false, danger, enabled) { MvText(text) }
+    MvButton(onClick, modifier, kind, size, false, danger, enabled, borderColor = borderColor) { MvText(text) }
 }
 
 /** .pill (filter chips, tabs). Selected: ink background, bg-coloured bold text. */
