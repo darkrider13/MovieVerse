@@ -37,6 +37,20 @@ android {
                 signingConfig = signingConfigs.getByName("mv")
             }
         }
+        // the APK that is published is the RELEASE build: not debuggable, shrunk + optimised by R8 -> Compose scrolls much smoother
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (ksPass != null) {
+                signingConfig = signingConfigs.getByName("mv")
+            }
+        }
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     compileOptions {
@@ -63,4 +77,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("org.jsoup:jsoup:1.18.1")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    // installs the pre-compiled (baseline) profiles that ship inside Compose, so the app starts and scrolls fast right after install
+    implementation("androidx.profileinstaller:profileinstaller:1.3.1")
 }
