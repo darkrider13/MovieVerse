@@ -75,7 +75,7 @@ class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState)
         job?.cancel()
     }
 
-    fun setLang(l: String) {
+    fun pickLang(l: String) {
         lang = l
     }
 

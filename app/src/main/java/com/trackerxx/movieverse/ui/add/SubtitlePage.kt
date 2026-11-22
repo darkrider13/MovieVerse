@@ -47,9 +47,9 @@ fun SubtitlePage(flow: SubsFlow) {
 
         // language filter
         Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MvPill("All", flow.lang == "all", { flow.setLang("all") }, fontSize = 13.sp, padH = 14.dp, padV = 5.dp)
-            MvPill("Bangla", flow.lang == "BN", { flow.setLang("BN") }, fontSize = 13.sp, padH = 14.dp, padV = 5.dp)
-            MvPill("English", flow.lang == "EN", { flow.setLang("EN") }, fontSize = 13.sp, padH = 14.dp, padV = 5.dp)
+            MvPill("All", flow.lang == "all", { flow.pickLang("all") }, fontSize = 13.sp, padH = 14.dp, padV = 5.dp)
+            MvPill("Bangla", flow.lang == "BN", { flow.pickLang("BN") }, fontSize = 13.sp, padH = 14.dp, padV = 5.dp)
+            MvPill("English", flow.lang == "EN", { flow.pickLang("EN") }, fontSize = 13.sp, padH = 14.dp, padV = 5.dp)
         }
         Spacer(Modifier.height(14.dp))
 
