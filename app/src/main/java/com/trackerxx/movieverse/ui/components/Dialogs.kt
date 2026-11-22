@@ -31,6 +31,13 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsTopHeight
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.core.view.WindowCompat
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -383,5 +390,95 @@ fun MvApiLoadingDialog(
             Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 16.dp),
             size = 13.sp, weight = FontWeight.SemiBold, color = c.mut, align = TextAlign.Center
         )
+    }
+}
+
+
+/** Window setup of a full page: no dim, system bar icons follow the theme. */
+@Composable
+private fun PageWindowSetup() {
+    val view = LocalView.current
+    val dark = Mv.c.dark
+    SideEffect {
+        val window = (view.parent as? DialogWindowProvider)?.window ?: return@SideEffect
+        window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        val ic = WindowCompat.getInsetsController(window, view)
+        ic.isAppearanceLightStatusBars = !dark
+        ic.isAppearanceLightNavigationBars = !dark
+    }
+}
+
+/**
+ * A full-screen page (movie details, subtitles). It is its own window above the library, so the popups that open
+ * from it (trailer, person, questions, toasts) still stack on top. Back button / the arrow in the bar = onBack.
+ * Layout: top bar (arrow + title), scrolling content (max 640dp wide, centred), optional fixed bottom bar.
+ */
+@Composable
+fun MvPage(
+    onBack: () -> Unit,
+    title: String,
+    bottomBar: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val c = Mv.c
+    val currentBack by rememberUpdatedState(onBack)
+    val toast = LocalToast.current
+    var myDepth by remember { mutableIntStateOf(0) }
+    DisposableEffect(toast) {
+        toast.dialogs = toast.dialogs + 1
+        myDepth = toast.dialogs
+        onDispose { toast.dialogs = toast.dialogs - 1 }
+    }
+    Dialog(
+        onDismissRequest = { currentBack() },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        PageWindowSetup()
+        Box(Modifier.fillMaxSize().background(c.bg)) {
+            Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.ime))) {
+                // top bar
+                Row(
+                    Modifier.fillMaxWidth().height(52.dp).background(c.nav).padding(horizontal = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).plainClickable { currentBack() },
+                        contentAlignment = Alignment.Center
+                    ) { MvIcon(MvIcons.Back, 22.dp, tint = c.ink) }
+                    MvText(
+                        title, Modifier.weight(1f).padding(horizontal = 6.dp),
+                        size = 16.sp, weight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(c.line))
+                // content
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                    Column(
+                        Modifier
+                            .widthIn(max = 640.dp)
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                        content = content
+                    )
+                }
+                if (bottomBar != null) {
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(c.line))
+                    Box(Modifier.fillMaxWidth().background(c.nav), contentAlignment = Alignment.Center) {
+                        Box(Modifier.widthIn(max = 640.dp).fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) { bottomBar() }
+                    }
+                }
+            }
+            // status bar / navigation bar colours, like MovieVerseApp
+            Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars).background(c.nav))
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars).background(c.bot))
+            ToastHost(toast, inDialog = true, visibleHere = myDepth == toast.dialogs)
+        }
     }
 }
