@@ -67,6 +67,27 @@ object MvIcons {
     val CrossRed = MvIconData(listOf(IconShape("M6 6l12 12M18 6L6 18", color = Color(0xFFE24B4B))), 2.5f, false)
     val PlayWhite = MvIconData(listOf(IconShape("M8 5.5v13l11-6.5z", fill = true, color = Color.White)))
 
+    /** #trl : red outlined YouTube button in the title box (28px, 1px red outline) */
+    val YtOutline = MvIconData(
+        listOf(
+            IconShape(rrect(1.6f, 4.8f, 20.8f, 14.4f, 4.6f), color = Color(0xFFFF0000), strokeWidth = 1f),
+            IconShape("M10.2 9.3l4.6 2.7-4.6 2.7z", color = Color(0xFFFF0000), strokeWidth = 1f)
+        ), 1f, true
+    )
+
+    /** AVM / AVF : picture shown instead of a missing profile photo (black shapes on a white circle, viewBox 64) */
+    val AvatarM = MvIconData(
+        listOf(
+            IconShape(circ(32f, 23f, 11f), fill = true, color = Color.Black),
+            IconShape("M9 64c0-15 10-24 23-24s23 9 23 24z", fill = true, color = Color.Black)
+        ), 2f, true, 64f
+    )
+    val AvatarF = MvIconData(
+        listOf(
+            IconShape("M32 6c-11 0-17 7-17 18 0 7 2 12 4 15-7 3-11 9-11 25h48c0-16-4-22-11-25 2-3 4-8 4-15C49 13 43 6 32 6z", fill = true, color = Color.Black)
+        ), 2f, true, 64f
+    )
+
     /** Path of the big green tick in the OK dialog (drawn animated there). */
     const val OkTickPath = "M5 12.5l4.5 4.5L19 7.5"
 }
