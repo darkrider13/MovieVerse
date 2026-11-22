@@ -91,6 +91,7 @@ class SettingsState {
         "imdb", "omdb" -> "omdb"
         "xmdb" -> "xmdb"
         "mdblist" -> "mdblist"
+        "subtitles", "subtitle", "subs" -> "subs"
         else -> "c" + AppData.uid()
     }
 

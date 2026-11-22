@@ -372,7 +372,7 @@ private fun KeyRow(st: SettingsState, i: Int, a: EditApi, j: Int, onDeleteApi: (
     }
     val value = a.keys.getOrNull(j) ?: ""
     // the delete-API button sits only on the first row and not for the built-in TMDB / XMDb / OMDb
-    val canDelete = j == 0 && a.id != "tmdb" && a.id != "xmdb" && a.id != "omdb"
+    val canDelete = j == 0 && a.id != "tmdb" && a.id != "xmdb" && a.id != "omdb" && a.id != "subs"
 
     Row(
         Modifier.fillMaxWidth().height(40.dp),
