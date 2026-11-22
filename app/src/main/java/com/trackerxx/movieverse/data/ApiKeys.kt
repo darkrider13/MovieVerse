@@ -3,7 +3,7 @@ package com.trackerxx.movieverse.data
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** One API in Settings: {id, name, keys[], custom?}. tmdb / mdblist / xmdb / omdb are built in. */
+/** One API in Settings: {id, name, keys[], custom?}. tmdb / mdblist / xmdb / omdb / subs (subtitles) are built in. */
 class ApiEntry(
     var id: String,
     var name: String,
@@ -127,7 +127,7 @@ class ApiKeys {
             out.add(a)
         }
         for (a in apis) {
-            if (a.id != "tmdb" && a.id != "xmdb" && a.id != "omdb" && a.id != "mdblist") out.add(a)
+            if (a.id != "tmdb" && a.id != "xmdb" && a.id != "omdb" && a.id != "mdblist" && a.id != "subs") out.add(a)
         }
         apis = out
     }
@@ -143,7 +143,8 @@ class ApiKeys {
     /** JSON.stringify(apis.map(a => a.keys)): used to see whether the keys changed */
     fun signature(): String {
         val a = JSONArray()
-        for (e in apis) a.put(JSONArray(e.keys))
+        // the subtitle key does not affect Trending / enrichment, so changing it alone is not a "keys changed"
+        for (e in apis) if (e.id != "subs") a.put(JSONArray(e.keys))
         return a.toString()
     }
 
@@ -210,7 +211,7 @@ class ApiKeys {
     }
 
     companion object {
-        private val WANT = listOf("tmdb" to "TMDB", "mdblist" to "MDBList", "xmdb" to "XMDb", "omdb" to "OMDb")
+        private val WANT = listOf("tmdb" to "TMDB", "mdblist" to "MDBList", "xmdb" to "XMDb", "omdb" to "OMDb", "subs" to "Subtitles")
 
         /** JS /["'\s]/g (\s in JS also covers non-breaking space, BOM and the unicode spaces) */
         private val STRIP = Regex("[\"'\\s\u00A0\uFEFF\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]")
