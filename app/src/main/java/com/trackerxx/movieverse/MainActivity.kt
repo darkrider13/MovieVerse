@@ -27,6 +27,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         )
         setContent { MovieVerseApp() }
+        FrameMonitor.attach(this)   // TEMPORARY: slow-frame box at the bottom-left (diagnostic)
         // (no forced refresh rate: the system picks 60 / 120 Hz by itself while scrolling; forcing the top rate made missed frames more visible)
 
         // backfill(): when the app comes to the front (after 0.4 s) and then every 30 minutes while it is visible
