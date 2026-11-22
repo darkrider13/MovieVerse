@@ -91,6 +91,7 @@ fun TrendSection(
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val itemW = (this.maxWidth - 20.dp) / 3
             val state = rememberLazyListState()
+            val measurer = rememberTextMeasurer()   // one per row (it used to be one per card)
             LazyRow(
                 state = state,
                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
@@ -100,7 +101,7 @@ fun TrendSection(
                 contentPadding = PaddingValues(0.dp)
             ) {
                 items(shown.size, key = { shown[it].id }, contentType = { "tr-card" }) { ri ->
-                    TrendCard(shown[ri], if (rk) ri + 1 else 0, libIds.contains(shown[ri].id), itemW, onTap, id, ri)
+                    TrendCard(shown[ri], if (rk) ri + 1 else 0, libIds.contains(shown[ri].id), itemW, onTap, id, ri, measurer)
                 }
             }
         }
@@ -114,10 +115,9 @@ private fun TrendTitle(text: String) {
 }
 
 @Composable
-private fun TrendCard(o: TrItem, rank: Int, inLib: Boolean, width: androidx.compose.ui.unit.Dp, onTap: (TrItem) -> Unit, sid: String, ri: Int) {
+private fun TrendCard(o: TrItem, rank: Int, inLib: Boolean, width: androidx.compose.ui.unit.Dp, onTap: (TrItem) -> Unit, sid: String, ri: Int, measurer: androidx.compose.ui.text.TextMeasurer) {
     val c = Mv.c
     val shape = RoundedCornerShape(12.dp)
-    val measurer = rememberTextMeasurer()
     val dark = c.dark
     Column(Modifier.width(width).plainClickable { onTap(o) }) {
         Box(

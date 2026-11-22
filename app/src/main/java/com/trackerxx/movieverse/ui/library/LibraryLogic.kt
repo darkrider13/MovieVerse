@@ -68,8 +68,19 @@ class LibView(
     val flat: Boolean,
     val emptyText: String?,                  // text when there is nothing to show
     val showFilters: Boolean,
-    val ordCtx: List<String>?                // ids of the whole tab in "my order" (null = cards cannot be dragged here)
-)
+    private val ord: Lazy<List<String>>?,    // ids of the whole tab in "my order" (null = cards cannot be dragged here); sorted only when needed
+    private val full: List<Movie> = list     // the whole sorted list (list = its first lim cards)
+) {
+    /** true when the cards of this view can be dragged (cheap, no sorting) */
+    val canOrder: Boolean get() = ord != null
+
+    /** ids of the whole tab in "my order" (sorted on first use, only when a card is dropped) */
+    val ordCtx: List<String>? get() = ord?.value
+
+    /** the same page with only the first [lim] cards: cheap, nothing is filtered or sorted again */
+    fun cut(lim: Int): LibView =
+        LibView(tabs, fo, folder, allCount, folderCounts, full.take(lim), total, inTabCount, flat, emptyText, showFilters, ord, full)
+}
 
 private const val LOADING = "\u0001loading"
 
@@ -247,7 +258,7 @@ object LibraryLogic {
         val ql = q.lowercase()
         var list = inTab.filter { m ->
             (country == "all" || (if (m.truthy("country")) m.str("country")!! else "Other") == country) &&
-                m.title.lowercase().contains(ql)
+                (ql.isEmpty() || m.title.lowercase().contains(ql))
         }
         if (folder != null || flat || allw) {
             list = list.filter { m ->
@@ -267,8 +278,9 @@ object LibraryLogic {
         if (upAuto) cmp = upCmp
         if (allw && !upAuto && ff.s == "new") cmp = Comparator<Movie> { a, b -> b.added.compareTo(a.added) }
         // my own order can be changed by dragging, only in a plain tab / folder view
-        val ordCtx = if (tab != "all" && !upAuto && !flat && !allw && (folder == null || ff.s == "new"))
-            inTab.sortedWith(cmp).map { it.id } else null
+        val cmpF = cmp
+        val ordCtx: Lazy<List<String>>? = if (tab != "all" && !upAuto && !flat && !allw && (folder == null || ff.s == "new"))
+            lazy(LazyThreadSafetyMode.NONE) { inTab.sortedWith(cmpF).map { it.id } } else null
         if (tab == "all") {
             val wt = list.filter { it.status == "watching" }.sortedWith(cmp).take(2)
             val rkMap = mapOf("watching" to 1.5, "upcoming" to 1.0, "plan" to 2.0, "favourite" to 3.0, "watched" to 4.0)
@@ -291,7 +303,16 @@ object LibraryLogic {
         val total = list.size
         val shown = list.take(lim)
         val counts = HashMap<String, Int>()
-        for (f in fo) counts[f.id] = movies.count { it.folder == f.id }
+        if (fo.isNotEmpty()) {
+            for (f in fo) counts[f.id] = 0
+            for (m in movies) {
+                val fid = m.folder
+                if (fid != null) {
+                    val cur = counts[fid]
+                    if (cur != null) counts[fid] = cur + 1
+                }
+            }
+        }
 
         val empty: String? = if (shown.isNotEmpty()) null
         else if (flat) "No movies match these filters."
@@ -312,7 +333,7 @@ object LibraryLogic {
             flat = flat,
             emptyText = empty,
             showFilters = tab != "all",
-            ordCtx = ordCtx
+            ord = ordCtx
         )
     }
 

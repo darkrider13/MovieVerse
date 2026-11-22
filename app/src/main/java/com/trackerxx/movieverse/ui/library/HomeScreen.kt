@@ -158,14 +158,17 @@ fun HomeScreen(splashGone: Boolean) {
     // (rev bump) used to re-sort the whole library on the main thread -> scroll stutter. Now it reuses the last result.
     val lvOn = view == "library" && home == "lib"
     val lvHold = remember { arrayOfNulls<LibView>(1) }
-    val lv = remember(rev, ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lib.lim, lvOn) {
+    // The heavy part (filter + sort of the whole library) does NOT depend on lib.lim. Loading the next 60 cards while scrolling used to
+    // filter + sort the whole library again on the main thread (a hitch every 60 cards). Now only the cheap cut (first lim cards) re-runs.
+    val lvFull = remember(rev, ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lvOn) {
         val held = lvHold[0]
         if (!lvOn && held != null) held
         else LibraryLogic.build(
             AppData.movies.toTypedArray().toList(), AppData.folders.toList(), AppData.statuses.toList(), AppData.SL,
-            ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lib.lim
+            ready, lib.tab, folderEff, ffEff, lib.q, lib.country, Int.MAX_VALUE
         ).also { lvHold[0] = it }
     }
+    val lv = remember(lvFull, lib.lim) { lvFull.cut(lib.lim) }
     val dirty = remember(rev) { AppData.isDirty() }
     val lvNow by rememberUpdatedState(lv)
 
@@ -267,7 +270,7 @@ fun HomeScreen(splashGone: Boolean) {
                         )
                         .cardReorder(
                             drag = cardDrag, grid = gridState,
-                            ids = { if (lvNow.ordCtx != null) lvNow.list.map { it.id } else null },
+                            ids = { if (lvNow.canOrder) lvNow.list.map { it.id } else null },
                             haptic = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
                             onDrop = { ids -> actions.saveOrder(ids, lvNow.ordCtx) }
                         ),

@@ -235,6 +235,8 @@ private fun SettingsButton(dirty: Boolean, onClick: () -> Unit, onLongPress: () 
     Box(
         Modifier
             .size(34.dp)
+            // own layer: the endless glow animation only redraws this button, not the whole top bar / page
+            .graphicsLayer { }
             .drawBehind {
                 if (dirty) {
                     val p = phase.value
