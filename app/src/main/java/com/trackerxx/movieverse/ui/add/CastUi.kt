@@ -139,7 +139,7 @@ private fun CastRow(list: List<CastPerson>, cw: androidx.compose.ui.unit.Dp, onP
         Modifier.fillMaxSize(), state = st,
         contentPadding = PaddingValues(top = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        flingBehavior = rememberSnapFlingBehavior(st)
+        flingBehavior = androidx.compose.foundation.gestures.ScrollableDefaults.flingBehavior()
     ) {
         items(list) { p -> CastCard(p, cw, onPerson) }
     }

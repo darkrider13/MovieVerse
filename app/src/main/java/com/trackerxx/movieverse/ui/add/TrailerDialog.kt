@@ -89,7 +89,7 @@ fun TrailerDialog(flow: AddFlow) {
         LazyRow(
             Modifier.fillMaxWidth().padding(bottom = 2.dp), state = st,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            flingBehavior = rememberSnapFlingBehavior(st)
+            flingBehavior = androidx.compose.foundation.gestures.ScrollableDefaults.flingBehavior()
         ) {
             itemsIndexed(l) { _, v ->
                 TrailerCard(v, isT, Modifier.fillParentMaxWidth()) { ytGo(ctx, v.key) }
