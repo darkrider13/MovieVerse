@@ -104,12 +104,7 @@ private fun DialogWindowSetup() {
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         window.setDimAmount(0.5f)
-        if (Build.VERSION.SDK_INT >= 31) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-            val lp = window.attributes
-            lp.blurBehindRadius = with(density) { 14.dp.roundToPx() }
-            window.attributes = lp
-        }
+        // the blur itself is done in MovieVerseApp (Modifier.blur on the page): FLAG_BLUR_BEHIND is ignored by many phones
     }
 }
 
