@@ -1,0 +1,16 @@
+# Baseline profile (wildcards): pre-compiles the code that runs while scrolling, so there is no JIT stutter after install / update.
+HSPLcom/trackerxx/movieverse/**;->**(**)**
+HSPLandroidx/compose/foundation/lazy/**;->**(**)**
+HSPLandroidx/compose/foundation/gestures/**;->**(**)**
+HSPLandroidx/compose/foundation/layout/**;->**(**)**
+HSPLandroidx/compose/foundation/text/**;->**(**)**
+HSPLandroidx/compose/ui/**;->**(**)**
+HSPLandroidx/compose/runtime/**;->**(**)**
+HSPLandroidx/compose/animation/**;->**(**)**
+HSPLcoil/**;->**(**)**
+Landroidx/compose/foundation/lazy/**;
+Landroidx/compose/foundation/gestures/**;
+Landroidx/compose/ui/**;
+Landroidx/compose/runtime/**;
+Lcom/trackerxx/movieverse/**;
+Lcoil/**;
