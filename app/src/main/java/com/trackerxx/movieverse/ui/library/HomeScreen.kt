@@ -154,11 +154,17 @@ fun HomeScreen(splashGone: Boolean) {
             lib.lim = 60
         }
     }
-    val lv = remember(rev, ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lib.lim) {
-        LibraryLogic.build(
+    // The library list is only (re)built while Your Library is on screen. On Trending / Releases a background refresh
+    // (rev bump) used to re-sort the whole library on the main thread -> scroll stutter. Now it reuses the last result.
+    val lvOn = view == "library" && home == "lib"
+    val lvHold = remember { arrayOfNulls<LibView>(1) }
+    val lv = remember(rev, ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lib.lim, lvOn) {
+        val held = lvHold[0]
+        if (!lvOn && held != null) held
+        else LibraryLogic.build(
             AppData.movies.toTypedArray().toList(), AppData.folders.toList(), AppData.statuses.toList(), AppData.SL,
             ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lib.lim
-        )
+        ).also { lvHold[0] = it }
     }
     val dirty = remember(rev) { AppData.isDirty() }
     val lvNow by rememberUpdatedState(lv)
@@ -329,7 +335,7 @@ fun HomeScreen(splashGone: Boolean) {
                         if (lv.emptyText != null) {
                             item(key = "empty", span = { GridItemSpan(maxLineSpan) }) { EmptyBox(lv.emptyText) }
                         } else {
-                            itemsIndexed(cards, key = { _, it -> it.id }) { i, m ->
+                            itemsIndexed(cards, key = { _, it -> it.id }, contentType = { _, _ -> "card" }) { i, m ->
                                 MovieCard(
                                     m, AppData.statuses, AppData.SL,
                                     upd = Refresh.upd.containsKey(m.id),
@@ -341,7 +347,6 @@ fun HomeScreen(splashGone: Boolean) {
                                         }
                                     },
                                     modifier = Modifier
-                                        .riseIn("c" + m.id, (i % 3) * 45)
                                         .padding(bottom = 14.dp)
                                         .animateItem(
                                             fadeInSpec = null,

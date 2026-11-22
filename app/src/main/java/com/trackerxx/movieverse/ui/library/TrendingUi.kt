@@ -2,7 +2,9 @@ package com.trackerxx.movieverse.ui.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,7 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -83,7 +85,7 @@ fun TrendSection(
         return
     }
     val rk = id == "m"
-    val shown = list.take(if (rk) 10 else 20)
+    val shown = remember(list, rk) { list.take(if (rk) 10 else 20) }
     Column(Modifier.fillMaxWidth()) {
         TrendTitle(title)
         BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -93,9 +95,11 @@ fun TrendSection(
                 state = state,
                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
-                flingBehavior = rememberSnapFlingBehavior(state)
+                // free, natural fling (like Netflix / Play Store rows) - no snapping, so the row never "catches" the finger
+                flingBehavior = ScrollableDefaults.flingBehavior(),
+                contentPadding = PaddingValues(0.dp)
             ) {
-                items(shown.size, key = { shown[it].id }) { ri ->
+                items(shown.size, key = { shown[it].id }, contentType = { "tr-card" }) { ri ->
                     TrendCard(shown[ri], if (rk) ri + 1 else 0, libIds.contains(shown[ri].id), itemW, onTap, id, ri)
                 }
             }
@@ -115,31 +119,27 @@ private fun TrendCard(o: TrItem, rank: Int, inLib: Boolean, width: androidx.comp
     val shape = RoundedCornerShape(12.dp)
     val measurer = rememberTextMeasurer()
     val dark = c.dark
-    Column(Modifier.width(width).riseIn(sid + "-" + o.id, (ri % 3) * 45).plainClickable { onTap(o) }) {
+    Column(Modifier.width(width).plainClickable { onTap(o) }) {
         Box(
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(2f / 3f)
                 .clip(shape)
                 .background(cssGradient(160f, c.s2, c.line))
-                .drawWithContent {
-                    drawContent()
-                    if (rank > 0) {
-                        // .rkt : dark fade at the bottom + the big rank number
-                        val a = if (dark) Color(34 / 255f, 36 / 255f, 42 / 255f) else Color(226 / 255f, 228 / 255f, 234 / 255f)
-                        val h = size.height * 0.62f
-                        drawRect(
-                            Brush.verticalGradient(
-                                0f to a.copy(alpha = 0f), 0.12f to a.copy(alpha = 0.09f), 0.28f to a.copy(alpha = 0.26f),
-                                0.5f to a.copy(alpha = 0.52f), 0.75f to a.copy(alpha = 0.78f), 1f to a.copy(alpha = 0.92f),
-                                startY = size.height - h, endY = size.height
-                            ),
-                            topLeft = Offset(0f, size.height - h), size = Size(size.width, h)
-                        )
-                        val k = size.width / 100f
-                        val txt = rank.toString()
-                        val glyph = if (dark) Color.White else Color(0xFF141846)
-                        val style = TextStyle(
+                .drawWithCache {
+                    // everything heavy (gradient, text layout, shadow) is built ONCE here, not on every frame
+                    val h = size.height * 0.62f
+                    val a = if (dark) Color(34 / 255f, 36 / 255f, 42 / 255f) else Color(226 / 255f, 228 / 255f, 234 / 255f)
+                    val fade = if (rank > 0) Brush.verticalGradient(
+                        0f to a.copy(alpha = 0f), 0.12f to a.copy(alpha = 0.09f), 0.28f to a.copy(alpha = 0.26f),
+                        0.5f to a.copy(alpha = 0.52f), 0.75f to a.copy(alpha = 0.78f), 1f to a.copy(alpha = 0.92f),
+                        startY = size.height - h, endY = size.height
+                    ) else null
+                    val k = size.width / 100f
+                    val glyph = if (dark) Color.White else Color(0xFF141846)
+                    val layout = if (rank > 0) measurer.measure(
+                        rank.toString(),
+                        TextStyle(
                             brush = Brush.verticalGradient(
                                 0f to glyph.copy(alpha = 0.98f), 0.5f to glyph.copy(alpha = 0.7f), 1f to glyph.copy(alpha = 0.25f)
                             ),
@@ -150,9 +150,15 @@ private fun TrendCard(o: TrItem, rank: Int, inLib: Boolean, width: androidx.comp
                                 blurRadius = 4.dp.toPx()
                             )
                         )
-                        val r = measurer.measure(txt, style)
-                        val x = (if (rank > 9) 2f else 1f) * k
-                        drawText(r, topLeft = Offset(x, 140f * k - r.firstBaseline))
+                    ) else null
+                    onDrawWithContent {
+                        drawContent()
+                        if (fade != null && layout != null) {
+                            // .rkt : dark fade at the bottom + the big rank number
+                            drawRect(fade, topLeft = Offset(0f, size.height - h), size = Size(size.width, h))
+                            val x = (if (rank > 9) 2f else 1f) * k
+                            drawText(layout, topLeft = Offset(x, 140f * k - layout.firstBaseline))
+                        }
                     }
                 }
         ) {

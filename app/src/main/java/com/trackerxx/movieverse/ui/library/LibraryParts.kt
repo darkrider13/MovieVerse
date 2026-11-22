@@ -400,7 +400,7 @@ fun TabsRow(
                 ),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            flingBehavior = rememberSnapFlingBehavior(state)
+            flingBehavior = androidx.compose.foundation.gestures.ScrollableDefaults.flingBehavior()
         ) {
             items(shown, key = { it.first }) { t ->
                 val isDragged = drag.key == t.first
@@ -625,7 +625,7 @@ fun FolderChips(
             modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            flingBehavior = rememberSnapFlingBehavior(state)
+            flingBehavior = androidx.compose.foundation.gestures.ScrollableDefaults.flingBehavior()
         ) {
             item(key = "all") {
                 FolderChip(itemW, view.folder == null, true, false, "All", view.allCount, null, onAll)

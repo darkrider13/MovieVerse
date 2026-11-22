@@ -243,7 +243,7 @@ fun LazyGridScope.releasesItems(
         }
     } else {
         itemsIndexed(list, key = { _, it -> it.id }) { i, m ->
-            UpCard(m, libIds.contains(m.id), { onTap(m) }, Modifier.riseIn("u" + m.id, (i % 3) * 45).padding(bottom = 14.dp))
+            UpCard(m, libIds.contains(m.id), { onTap(m) }, Modifier.padding(bottom = 14.dp))
         }
     }
     if (!searching && Releases.moreVisible) {
