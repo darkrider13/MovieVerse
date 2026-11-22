@@ -598,6 +598,23 @@ object Enrich {
     private var bfBusy = false
 
     /**
+     * Settings > Save, `after()` (the part that touches movies): forget the failed MDBList lookups, let movies without MDBList data
+     * look again (mdc removed = undefined) and, when an XMDb key exists, let movies without any IMDb rating be checked again (chk = 0).
+     */
+    suspend fun resetAfterKeys() = withContext(StateDispatcher) {
+        mdBad.clear()
+        val all = AppData.movies.toTypedArray()
+        for (m in all) {
+            if (!m.truthy("md")) m.remove("mdc")
+        }
+        if (xmKeys()) {
+            for (m in all) {
+                if (!m.truthy("imdb") && !m.truthy("xm") && !m.truthy("om") && m.tmdbId != 0L && m.has("rt")) m.set("chk", 0)
+            }
+        }
+    }
+
+    /**
      * backfill(): looks up what is due for up to 25 movies, 6 at a time, then saves the changed ones and tells the UI.
      * Called on start, when the app comes back to the front and every 30 minutes.
      */
