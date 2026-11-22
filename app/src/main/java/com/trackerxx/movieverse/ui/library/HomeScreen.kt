@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,8 +47,11 @@ import com.trackerxx.movieverse.data.AppData
 import com.trackerxx.movieverse.data.Ls
 import com.trackerxx.movieverse.enrich.Enrich
 import com.trackerxx.movieverse.net.AppScope
+import com.trackerxx.movieverse.releases.Releases
+import com.trackerxx.movieverse.trending.Trending
 import com.trackerxx.movieverse.ui.add.AddDialog
 import com.trackerxx.movieverse.ui.add.AddFlow
+import com.trackerxx.movieverse.ui.settings.SettingsDialog
 import com.trackerxx.movieverse.ui.components.LocalModal
 import com.trackerxx.movieverse.ui.components.LocalToast
 import com.trackerxx.movieverse.ui.components.MvApiLoadingDialog
@@ -55,8 +59,16 @@ import com.trackerxx.movieverse.ui.theme.EaseCss
 import com.trackerxx.movieverse.ui.theme.Mv
 import com.trackerxx.movieverse.ui.theme.MvText
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import com.trackerxx.movieverse.ui.settings.KeySave
+import com.trackerxx.movieverse.enrich.Refresh
+import com.trackerxx.movieverse.ui.settings.ImportDialogs
+import com.trackerxx.movieverse.ui.settings.rememberExportFlow
+import com.trackerxx.movieverse.ui.settings.rememberImportFlow
+import com.trackerxx.movieverse.ui.components.MvOkDialog
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -68,8 +80,9 @@ private fun nf(n: Int): String = NumberFormat.getIntegerInstance(Locale.US).form
  * The whole page scrolls as one list, the top bar stays (like the sticky .nav).
  */
 @Composable
-fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
+fun HomeScreen(splashGone: Boolean) {
     val toast = LocalToast.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     val modal = LocalModal.current
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
@@ -78,8 +91,14 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
     val actions = remember { LibraryActions(lib, modal, toast, scope) }
     var home by remember { mutableStateOf("trend") }      // var home='trend' : the app starts on Trending
     var view by remember { mutableStateOf("library") }    // library | up (Releases)
+    var settingsOpen by remember { mutableStateOf(false) } // #sdlg (Settings dialog)
+    val export = rememberExportFlow()                      // Settings > Export
+    val imp = rememberImportFlow()                         // Settings > Import
+    var keyBusy by remember { mutableStateOf(false) }      // #apild "Fetching your API key" after Save
     var qBox by remember { mutableStateOf("") }
     var fkey by remember { mutableStateOf<String?>(null) } // open filter dialog: g | r | y | s
+    var ufkey by remember { mutableStateOf<String?>(null) } // Releases filter dialog: t | c | g | y
+    var usText by remember { mutableStateOf("") }          // Releases search box text
     val gridState = rememberLazyGridState()
     val add = remember { AddFlow(scope, modal, toast) }
     val cardDrag = remember { DragState() }
@@ -105,8 +124,12 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
         }
         loaded = true
         Enrich.onChanged = { AppData.render() }
+        Enrich.snapF = { m -> Refresh.snapF(m) }
         AppData.render()
         AppScope.launch { Enrich.backfill() }
+        // the app starts on Trending: show what was cached at once, then refresh it from the network
+        Trending.showCached()
+        AppScope.launch { try { Trending.load(true) } catch (e: CancellationException) { throw e } catch (e: Exception) { } }
     }
 
     // ---- what the page shows -------------------------------------------------------------------------------------------
@@ -151,6 +174,7 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
             Pair(info.visibleItemsInfo.lastOrNull()?.index ?: 0, info.totalItemsCount)
         }.collect { (last, total) ->
             if (lvNow.total > lib.lim && last >= total - 12) lib.lim += 60
+            if (last >= total - 8) Releases.checkMore()
         }
     }
 
@@ -167,8 +191,41 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
         }
     }
 
+    // Trending is on screen: ratings are retried while it is; entering it loads (or re-uses) the rows (showView)
+    val trendOn = view == "library" && home == "trend"
+    SideEffect { Trending.visible = trendOn }
+    LaunchedEffect(trendOn, loaded) {
+        if (trendOn && loaded) {
+            try { Trending.load(false) } catch (e: CancellationException) { throw e } catch (e: Exception) { }
+        }
+    }
+    // Releases is on screen: it loads (or re-uses) its list (showView('up'))
+    val upOn = view == "up"
+    SideEffect { Releases.visible = upOn }
+    LaunchedEffect(upOn) { if (upOn) Releases.onShow() }
+    val libIds = remember(rev) { AppData.movies.map { it.tmdbId }.toHashSet() }
+
     fun toTop() { scope.launch { gridState.scrollToItem(0) } }
-    fun soon(what: String) { toast.show("$what comes in the next update") }
+
+    /** selTrend(): back to Trending, top of the page */
+    fun selTrend() {
+        home = "trend"
+        Ls.setItem("library.home", "trend")
+        view = "library"
+        toTop()
+    }
+
+    /** apiBusy(keyLoad(), 900, 45000): "Fetching your API key" dialog (at least 0.9 s, at most 45 s); returns the error text or null */
+    suspend fun runKeyBusy(): String? {
+        keyBusy = true
+        val t0 = System.currentTimeMillis()
+        val job = scope.async { KeySave.keyLoad(home == "trend" && view != "up") }
+        val err = withTimeoutOrNull(45000L) { job.await() }
+        val wait = 900L - (System.currentTimeMillis() - t0)
+        if (wait > 0) delay(wait)
+        keyBusy = false
+        return err
+    }
 
     Column(Modifier.fillMaxSize()) {
         TopNav(
@@ -176,8 +233,7 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
             dirty = dirty,
             onBrand = { view = "library" },
             onReleases = { view = if (view == "up") "library" else "up" },
-            onSettings = { toast.show("Settings come in Step 10") },
-            onSettingsLong = onDev
+            onSettings = { settingsOpen = true }
         )
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
             Box(Modifier.widthIn(max = 1100.dp).fillMaxSize()) {
@@ -186,6 +242,21 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
                     state = gridState,
                     modifier = Modifier
                         .fillMaxSize()
+                        .pullRefresh(
+                            grid = gridState,
+                            enabled = { view != "up" && !Refresh.isBusy },
+                            dragging = { cardDrag.active },
+                            onBuzz = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) },
+                            onPull = {
+                                scope.launch {
+                                    if (home == "trend") {
+                                        try { Trending.silent() } catch (e: CancellationException) { throw e } catch (e: Exception) { }
+                                    } else {
+                                        Refresh.runLibrary(ctx, toast)
+                                    }
+                                }
+                            }
+                        )
                         .cardReorder(
                             drag = cardDrag, grid = gridState,
                             ids = { if (lvNow.ordCtx != null) lvNow.list.map { it.id } else null },
@@ -200,7 +271,7 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
                             Box(Modifier.padding(bottom = 14.dp)) { Hero(AppData.uname, onAdd = { add.openAdd(lib.tab, folderEff) }) }
                         }
                         item(key = "hsw", span = { GridItemSpan(maxLineSpan) }) {
-                            Box(Modifier.padding(bottom = 12.dp)) {
+                            Box(Modifier.padding(bottom = if (home == "trend" && AppData.apis.key.isNotEmpty()) 0.dp else 12.dp)) {
                                 HomeSwitch(home, onPick = { h ->
                                     if (h == "lib") lib.openTab("all")
                                     if (h != home) {
@@ -259,6 +330,8 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
                             items(cards, key = { it.id }) { m ->
                                 MovieCard(
                                     m, AppData.statuses, AppData.SL,
+                                    upd = Refresh.upd.containsKey(m.id),
+                                    chg = remember(rev) { Enrich.chgSet.contains(m.id) },
                                     onClick = {
                                         if (!cardDrag.recentlyDragged()) {
                                             Enrich.chgSet.remove(m.id)
@@ -284,12 +357,43 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
                     }
 
                     if (view == "library" && home == "trend") {
-                        item(key = "trend", span = { GridItemSpan(maxLineSpan) }) {
-                            TrendNone(if (AppData.apis.key.isEmpty()) "Add your TMDB key in Settings to see Trending." else "Trending comes in Step 8.")
+                        if (AppData.apis.key.isEmpty()) {
+                            item(key = "trend", span = { GridItemSpan(maxLineSpan) }) {
+                                TrendNone("Add your TMDB key in Settings to see Trending.")
+                            }
+                        } else {
+                            for (tid in Trending.ORDER) {
+                                item(key = "tr-$tid", span = { GridItemSpan(maxLineSpan) }) {
+                                    TrendSection(
+                                        id = tid,
+                                        list = Trending.lists[tid],
+                                        failed = Trending.failed[tid] == true,
+                                        libIds = libIds,
+                                        onTap = { o ->
+                                            val d0 = AppData.movies.firstOrNull { it.tmdbId == o.id }
+                                            val us = if (AppData.statuses.any { it.id == "upcoming" }) "upcoming"
+                                            else if (AppData.statuses.any { it.id == "plan" }) "plan" else AppData.statuses[0].id
+                                            add.choose(o.id, d0?.status ?: us, fromUp = true)
+                                        },
+                                        onRetry = { scope.launch { try { Trending.load(true) } catch (e: CancellationException) { throw e } catch (e: Exception) { } } }
+                                    )
+                                }
+                            }
                         }
                     }
                     if (view == "up") {
-                        item(key = "up", span = { GridItemSpan(maxLineSpan) }) { TrendNone("Releases come in Step 8.") }
+                        releasesItems(
+                            searchText = usText,
+                            onSearchText = { usText = it; Releases.onQuery(it) },
+                            libIds = libIds,
+                            onOpenFilter = { k -> ufkey = k },
+                            onTap = { m ->
+                                val d0 = AppData.movies.firstOrNull { it.tmdbId == m.id }
+                                val us = if (AppData.statuses.any { it.id == "upcoming" }) "upcoming"
+                                else if (AppData.statuses.any { it.id == "plan" }) "plan" else AppData.statuses[0].id
+                                add.choose(m.id, d0?.status ?: us, minMs = if (Releases.umode == "soon") 600L else 1300L, fromUp = true, initial = m.toQItem())
+                            }
+                        )
                     }
                 }
 
@@ -324,10 +428,62 @@ fun HomeScreen(splashGone: Boolean, onDev: () -> Unit) {
         )
     }
 
+    ufkey?.let { k -> ReleaseFilterDialog(k) { ufkey = null } }
+
     AddDialog(add)
+
+    // ---- Settings (#sdlg) ----------------------------------------------------------------------------------------------
+    if (settingsOpen) {
+        SettingsDialog(
+            dirty = dirty,
+            onClose = { settingsOpen = false },
+            // $('#ksave').onclick after the keys were stored: the dialog closes first, then the key check runs
+            onSaved = { changed, has ->
+                settingsOpen = false
+                if (changed) selTrend()
+                scope.launch {
+                    if (!changed || !has) {
+                        KeySave.after(view == "up")
+                        if (changed) {
+                            try { Trending.load(true) } catch (e: CancellationException) { throw e } catch (e: Exception) { }
+                        }
+                    } else {
+                        // apiBusy(keyLoad().then(after), 900, 45000)
+                        keyBusy = true
+                        val t0 = System.currentTimeMillis()
+                        val job = async {
+                            val e = KeySave.keyLoad(home == "trend" && view != "up")
+                            KeySave.after(view == "up")
+                            e
+                        }
+                        val err = withTimeoutOrNull(45000L) { job.await() }
+                        val wait = 900L - (System.currentTimeMillis() - t0)
+                        if (wait > 0) delay(wait)
+                        keyBusy = false
+                        if (err != null) toast.show(err, 4000L)
+                    }
+                }
+            },
+            onExport = { export.start { settingsOpen = false } },
+            // Import: the dialog stays open under the progress dialog and closes when the import is over
+            onImport = { imp.start(closeSettings = { settingsOpen = false }, selTrend = { selTrend() }, keyBusy = { runKeyBusy() }) }
+        )
+    }
 
     if (splashGone && !loaded) {
         MvApiLoadingDialog(caption = progress, title = "Loading your library")
+    }
+
+    // Export: "Exporting backup" progress and the green success dialog
+    export.progress?.let { MvApiLoadingDialog(caption = it, title = "Exporting backup") }
+    export.ok?.let { MvOkDialog(title = "Export successful", message = it.message, onOk = { export.dismissOk() }, code = it.code) }
+
+    // Import: "Importing backup" progress and the green result dialogs
+    ImportDialogs(imp)
+
+    // #apild after Settings > Save (cannot be closed by the user)
+    if (keyBusy) {
+        MvApiLoadingDialog(caption = "")
     }
 }
 

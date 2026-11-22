@@ -37,7 +37,7 @@ private val RATS = listOf("9" to "9+", "8" to "8+", "7" to "7+", "6" to "6+", "5
 
 /** one option of the filter dialog (.fopts .pill) */
 @Composable
-private fun OptPill(text: String, pressed: Boolean, fixedHeight: Boolean, modifier: Modifier, onClick: () -> Unit) {
+internal fun OptPill(text: String, pressed: Boolean, fixedHeight: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val c = Mv.c
     val shape = RoundedCornerShape(99.dp)
     Row(

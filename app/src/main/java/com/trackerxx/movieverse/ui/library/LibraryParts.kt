@@ -635,7 +635,7 @@ fun FolderChips(
 
 /** children keep their natural width and share the leftover width equally (flex: 1 1 auto; min-width: max-content) */
 @Composable
-private fun FlexFillRow(containerWidthPx: Int, gap: Dp, content: @Composable () -> Unit) {
+internal fun FlexFillRow(containerWidthPx: Int, gap: Dp, content: @Composable () -> Unit) {
     Layout(content = content) { ms, cons ->
         val g = gap.roundToPx()
         val base = ms.map { it.maxIntrinsicWidth(cons.maxHeight.coerceAtMost(100000)) }
@@ -656,7 +656,7 @@ private fun FlexFillRow(containerWidthPx: Int, gap: Dp, content: @Composable () 
 }
 
 @Composable
-private fun FilterPill(text: String, on: Boolean, fontSize: Float, onClick: () -> Unit) {
+internal fun FilterPill(text: String, on: Boolean, fontSize: Float, onClick: () -> Unit) {
     val c = Mv.c
     val pill = RoundedCornerShape(99.dp)
     Row(
@@ -716,7 +716,9 @@ fun MovieCard(
     SL: Map<String, String>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: Boolean = false
+    placeholder: Boolean = false,
+    upd: Boolean = false,   // .card.upd : being refreshed (dark cover + spinner)
+    chg: Boolean = false    // .card.chg : a refresh changed something (the card breathes)
 ) {
     val c = Mv.c
     val shape = RoundedCornerShape(12.dp)
@@ -728,6 +730,7 @@ fun MovieCard(
         modifier
             .fillMaxWidth()
             .aspectRatio(2f / 3f)
+            .pulse(chg && !upd)
             .then(if (placeholder) Modifier.alpha(0.3f) else Modifier)   // .card.ph: the place the card was picked up from
             .clip(shape)
             .background(cssGradient(160f, c.s2, c.line))
@@ -799,6 +802,14 @@ fun MovieCard(
             if (score != 0.0 && !score.isNaN()) {
                 MvText("★ " + LibraryLogic.numText(score), size = 11.sp, weight = FontWeight.ExtraBold, color = Color(0xFFFFC857))
             }
+        }
+        if (upd) {
+            // .card.upd .poster::before / ::after
+            Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.55f)))
+            com.trackerxx.movieverse.ui.components.MvSpinner(
+                34.dp, 3.dp, Color.White.copy(alpha = 0.35f), Color.White,
+                Modifier.align(Alignment.Center), durationMs = 700
+            )
         }
     }
 }
