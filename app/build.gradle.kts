@@ -18,6 +18,8 @@ android {
         // always rising (minutes since 1970) so a new APK installs over the previous one
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
         versionName = "1.0.0"
+        // "owner/repo" of the GitHub project, filled in automatically by GitHub Actions: Settings > Update looks for the new APK there
+        buildConfigField("String", "UPDATE_REPO", "\"" + (System.getenv("GITHUB_REPOSITORY") ?: "") + "\"")
     }
 
     signingConfigs {
@@ -62,6 +64,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
