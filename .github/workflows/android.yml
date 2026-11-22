@@ -37,16 +37,16 @@ jobs:
             || { echo "Cannot open keystore: wrong alias or password. Add secrets SIGNING_KEY_ALIAS / SIGNING_STORE_PASSWORD / SIGNING_KEY_PASSWORD."; exit 1; }
           # version code always rises (minutes since 1970), even if the repo or run counter is ever reset
           echo "VERSION_CODE=$(( $(date +%s) / 60 ))" >> "$GITHUB_ENV"
-      - name: Build debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
+      - name: Build release APK (R8 optimised, signed with the same key)
+        run: gradle assembleRelease --no-daemon --stacktrace
       - name: Show APK signature (compare with the keystore fingerprint above)
         run: |
           bt=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n1)
-          $bt/apksigner verify --print-certs app/build/outputs/apk/debug/app-debug.apk | grep -E "SHA-256|Signer #1 certificate DN"
+          $bt/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk | grep -E "SHA-256|Signer #1 certificate DN"
       - name: Publish APK to release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk MovieVerse.apk
+          cp app/build/outputs/apk/release/app-release.apk MovieVerse.apk
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest MovieVerse.apk --title "MovieVerse APK" --notes "Latest build" --target ${{ github.sha }}
