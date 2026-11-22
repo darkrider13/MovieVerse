@@ -24,10 +24,21 @@ class HttpResult(val status: Int, val body: String) {
  * movie at any time without locks. Here every enrichment function runs on this dispatcher; only the network waits run in parallel.
  */
 val StateDispatcher: CoroutineDispatcher =
-    Executors.newSingleThreadExecutor { r -> Thread(r, "mv-state").also { it.isDaemon = true } }.asCoroutineDispatcher()
+    Executors.newSingleThreadExecutor(bgThreads("mv-state")).asCoroutineDispatcher()
 
-/** Background scope for work that must outlive a screen (cache refreshes, Wikipedia lookups). */
-val AppScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+/**
+ * Background scope for work that must outlive a screen (cache refreshes, Wikipedia lookups).
+ * Its threads run at BACKGROUND priority: when the CPU is busy the UI thread and the render thread always win,
+ * so this work can never make scrolling stutter.
+ */
+val AppScope = CoroutineScope(SupervisorJob() + Executors.newFixedThreadPool(4, bgThreads("mv-bg")).asCoroutineDispatcher())
+
+private fun bgThreads(name: String) = java.util.concurrent.ThreadFactory { r ->
+    Thread({
+        try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND) } catch (e: Exception) { }
+        r.run()
+    }, name).also { it.isDaemon = true }
+}
 
 object Http {
     private const val UA = "MovieVerse/1.0 (Android)"
