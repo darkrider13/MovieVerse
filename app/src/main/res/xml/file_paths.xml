@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- backup file that is handed to the Android share sheet (Export > Share) -->
+    <cache-path name="backup" path="." />
+</paths>
