@@ -209,7 +209,7 @@ class PersonFlow(private val scope: CoroutineScope, private val onPick: (Long) -
     }
 
     /** Latest / Top Rated pills */
-    fun setTop(v: Boolean) {
+    fun pickTop(v: Boolean) {
         if (top == v) return
         top = v
         val s = scroll

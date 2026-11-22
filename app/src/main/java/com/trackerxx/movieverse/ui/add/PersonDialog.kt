@@ -137,8 +137,8 @@ private fun PersonBody(pf: PersonFlow) {
             Column(Modifier.fillParentMaxWidth()) {
                 val list = if (pf.top) d.top else d.latest
                 MhRow(if (pf.top) "Top Rated (" + d.top.size + ")" else "Movies (" + d.all.size + ")") {
-                    MvPill("Latest", !pf.top, { pf.setTop(false) }, fontSize = 11.sp, padH = 10.dp, padV = 3.dp)
-                    MvPill("Top Rated", pf.top, { pf.setTop(true) }, fontSize = 11.sp, padH = 10.dp, padV = 3.dp)
+                    MvPill("Latest", !pf.top, { pf.pickTop(false) }, fontSize = 11.sp, padH = 10.dp, padV = 3.dp)
+                    MvPill("Top Rated", pf.top, { pf.pickTop(true) }, fontSize = 11.sp, padH = 10.dp, padV = 3.dp)
                 }
                 if (list.isEmpty()) NoteP("No credits found.")
                 else CreditList(list, sc.mv, 69.dp, pf.top) { pf.pick(it) }
