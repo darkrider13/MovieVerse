@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         )
         setContent { MovieVerseApp() }
-        useHighestRefreshRate()
+        // (no forced refresh rate: the system picks 60 / 120 Hz by itself while scrolling; forcing the top rate made missed frames more visible)
 
         // backfill(): when the app comes to the front (after 0.4 s) and then every 30 minutes while it is visible
         lifecycleScope.launch {
@@ -40,21 +40,5 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    /** Many phones keep apps at 60 Hz. Pick the highest refresh rate the screen offers (same resolution) = "buttery" scrolling. */
-    @Suppress("DEPRECATION")
-    private fun useHighestRefreshRate() {
-        try {
-            if (android.os.Build.VERSION.SDK_INT < 23) return
-            val d = windowManager.defaultDisplay
-            val cur = d.mode
-            val best = d.supportedModes
-                .filter { it.physicalWidth == cur.physicalWidth && it.physicalHeight == cur.physicalHeight }
-                .maxByOrNull { it.refreshRate } ?: return
-            val lp = window.attributes
-            lp.preferredDisplayModeId = best.modeId
-            window.attributes = lp
-        } catch (e: Exception) { }
     }
 }
