@@ -122,6 +122,8 @@ fun SettingsDialog(
     val scope = rememberCoroutineScope()
     val uri = LocalUriHandler.current
     val dark = AppData.theme.dark
+    var updateOpen by remember { mutableStateOf(false) }
+    if (updateOpen) UpdateFlow(onClose = { updateOpen = false })
 
     MvDialog(
         onDismiss = onClose,
@@ -145,13 +147,21 @@ fun SettingsDialog(
                 )
 
                 MvLabel("Appearance", size = 13.sp)
-                Row {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     MvButton(
                         onClick = { AppData.theme.toggle() },
                         size = BtnSize.Settings, spacing = 8.dp
                     ) {
                         MvIcon(if (dark) MvIcons.Moon else MvIcons.Sun, 16.dp)
                         MvText(if (dark) "Dark mode" else "Light mode")
+                    }
+                    // Update: downloads the newest APK from GitHub and installs it over this app
+                    MvButton(
+                        onClick = { updateOpen = true },
+                        size = BtnSize.Settings, spacing = 8.dp
+                    ) {
+                        MvIcon(MvIcons.Download, 16.dp)
+                        MvText("Update")
                     }
                 }
 
