@@ -53,6 +53,8 @@ class AddFlow(
     // ---- cast carousel, trailer popup, person dialog (9B) -------------------------------------------------------------
     val cast = CastFlow(scope, toast)
     val person = PersonFlow(scope) { id -> pickFromPerson(id) }
+    /** the Subtitles page of the open movie */
+    val subs = SubsFlow(scope, toast)
 
     // ---- dialog state ----------------------------------------------------------------------------------------------------
     var open by mutableStateOf(false)
@@ -214,6 +216,7 @@ class AddFlow(
     fun existing(id: Long): Movie? = AppData.movies.firstOrNull { it.tmdbId == id }
 
     fun close() {
+        subs.close()
         open = false
         busy = false
         // dlg 'close' event: a person dialog that was left for a movie comes back

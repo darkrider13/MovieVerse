@@ -1,6 +1,11 @@
 package com.trackerxx.movieverse.ui.add
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalContext
+import com.trackerxx.movieverse.ui.components.MvPage
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -93,20 +98,33 @@ import com.trackerxx.movieverse.util.Js
 import com.trackerxx.movieverse.util.RateClass
 import kotlinx.coroutines.delay
 
-/** The Add / movie dialog: search first, then the form (also used to open a movie that is already in the library). */
+/**
+ * The Add flow: the search part is a popup, the movie itself (new or already in the library) is a full page
+ * (MoviePage) with the Subtitles page on top of it when that option is opened.
+ */
 @Composable
 fun AddDialog(flow: AddFlow) {
-    if (flow.open) {
+    val ctx = LocalContext.current
+    val permL = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        flow.subs.permDone?.complete(granted)
+    }
+    SideEffect {
+        flow.subs.ctx = ctx.applicationContext
+        flow.subs.launchPerm = { permL.launch(it) }
+    }
+    if (flow.open && flow.phase == "find") {
         MvDialog(
             onDismiss = { flow.close() },
             padding = PaddingValues(16.dp),
             sideMargin = 16.dp,
-            fillHeight = flow.phase == "form" && !flow.busy
+            fillHeight = false
         ) {
-            if (flow.phase == "find") FindPhase(flow) else FormPhase(flow)
+            FindPhase(flow)
         }
     }
-    // dialogs that open above the form (later = on top); the person dialog can also come back after the form closed
+    if (flow.open && flow.phase == "form") MoviePage(flow)
+    // pages / dialogs that open above the movie page (later = on top); the person dialog can also come back after the page closed
+    if (flow.open && flow.subs.open) SubtitlePage(flow.subs)
     PersonDialog(flow)
     TrailerDialog(flow)
 }
@@ -309,30 +327,32 @@ private fun StaticField(text: String, modifier: Modifier = Modifier, endPad: Dp 
 }
 
 @Composable
-private fun FormPhase(flow: AddFlow) {
+private fun MoviePage(flow: AddFlow) {
     val c = Mv.c
     val m = flow.pick ?: return
     val lock = m.tmdbId != 0L
     val busy = flow.busy
-    // redraw when details changed in the background (info tiles come in the next step)
+    // redraw when details changed in the background
     @Suppress("UNUSED_VARIABLE") val rev = flow.infoRev
     val focus = remember { FocusRequester() }
     val copyName = rememberCopyName()
 
-    Column(Modifier.fillMaxWidth()) {
-        MvXWrap(onClick = { flow.close() })
-
-        // ---- .pv : poster, title (year), overview ------------------------------------------------------------------
+    MvPage(
+        onBack = { flow.close() },
+        title = if (flow.isEdit) "Movie details" else "Add to Library",
+        bottomBar = if (busy) null else ({ PageActions(flow, m, focus) })
+    ) {
+        // ---- poster, title (year), overview ---------------------------------------------------------------------------------
         Row(
-            Modifier.fillMaxWidth().padding(end = 34.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.fillMaxWidth().padding(top = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.Top
         ) {
-            Box(Modifier.size(46.dp, 74.8.dp)) {
+            Box(Modifier.size(92.dp, 138.dp).clip(RoundedCornerShape(12.dp)).background(c.s2)) {
                 if (!m.poster.isNullOrEmpty()) {
                     AsyncImage(
-                        model = Tmdb.imgUrl(m.poster, "w185"), contentDescription = null, contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(46.dp, 69.dp).clip(RoundedCornerShape(8.dp))
+                        model = Tmdb.imgUrl(m.poster, "w342"), contentDescription = null, contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
             }
@@ -349,23 +369,23 @@ private fun FormPhase(flow: AddFlow) {
                                 VerdictTone.Flop -> Color(0xFFFF8C42)
                                 VerdictTone.Disaster -> Color(0xFFFF4D4D)
                             }
-                            withStyle(SpanStyle(color = col, fontSize = 11.52.sp, fontWeight = FontWeight.Bold)) { append("\u00A0\u00A0" + bx.verdict) }
+                            withStyle(SpanStyle(color = col, fontSize = 12.sp, fontWeight = FontWeight.Bold)) { append("\u00A0\u00A0" + bx.verdict) }
                         }
                     },
-                    size = 16.sp, weight = FontWeight.Bold,
+                    size = 19.sp, weight = FontWeight.Bold, lineHeight = 1.3f,
                     modifier = Modifier.plainClickable { copyName(if (m.title.isNotEmpty()) m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "") else "") }
                 )
                 val ov = m.str("ov") ?: ""
                 if (ov.isNotEmpty()) {
                     var openOv by remember(m) { mutableStateOf(false) }
-                    val maxOpen = with(LocalDensity.current) { (17.sp * 9).toDp() }
+                    val maxOpen = with(LocalDensity.current) { (19.sp * 9).toDp() }
                     Box(
-                        Modifier.padding(top = 6.dp, end = 6.dp).plainClickable { openOv = !openOv }
+                        Modifier.padding(top = 8.dp).plainClickable { openOv = !openOv }
                             .then(if (openOv) Modifier.heightIn(max = maxOpen).verticalScroll(rememberScrollState()) else Modifier)
                     ) {
                         MvText(
-                            ov, size = 12.sp, color = c.mut, lineHeight = 17f / 12f,
-                            maxLines = if (openOv) Int.MAX_VALUE else 3, overflow = TextOverflow.Ellipsis
+                            ov, size = 13.sp, color = c.mut, lineHeight = 19f / 13f,
+                            maxLines = if (openOv) Int.MAX_VALUE else 5, overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -373,7 +393,7 @@ private fun FormPhase(flow: AddFlow) {
         }
 
         // ---- title -----------------------------------------------------------------------------------------------------
-        DlgLabel("Title") {
+        DlgLabel("Title", top = 18.dp) {
             if (flow.dup) {
                 MvText(
                     "Already added · " + (AppData.SL[m.status] ?: m.status),
@@ -396,64 +416,96 @@ private fun FormPhase(flow: AddFlow) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 if (lock) {
-                    DlgLabel("Duration")
+                    DlgLabel("Duration", top = 14.dp)
                     StaticField(fmtRt(m))
                 } else {
-                    DlgLabel("Year")
+                    DlgLabel("Year", top = 14.dp)
                     MvTextField(flow.fy, { flow.fy = it }, placeholder = "Year", size = FieldSize.Dialog)
                 }
             }
             Column(Modifier.weight(1f)) {
-                DlgLabel("Country")
+                DlgLabel("Country", top = 14.dp)
                 if (lock) StaticField(flow.fc)
                 else MvTextField(flow.fc, { flow.fc = it }, placeholder = "Country", size = FieldSize.Dialog)
             }
         }
 
         // ---- info tiles ------------------------------------------------------------------------------------------------------
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
         InfoGrid(flow, m)
 
         if (!busy) {
             // ---- cast & crew ------------------------------------------------------------------------------------------------
             flow.cast.data?.let { cd -> CastBlock(cd) { id -> flow.person.openPerson(id) } }
 
+            // ---- subtitles (Bangla + English) --------------------------------------------------------------------------------
+            DlgLabel("Subtitle", top = 16.dp)
+            SubtitleEntry { flow.subs.openFor(m) }
+
             // ---- status ---------------------------------------------------------------------------------------------------
-            DlgLabel("Status")
+            DlgLabel("Status", top = 16.dp)
             StatusBar(flow)
 
             // ---- folder ---------------------------------------------------------------------------------------------------
-            DlgLabel("Folder")
+            DlgLabel("Folder", top = 16.dp)
             FolderPills(flow)
 
             // ---- my rating --------------------------------------------------------------------------------------------------
             if (!Enrich.unrel(m)) RatingBlock(flow)
 
-            // ---- save / delete ----------------------------------------------------------------------------------------------
-            Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                MvButton(
-                    flow.saveLabel,
-                    {
-                        if (!flow.save()) {
-                            try { focus.requestFocus() } catch (e: Exception) { }
-                        }
-                    },
-                    if (flow.isEdit) Modifier else Modifier.weight(1f),
-                    kind = BtnKind.Primary, size = BtnSize.Dialog, enabled = flow.saveEnabled
-                )
-                if (flow.isEdit) {
-                    Box(Modifier.weight(1f))
-                    MvButton("Delete", { flow.delete() }, danger = true, size = BtnSize.Dialog)
-                }
-            }
             if (flow.isEdit && m.added != 0L) {
                 val fa = AppData.folders.firstOrNull { it.id == m.folder }
                 MvText(
                     (if (fa != null) "Added to " + fa.name + " · " else "Added · ") + Fmt.fmtTs(m.added),
-                    Modifier.fillMaxWidth().padding(top = 14.dp), size = 12.sp, color = c.mut, align = TextAlign.Center
+                    Modifier.fillMaxWidth().padding(top = 18.dp), size = 12.sp, color = c.mut, align = TextAlign.Center
                 )
             }
         }
+    }
+}
+
+/** the fixed bar at the bottom of the page: Save (and Delete for a movie that is in the library) */
+@Composable
+private fun PageActions(flow: AddFlow, m: Movie, focus: FocusRequester) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        MvButton(
+            flow.saveLabel,
+            {
+                if (!flow.save()) {
+                    try { focus.requestFocus() } catch (e: Exception) { }
+                }
+            },
+            Modifier.weight(1f),
+            kind = BtnKind.Primary, size = BtnSize.Dialog, enabled = flow.saveEnabled
+        )
+        if (flow.isEdit) {
+            MvButton("Delete", { flow.delete() }, Modifier.weight(1f), danger = true, size = BtnSize.Dialog)
+        }
+    }
+}
+
+/** the "Subtitle" option: a wide tappable box that opens the Subtitles page */
+@Composable
+private fun SubtitleEntry(onClick: () -> Unit) {
+    val c = Mv.c
+    val shape = RoundedCornerShape(10.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(c.s2)
+            .border(1.dp, c.line, shape)
+            .plainClickable(onClick = onClick)
+            .padding(start = 11.dp, end = 10.dp, top = 9.dp, bottom = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        MvIcon(MvIcons.Subtitle, 20.dp, tint = c.ink)
+        Column(Modifier.weight(1f)) {
+            MvText("Subtitles", weight = FontWeight.Bold)
+            MvText("Bangla & English", size = 11.sp, color = c.mut, lineHeight = 1.3f)
+        }
+        MvIcon(MvIcons.Chevron, 16.dp, tint = c.mut)
     }
 }
 
