@@ -119,7 +119,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /** CSS linear-gradient(angle, colors...): same gradient line as the browser for any box size */
-fun cssGradient(angleDeg: Float, vararg colors: Color): Brush = object : ShaderBrush() {
+fun cssGradient(angleDeg: Float, c1: Color, c2: Color): Brush = object : ShaderBrush() {
     override fun createShader(size: Size): Shader {
         val a = Math.toRadians(angleDeg.toDouble())
         val dx = sin(a).toFloat()
@@ -130,7 +130,7 @@ fun cssGradient(angleDeg: Float, vararg colors: Color): Brush = object : ShaderB
         return LinearGradientShader(
             Offset(cx - dx * len / 2f, cy - dy * len / 2f),
             Offset(cx + dx * len / 2f, cy + dy * len / 2f),
-            colors.toList()
+            listOf(c1, c2)
         )
     }
 }
