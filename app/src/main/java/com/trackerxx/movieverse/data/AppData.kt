@@ -45,8 +45,10 @@ object AppData {
         private set
 
     /** the user's name (hero title on the library page) */
-    var uname: String = ""
-        private set
+    private val unameState = mutableStateOf("")
+    var uname: String
+        get() = unameState.value
+        private set(v) { unameState.value = v }
 
     /** start time of the backup being written (bkT) */
     private var bkT = 0L
@@ -173,6 +175,7 @@ object AppData {
     /** setDirty(false): the library has just been exported */
     fun markExported() {
         Ls.setItem("library.bk", (if (bkT != 0L) bkT else System.currentTimeMillis()).toString())
+        render()   // paintDirty(): the red blink of the gear / Export button stops
     }
 
     private fun initBk() {

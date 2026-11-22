@@ -25,6 +25,11 @@ class MovieDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "moviever
      */
     private val delIds: MutableSet<String> = java.util.Collections.synchronizedSet(HashSet<String>())
 
+    /** `delete delIds[id]` (normM of the import): a movie that comes back from a backup may be saved again */
+    fun undelete(id: String) {
+        delIds.remove(id)
+    }
+
     suspend fun count(): Int = withContext(Dispatchers.IO) {
         readableDatabase.rawQuery("SELECT COUNT(*) FROM m", null).use { c ->
             if (c.moveToFirst()) c.getInt(0) else 0
