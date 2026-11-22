@@ -188,7 +188,7 @@ fun MvDialog(
                             CornerRadius(16.dp.toPx() - b)
                         )
                         val outer = Path().apply { addRoundRect(rr) }
-                        val shifted = Path().apply { addRoundRect(rr.translate(Offset(0f, b))) }
+                        val shifted = Path().apply { addRoundRect(RoundRect(Rect(b, b * 2f, size.width - b, size.height), CornerRadius(16.dp.toPx() - b))) }
                         val crescent = Path.combine(PathOperation.Difference, outer, shifted)
                         drawPath(crescent, Color.White.copy(alpha = 0.2f))
                     }
