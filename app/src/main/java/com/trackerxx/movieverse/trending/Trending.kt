@@ -509,6 +509,7 @@ object Trending {
                 if (x.isNotEmpty()) os.forEach { it.x = x }
             } else {
                 AppScope.launch {
+                    com.trackerxx.movieverse.util.Quiet.await()
                     val v = try { xGet(os[0]) } catch (ex: CancellationException) { throw ex } catch (ex: Exception) { null }
                     if (!v.isNullOrEmpty()) os.forEach { it.x = v }
                 }
