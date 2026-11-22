@@ -24,6 +24,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -49,6 +50,10 @@ class AddFlow(
     private val modal: ModalState,
     private val toast: ToastState
 ) {
+    // ---- cast carousel, trailer popup, person dialog (9B) -------------------------------------------------------------
+    val cast = CastFlow(scope, toast)
+    val person = PersonFlow(scope) { id -> pickFromPerson(id) }
+
     // ---- dialog state ----------------------------------------------------------------------------------------------------
     var open by mutableStateOf(false)
         private set
@@ -94,6 +99,21 @@ class AddFlow(
     /** the rating before the box was tapped (shown faded as the hint while typing) */
     var frKeep by mutableStateOf("")
         private set
+
+    /** page of the Rating tile (rsPage) and whether "Episodes per season" is open (soOpen) */
+    var rsPage by mutableIntStateOf(0)
+        private set
+    var soOpen by mutableStateOf(false)
+        private set
+
+    fun rsGo(n: Int, count: Int) {
+        rsPage = n.coerceIn(0, maxOf(0, count - 1))
+    }
+
+    fun toggleSeasons() {
+        soOpen = !soOpen
+        infoRev++
+    }
 
     /** bumped when the movie's details changed while the form is open (the info tiles redraw) */
     var infoRev by mutableIntStateOf(0)
@@ -196,6 +216,16 @@ class AddFlow(
     fun close() {
         open = false
         busy = false
+        // dlg 'close' event: a person dialog that was left for a movie comes back
+        person.onFormClosed()
+    }
+
+    /** a movie row of the person dialog was tapped: same as a Coming Soon card (choose(iid, status, true)) */
+    private fun pickFromPerson(id: Long) {
+        val d0 = AppData.movies.firstOrNull { it.tmdbId == id }
+        val us = if (AppData.statuses.any { it.id == "upcoming" }) "upcoming"
+        else if (AppData.statuses.any { it.id == "plan" }) "plan" else AppData.statuses[0].id
+        choose(id, d0?.status ?: us, fromUp = true)
     }
 
     // ======================================================================================================================
@@ -230,7 +260,7 @@ class AddFlow(
      * Already in the library = open it. Otherwise the form opens at once with what search knew, the full details load
      * in the background and the dialog stays "busy" for at least minMs.
      */
-    fun choose(id: Long, statusIn: String, minMs: Long = 1300L, fromUp: Boolean = false, fold: String? = null) {
+    fun choose(id: Long, statusIn: String, minMs: Long = 1300L, fromUp: Boolean = false, fold: String? = null, initial: QItem? = null) {
         val ex = existing(id)
         if (ex != null) {
             openLib(ex, true, minOf(minMs, 800L))
@@ -239,7 +269,7 @@ class AddFlow(
         val myTok = ++tok
         val t0 = System.currentTimeMillis()
         var status = statusIn
-        val u = sres.firstOrNull { it.id == id }
+        val u = initial ?: (if (fromUp) null else sres.firstOrNull { it.id == id }) ?: com.trackerxx.movieverse.trending.Trending.find(id)
         val SL = AppData.SL
         /* an already released title from search: Plan to watch is pre-selected */
         if (!fromUp && SL.containsKey("plan") && u != null && u.releaseDate.isNotEmpty() && !Enrich.unrel(Movie().also { it.rel = u.releaseDate })) status = "plan"
@@ -316,6 +346,8 @@ class AddFlow(
                 saveLabel = if (fromUp) "Add" else "Save"
                 saveEnabled = true
                 open = true
+                /* castP: read right after showForm started the cast load of this movie */
+                val castP = cast.job
 
                 val p0 = pk
                 val PL: Deferred<Unit> = async {
@@ -333,7 +365,7 @@ class AddFlow(
                     } catch (e: Exception) {
                     }
                 }
-                finishLoading(myTok, t0, minMs, PL)
+                finishLoading(myTok, t0, minMs, PL, castP)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -352,10 +384,12 @@ class AddFlow(
     }
 
     /** the form stays held until everything has loaded (at most 8 s) and the minimum loading time has passed */
-    private suspend fun finishLoading(myTok: Int, t0: Long, minMs: Long, work: Deferred<*>?) {
-        if (work != null) {
+    private suspend fun finishLoading(myTok: Int, t0: Long, minMs: Long, work: Deferred<*>?, castP: Deferred<*>? = null) {
+        val jobs = listOfNotNull(work, castP)
+        if (jobs.isNotEmpty()) {
+            /* Promise.race([Promise.all([work, castP]).catch(noop), 8 s]) */
             withTimeoutOrNull(8000L) {
-                try { work.await() } catch (e: CancellationException) { throw e } catch (e: Exception) { }
+                try { jobs.awaitAll() } catch (e: CancellationException) { throw e } catch (e: Exception) { }
             }
         }
         val rem = minMs - (System.currentTimeMillis() - t0)
@@ -379,6 +413,7 @@ class AddFlow(
         open = true
         saveEnabled = false
         busy = true
+        val castP = cast.job
         val bf = Enrich.snapF?.invoke(m)
         val rp: Deferred<Unit> = scope.async {
             try {
@@ -403,7 +438,7 @@ class AddFlow(
                 m.ld = false
             }
         }
-        scope.launch { finishLoading(myTok, t0, minMs, rp) }
+        scope.launch { finishLoading(myTok, t0, minMs, rp, castP) }
     }
 
     // ======================================================================================================================
@@ -428,7 +463,11 @@ class AddFlow(
         fr = Js.toFixed(if (sc.isNaN()) 0.0 else sc, 2)
         frKeep = fr
         saveLabel = "Save"
+        rsPage = 0
+        soOpen = false
         infoRev++
+        cast.resetTrailer(m)
+        cast.load(m)
     }
 
     /** tap on a status button: the selected folder stays only when it belongs to that status */

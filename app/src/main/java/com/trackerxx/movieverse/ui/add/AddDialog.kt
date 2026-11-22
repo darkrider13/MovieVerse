@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -54,7 +56,10 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -91,15 +96,19 @@ import kotlinx.coroutines.delay
 /** The Add / movie dialog: search first, then the form (also used to open a movie that is already in the library). */
 @Composable
 fun AddDialog(flow: AddFlow) {
-    if (!flow.open) return
-    MvDialog(
-        onDismiss = { flow.close() },
-        padding = PaddingValues(16.dp),
-        sideMargin = 16.dp,
-        fillHeight = flow.phase == "form" && !flow.busy
-    ) {
-        if (flow.phase == "find") FindPhase(flow) else FormPhase(flow)
+    if (flow.open) {
+        MvDialog(
+            onDismiss = { flow.close() },
+            padding = PaddingValues(16.dp),
+            sideMargin = 16.dp,
+            fillHeight = flow.phase == "form" && !flow.busy
+        ) {
+            if (flow.phase == "find") FindPhase(flow) else FormPhase(flow)
+        }
     }
+    // dialogs that open above the form (later = on top); the person dialog can also come back after the form closed
+    PersonDialog(flow)
+    TrailerDialog(flow)
 }
 
 // ================================================================================================================
@@ -274,20 +283,28 @@ private fun DlgLabel(text: String, top: Dp = 10.dp, extra: @Composable () -> Uni
     }
 }
 
-/** a read-only text box that looks like the dialog's inputs */
+/** a read-only text box that looks like the dialog's inputs; badge = the age rating shown right after the text (PG-13) */
 @Composable
-private fun StaticField(text: String, modifier: Modifier = Modifier, endPad: Dp = 10.dp) {
+private fun StaticField(text: String, modifier: Modifier = Modifier, endPad: Dp = 10.dp, badge: String? = null, trailer: Boolean = false) {
     val c = Mv.c
     val shape = RoundedCornerShape(10.dp)
-    Box(
+    Row(
         modifier
             .fillMaxWidth()
             .clip(shape)
             .background(c.s2)
             .border(1.dp, c.line, shape)
-            .padding(start = 11.dp, end = endPad + 1.dp, top = 9.dp, bottom = 9.dp)
+            .padding(start = 11.dp, end = (if (trailer) 44.dp else if (badge != null) 12.dp else endPad) + 1.dp, top = 9.dp, bottom = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        MvText(text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        MvText(text, Modifier.weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (badge != null) {
+            Spacer(Modifier.width(8.dp))
+            val bs = RoundedCornerShape(6.dp)
+            Box(Modifier.clip(bs).background(c.s).border(1.dp, c.line, bs).padding(horizontal = 7.dp, vertical = 3.dp)) {
+                MvText(badge, size = 11.sp, weight = FontWeight.Bold, color = c.mut, lineHeight = 1.2f, maxLines = 1, softWrap = false)
+            }
+        }
     }
 }
 
@@ -300,6 +317,7 @@ private fun FormPhase(flow: AddFlow) {
     // redraw when details changed in the background (info tiles come in the next step)
     @Suppress("UNUSED_VARIABLE") val rev = flow.infoRev
     val focus = remember { FocusRequester() }
+    val copyName = rememberCopyName()
 
     Column(Modifier.fillMaxWidth()) {
         MvXWrap(onClick = { flow.close() })
@@ -319,19 +337,37 @@ private fun FormPhase(flow: AddFlow) {
                 }
             }
             Column(Modifier.weight(1f)) {
+                val bx = InfoModel.boxOf(m)
                 MvText(
-                    if (m.title.isNotEmpty()) m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "") else "New movie",
-                    size = 16.sp, weight = FontWeight.Bold
+                    buildAnnotatedString {
+                        append(if (m.title.isNotEmpty()) m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "") else "New movie")
+                        if (bx != null && !bx.bo && !bx.go) {
+                            val col = when (bx.tone) {
+                                VerdictTone.Running -> Color(0xFFA855F7)
+                                VerdictTone.Good -> c.w
+                                VerdictTone.Average -> Color(0xFFF5C518)
+                                VerdictTone.Flop -> Color(0xFFFF8C42)
+                                VerdictTone.Disaster -> Color(0xFFFF4D4D)
+                            }
+                            withStyle(SpanStyle(color = col, fontSize = 11.52.sp, fontWeight = FontWeight.Bold)) { append("\u00A0\u00A0" + bx.verdict) }
+                        }
+                    },
+                    size = 16.sp, weight = FontWeight.Bold,
+                    modifier = Modifier.plainClickable { copyName(if (m.title.isNotEmpty()) m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "") else "") }
                 )
                 val ov = m.str("ov") ?: ""
                 if (ov.isNotEmpty()) {
                     var openOv by remember(m) { mutableStateOf(false) }
-                    MvText(
-                        ov,
-                        Modifier.padding(top = 6.dp, end = 6.dp).plainClickable { openOv = !openOv },
-                        size = 12.sp, color = c.mut, lineHeight = 17f / 12f,
-                        maxLines = if (openOv) 9 else 3, overflow = TextOverflow.Ellipsis
-                    )
+                    val maxOpen = with(LocalDensity.current) { (17.sp * 9).toDp() }
+                    Box(
+                        Modifier.padding(top = 6.dp, end = 6.dp).plainClickable { openOv = !openOv }
+                            .then(if (openOv) Modifier.heightIn(max = maxOpen).verticalScroll(rememberScrollState()) else Modifier)
+                    ) {
+                        MvText(
+                            ov, size = 12.sp, color = c.mut, lineHeight = 17f / 12f,
+                            maxLines = if (openOv) Int.MAX_VALUE else 3, overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
@@ -345,7 +381,15 @@ private fun FormPhase(flow: AddFlow) {
                 )
             }
         }
-        if (lock) StaticField(flow.ft, endPad = 66.dp)
+        if (lock) Box(Modifier.fillMaxWidth()) {
+            StaticField(flow.ft, badge = m.str("cert")?.takeIf { it.isNotEmpty() }, trailer = flow.cast.trailerOk)
+            if (flow.cast.trailerOk) {
+                Box(
+                    Modifier.align(Alignment.CenterEnd).padding(end = 4.dp).size(34.dp).plainClickable { flow.cast.openTrailer(m) },
+                    contentAlignment = Alignment.Center
+                ) { MvIcon(MvIcons.YtOutline, 28.dp) }
+            }
+        }
         else MvTextField(flow.ft, { flow.ft = it }, Modifier.focusRequester(focus), placeholder = "Title", size = FieldSize.Dialog)
 
         // ---- duration + country ------------------------------------------------------------------------------------
@@ -366,10 +410,14 @@ private fun FormPhase(flow: AddFlow) {
             }
         }
 
-        // ---- info tiles + cast: the next step (movie details) -------------------------------------------------------------
+        // ---- info tiles ------------------------------------------------------------------------------------------------------
         Spacer(Modifier.height(8.dp))
+        InfoGrid(flow, m)
 
         if (!busy) {
+            // ---- cast & crew ------------------------------------------------------------------------------------------------
+            flow.cast.data?.let { cd -> CastBlock(cd) { id -> flow.person.openPerson(id) } }
+
             // ---- status ---------------------------------------------------------------------------------------------------
             DlgLabel("Status")
             StatusBar(flow)
