@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -52,6 +53,7 @@ import com.trackerxx.movieverse.net.Tmdb
 import com.trackerxx.movieverse.releases.Releases
 import com.trackerxx.movieverse.releases.UItem
 import com.trackerxx.movieverse.releases.UMsg
+import com.trackerxx.movieverse.ui.components.riseIn
 import com.trackerxx.movieverse.ui.components.BtnKind
 import com.trackerxx.movieverse.ui.components.FieldSize
 import com.trackerxx.movieverse.ui.components.MvButton
@@ -240,8 +242,8 @@ fun LazyGridScope.releasesItems(
             }
         }
     } else {
-        items(list, key = { it.id }) { m ->
-            UpCard(m, libIds.contains(m.id), { onTap(m) }, Modifier.padding(bottom = 14.dp))
+        itemsIndexed(list, key = { _, it -> it.id }) { i, m ->
+            UpCard(m, libIds.contains(m.id), { onTap(m) }, Modifier.riseIn("u" + m.id, (i % 3) * 45).padding(bottom = 14.dp))
         }
     }
     if (!searching && Releases.moreVisible) {

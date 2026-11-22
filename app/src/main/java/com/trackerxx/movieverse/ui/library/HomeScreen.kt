@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -52,6 +53,7 @@ import com.trackerxx.movieverse.trending.Trending
 import com.trackerxx.movieverse.ui.add.AddDialog
 import com.trackerxx.movieverse.ui.add.AddFlow
 import com.trackerxx.movieverse.ui.settings.SettingsDialog
+import com.trackerxx.movieverse.ui.components.riseIn
 import com.trackerxx.movieverse.ui.components.LocalModal
 import com.trackerxx.movieverse.ui.components.LocalToast
 import com.trackerxx.movieverse.ui.components.MvApiLoadingDialog
@@ -327,7 +329,7 @@ fun HomeScreen(splashGone: Boolean) {
                         if (lv.emptyText != null) {
                             item(key = "empty", span = { GridItemSpan(maxLineSpan) }) { EmptyBox(lv.emptyText) }
                         } else {
-                            items(cards, key = { it.id }) { m ->
+                            itemsIndexed(cards, key = { _, it -> it.id }) { i, m ->
                                 MovieCard(
                                     m, AppData.statuses, AppData.SL,
                                     upd = Refresh.upd.containsKey(m.id),
@@ -339,6 +341,7 @@ fun HomeScreen(splashGone: Boolean) {
                                         }
                                     },
                                     modifier = Modifier
+                                        .riseIn("c" + m.id, (i % 3) * 45)
                                         .padding(bottom = 14.dp)
                                         .animateItem(
                                             fadeInSpec = null,

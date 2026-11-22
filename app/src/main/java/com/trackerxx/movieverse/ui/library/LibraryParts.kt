@@ -119,21 +119,31 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /** CSS linear-gradient(angle, colors...): same gradient line as the browser for any box size */
-fun cssGradient(angleDeg: Float, c1: Color, c2: Color): Brush = object : ShaderBrush() {
-    override fun createShader(size: Size): Shader {
-        val a = Math.toRadians(angleDeg.toDouble())
-        val dx = sin(a).toFloat()
-        val dy = -cos(a).toFloat()
-        val len = abs(size.width * dx) + abs(size.height * dy)
-        val cx = size.width / 2f
-        val cy = size.height / 2f
-        return LinearGradientShader(
-            Offset(cx - dx * len / 2f, cy - dy * len / 2f),
-            Offset(cx + dx * len / 2f, cy + dy * len / 2f),
-            listOf(c1, c2)
-        )
+fun cssGradient(angleDeg: Float, c1: Color, c2: Color): Brush {
+    // the same brush object is reused for the same arguments: a new object on every redraw made every card repaint while scrolling
+    val k = Triple(angleDeg, c1, c2)
+    gradCache[k]?.let { return it }
+    if (gradCache.size > 96) gradCache.clear()
+    val b = object : ShaderBrush() {
+        override fun createShader(size: Size): Shader {
+            val a = Math.toRadians(angleDeg.toDouble())
+            val dx = sin(a).toFloat()
+            val dy = -cos(a).toFloat()
+            val len = abs(size.width * dx) + abs(size.height * dy)
+            val cx = size.width / 2f
+            val cy = size.height / 2f
+            return LinearGradientShader(
+                Offset(cx - dx * len / 2f, cy - dy * len / 2f),
+                Offset(cx + dx * len / 2f, cy + dy * len / 2f),
+                listOf(c1, c2)
+            )
+        }
     }
+    gradCache[k] = b
+    return b
 }
+
+private val gradCache = HashMap<Triple<Float, Color, Color>, Brush>()
 
 // ================================================================================================================
 // Top bar (.nav)

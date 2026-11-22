@@ -45,6 +45,7 @@ import com.trackerxx.movieverse.ui.components.BtnKind
 import com.trackerxx.movieverse.ui.components.BtnSize
 import com.trackerxx.movieverse.ui.components.MvButton
 import com.trackerxx.movieverse.ui.components.plainClickable
+import com.trackerxx.movieverse.ui.components.riseIn
 import com.trackerxx.movieverse.ui.theme.Mv
 import com.trackerxx.movieverse.ui.theme.MvFixed
 import com.trackerxx.movieverse.ui.theme.MvText
@@ -95,7 +96,7 @@ fun TrendSection(
                 flingBehavior = rememberSnapFlingBehavior(state)
             ) {
                 items(shown.size, key = { shown[it].id }) { ri ->
-                    TrendCard(shown[ri], if (rk) ri + 1 else 0, libIds.contains(shown[ri].id), itemW, onTap)
+                    TrendCard(shown[ri], if (rk) ri + 1 else 0, libIds.contains(shown[ri].id), itemW, onTap, id, ri)
                 }
             }
         }
@@ -109,12 +110,12 @@ private fun TrendTitle(text: String) {
 }
 
 @Composable
-private fun TrendCard(o: TrItem, rank: Int, inLib: Boolean, width: androidx.compose.ui.unit.Dp, onTap: (TrItem) -> Unit) {
+private fun TrendCard(o: TrItem, rank: Int, inLib: Boolean, width: androidx.compose.ui.unit.Dp, onTap: (TrItem) -> Unit, sid: String, ri: Int) {
     val c = Mv.c
     val shape = RoundedCornerShape(12.dp)
     val measurer = rememberTextMeasurer()
     val dark = c.dark
-    Column(Modifier.width(width).plainClickable { onTap(o) }) {
+    Column(Modifier.width(width).riseIn(sid + "-" + o.id, (ri % 3) * 45).plainClickable { onTap(o) }) {
         Box(
             Modifier
                 .fillMaxWidth()
