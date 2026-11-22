@@ -255,6 +255,56 @@ fun LazyGridScope.releasesItems(
     }
 }
 
+/** The search box, the Released Today / In Cinemas / On OTT buttons and the filter pills above the Releases cards (the cards are in the WebView). */
+@Composable
+fun ReleasesHeader(
+    searchText: String,
+    onSearchText: (String) -> Unit,
+    onOpenFilter: (String) -> Unit
+) {
+    val mode = Releases.umode
+    val searching = Releases.usq.isNotEmpty()
+    Box(Modifier.padding(bottom = 12.dp)) {
+        UpSearchBox(
+            searchText, onSearchText,
+            if (mode == "cin") "Search On OTT" else if (mode == "today") "Search Released Today" else "Search In Cinemas"
+        )
+    }
+    Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        val tabs = listOf("today" to "Released Today", "soon" to "In Cinemas", "cin" to "On OTT")
+        tabs.forEachIndexed { i, t ->
+            if (i == 1) Spacer(Modifier.weight(1f))
+            if (i > 1) Spacer(Modifier.size(8.dp))
+            MvPill(t.second, mode == t.first, { Releases.setMode(t.first) }, fontSize = 12.5.sp, padH = 11.dp, padV = 4.dp)
+        }
+    }
+    if (!searching) {
+        val ucs = Releases.ucs
+        val ugs = Releases.ugs
+        val uy = Releases.uy
+        val utype = Releases.utype
+        val cn = if (ucs.isEmpty()) "All countries" else if (ucs.size == 1) Releases.cLabel(ucs[0])
+        else ucs.take(2).joinToString(", ") { Releases.cCode(it) } + (if (ucs.size > 2) "…" else "")
+        val gn = if (ugs.isNotEmpty()) "Genres" else "All genres"
+        val yn = uy.ifEmpty { "Any year" }
+        val fs = (LocalConfiguration.current.screenWidthDp * 0.033f).coerceIn(11f, 14f)
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+            val cw = constraints.maxWidth
+            Box(Modifier.horizontalScroll(rememberScrollState()).padding(top = 2.dp, bottom = 10.dp)) {
+                FlexFillRow(cw, 6.dp) {
+                    if (mode == "cin") FilterPill((if (utype == "tv") "TV Series" else "Movie") + " ▾", false, fs) { onOpenFilter("t") }
+                    FilterPill("$cn ▾", ucs.isNotEmpty(), fs) { onOpenFilter("c") }
+                    FilterPill("$gn ▾", ugs.isNotEmpty(), fs) { onOpenFilter("g") }
+                    if (mode == "soon") FilterPill("$yn ▾", uy.isNotEmpty(), fs) { onOpenFilter("y") }
+                    if (ucs.isNotEmpty() || ugs.isNotEmpty() || (mode == "soon" && uy.isNotEmpty()) || (mode == "cin" && utype == "tv")) {
+                        FilterPill("Reset", false, fs) { Releases.resetFilters() }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** #fdlg : choose type / countries / genres / year. Reset clears the choice, Done applies it and reloads the page. */
 @Composable
 fun ReleaseFilterDialog(fk: String, onClose: () -> Unit) {

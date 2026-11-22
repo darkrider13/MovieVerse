@@ -79,3 +79,48 @@ fun Modifier.pullRefresh(
         }
     }
 }
+
+/**
+ * Same pull-down gesture for the WebView grids: the page scroll position comes from [atTop], and a touch that starts on the
+ * tabs / search row of Your Library (see [blocked], gets the y of the touch inside this box) does not start a pull.
+ */
+fun Modifier.pullRefreshWeb(
+    atTop: () -> Boolean,
+    blocked: (Float) -> Boolean,
+    enabled: () -> Boolean,
+    onBuzz: () -> Unit,
+    onPull: () -> Unit
+): Modifier = pointerInput(Unit) {
+    val th = 70f
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        if (!enabled() || !atTop()) return@awaitEachGesture
+        if (blocked(down.position.y)) return@awaitEachGesture
+        val density = this.density
+        val sx = down.position.x
+        val sy = down.position.y
+        var pull = 0f
+        var buzz = false
+        while (true) {
+            val ev = awaitPointerEvent(PointerEventPass.Initial)
+            if (ev.changes.size > 1 && ev.changes.count { it.pressed } > 1) return@awaitEachGesture
+            val ch = ev.changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+            if (!ch.pressed) {
+                if (pull >= th) onPull()
+                return@awaitEachGesture
+            }
+            if (!atTop()) return@awaitEachGesture
+            val dy = (ch.position.y - sy) / density
+            val dx = (ch.position.x - sx) / density
+            if (dy <= 0f || Math.abs(dx) > Math.abs(dy)) {
+                pull = 0f
+                continue
+            }
+            pull = Math.min(dy * 0.5f, 90f)
+            if (pull >= th && !buzz) {
+                buzz = true
+                onBuzz()
+            }
+        }
+    }
+}

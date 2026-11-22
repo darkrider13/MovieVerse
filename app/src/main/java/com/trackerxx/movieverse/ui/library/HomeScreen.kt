@@ -62,6 +62,16 @@ import com.trackerxx.movieverse.ui.theme.EaseCss
 import com.trackerxx.movieverse.ui.theme.Mv
 import com.trackerxx.movieverse.ui.theme.MvText
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInWindow
+import com.trackerxx.movieverse.ui.theme.MvFixed
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -102,9 +112,9 @@ fun HomeScreen(splashGone: Boolean) {
     var fkey by remember { mutableStateOf<String?>(null) } // open filter dialog: g | r | y | s
     var ufkey by remember { mutableStateOf<String?>(null) } // Releases filter dialog: t | c | g | y
     var usText by remember { mutableStateOf("") }          // Releases search box text
-    val gridState = rememberLazyGridState()
+    val grid = remember { GridHost() }                  // the poster grids (WebView)
+    val cNow = Mv.c
     val add = remember { AddFlow(scope, modal, toast) }
-    val cardDrag = remember { DragState() }
     val tabDrag = remember { DragState() }
 
     // ---- start: load the library from the database (loadAllP) ---------------------------------------------------
@@ -164,8 +174,8 @@ fun HomeScreen(splashGone: Boolean) {
     // A background refresh (rev bump: ratings, posters, Trending...) must never rebuild the list while the finger is scrolling.
     // The new rev is applied as soon as the scroll has stopped.
     var revApplied by remember { mutableIntStateOf(AppData.rev) }
-    LaunchedEffect(gridState) {
-        snapshotFlow { Pair(AppData.rev, gridState.isScrollInProgress) }.collect { (r, scrolling) ->
+    LaunchedEffect(grid) {
+        snapshotFlow { Pair(AppData.rev, grid.scrolling) }.collect { (r, scrolling) ->
             com.trackerxx.movieverse.util.Quiet.scroll(scrolling)
             if (!scrolling) revApplied = r
         }
@@ -182,35 +192,7 @@ fun HomeScreen(splashGone: Boolean) {
     val dirty = remember(rev) { AppData.isDirty() }
     val lvNow by rememberUpdatedState(lv)
 
-    // while a card is picked up the list shows the live order
-    val cards = if (cardDrag.active) {
-        val by = lv.list.associateBy { it.id }
-        cardDrag.order.mapNotNull { by[it] }
-    } else lv.list
-
-    // ---- more cards when the end of the list comes near (IntersectionObserver, rootMargin 1500px) ----------------------
-    LaunchedEffect(gridState) {
-        snapshotFlow {
-            val info = gridState.layoutInfo
-            Pair(info.visibleItemsInfo.lastOrNull()?.index ?: 0, info.totalItemsCount)
-        }.collect { (last, total) ->
-            if (lvNow.total > lib.lim && last >= total - 12) lib.lim += 60
-            if (last >= total - 8) Releases.checkMore()
-        }
-    }
-
-    // ---- page scrolls while a card is dragged near the top / bottom edge (tick() in the web version) ----------------------
-    LaunchedEffect(cardDrag.active) {
-        if (!cardDrag.active) return@LaunchedEffect
-        while (cardDrag.active) {
-            withFrameNanos { }
-            val y = cardDrag.pos.y
-            val h = gridState.layoutInfo.viewportSize.height
-            val moved = if (y < 91 * dens) gridState.scrollBy(-14 * dens)
-            else if (y > h - 110 * dens) gridState.scrollBy(14 * dens) else 0f
-            if (moved != 0f) swapAtGrid(cardDrag, gridState)
-        }
-    }
+    val cards = lv.list
 
     // Trending is on screen: ratings are retried while it is; entering it loads (or re-uses) the rows (showView)
     val trendOn = view == "library" && home == "trend"
@@ -226,7 +208,66 @@ fun HomeScreen(splashGone: Boolean) {
     LaunchedEffect(upOn) { if (upOn) Releases.onShow() }
     val libIds = remember(rev) { AppData.movies.map { it.tmdbId }.toHashSet() }
 
-    fun toTop() { scope.launch { gridState.scrollToItem(0) } }
+    // ---- the poster grids live in a WebView: what the page tells the app, and what the app sends to the page -----------------
+    val gridMode = if (view == "up") "up" else if (home == "trend") "trend" else "lib"
+    SideEffect {
+        grid.onTapLib = { id ->
+            val m = AppData.movies.firstOrNull { it.id == id }
+            if (m != null) {
+                Enrich.chgSet.remove(m.id)
+                add.openLib(m, false, 800L)
+            }
+        }
+        grid.onTapTrend = { id ->
+            val d0 = AppData.movies.firstOrNull { it.tmdbId == id }
+            val us = if (AppData.statuses.any { it.id == "upcoming" }) "upcoming"
+            else if (AppData.statuses.any { it.id == "plan" }) "plan" else AppData.statuses[0].id
+            add.choose(id, d0?.status ?: us, fromUp = true)
+        }
+        grid.onTapUp = { id ->
+            val m = (if (Releases.usq.isNotEmpty()) Releases.sres else Releases.items).firstOrNull { it.id == id }
+            if (m != null) {
+                val d0 = AppData.movies.firstOrNull { it.tmdbId == m.id }
+                val us = if (AppData.statuses.any { it.id == "upcoming" }) "upcoming"
+                else if (AppData.statuses.any { it.id == "plan" }) "plan" else AppData.statuses[0].id
+                add.choose(m.id, d0?.status ?: us, minMs = if (Releases.umode == "soon") 600L else 1300L, fromUp = true, initial = m.toQItem())
+            }
+        }
+        grid.onMore = {
+            if (view == "library" && home == "lib" && lvNow.total > lib.lim) lib.lim += 60
+            if (view == "up") Releases.checkMore()
+        }
+        grid.onReorder = { ids -> actions.saveOrder(ids, lvNow.ordCtx) }
+        grid.onRetryTrend = { scope.launch { try { Trending.load(true) } catch (e: CancellationException) { throw e } catch (e: Exception) { } } }
+        grid.onRetryUp = { Releases.retry() }
+        grid.onMoreTap = { Releases.loadMore() }
+        grid.onBuzz = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
+    }
+    LaunchedEffect(cNow.dark) { grid.setTheme(GridJson.theme(cNow)) }
+    LaunchedEffect(fctx) { grid.scrollTop() }
+    // Trending / Releases: the page is rebuilt whenever one of the lists (or a rating that arrives later) changes
+    LaunchedEffect(gridMode, libIds) {
+        if (gridMode == "lib") return@LaunchedEffect
+        val wGreen = cNow.w
+        val tagBg = MvFixed.RateBg
+        snapshotFlow { if (gridMode == "trend") GridJson.trend(libIds) else GridJson.up(libIds, wGreen, tagBg) }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
+            .collect { grid.setPayload(it) }
+    }
+    // Your Library: the cards (already filtered and sorted above) go to the page
+    val updN = Refresh.upd.size
+    LaunchedEffect(gridMode, lv, revApplied, updN) {
+        if (gridMode != "lib") return@LaunchedEffect
+        val sts = AppData.statuses.toList()
+        val sl = AppData.SL
+        val updSet = HashSet(Refresh.upd.keys)
+        val chgCopy = HashSet(Enrich.chgSet)
+        val json = withContext(Dispatchers.Default) { GridJson.lib(lv, cards, sts, sl, cNow, updSet, chgCopy) }
+        grid.setPayload(json)
+    }
+
+    fun toTop() { grid.scrollTop() }
 
     /** selTrend(): back to Trending, top of the page */
     fun selTrend() {
@@ -248,6 +289,8 @@ fun HomeScreen(splashGone: Boolean) {
         return err
     }
 
+    // where the tabs / search row sit on screen (a pull-down refresh must not start there): y in the window, height, y of the list box
+    val barBox = remember { FloatArray(3) }
     Column(Modifier.fillMaxSize()) {
         TopNav(
             releasesLabel = if (view == "up") "Home" else "Releases",
@@ -257,186 +300,102 @@ fun HomeScreen(splashGone: Boolean) {
             onSettings = { settingsOpen = true }
         )
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-            Box(Modifier.widthIn(max = 1100.dp).fillMaxSize()) {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(140.dp),
-                    state = gridState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pullRefresh(
-                            grid = gridState,
-                            enabled = { view != "up" && !Refresh.isBusy },
-                            dragging = { cardDrag.active },
-                            onBuzz = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) },
-                            onPull = {
-                                scope.launch {
-                                    if (home == "trend") {
-                                        try { Trending.silent() } catch (e: CancellationException) { throw e } catch (e: Exception) { }
-                                    } else {
-                                        Refresh.runLibrary(ctx, toast)
-                                    }
+            Box(
+                Modifier
+                    .widthIn(max = 1100.dp)
+                    .fillMaxSize()
+                    .onGloballyPositioned { barBox[2] = it.positionInWindow().y }
+                    .pullRefreshWeb(
+                        atTop = { grid.scrollY == 0 },
+                        blocked = { y ->
+                            val yw = y + barBox[2]
+                            home == "lib" && view == "library" && barBox[1] > 0f && yw >= barBox[0] && yw <= barBox[0] + barBox[1]
+                        },
+                        enabled = { view != "up" && !Refresh.isBusy },
+                        onBuzz = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) },
+                        onPull = {
+                            scope.launch {
+                                if (home == "trend") {
+                                    try { Trending.silent() } catch (e: CancellationException) { throw e } catch (e: Exception) { }
+                                } else {
+                                    Refresh.runLibrary(ctx, toast)
                                 }
                             }
-                        )
-                        .cardReorder(
-                            drag = cardDrag, grid = gridState,
-                            ids = { if (lvNow.canOrder) lvNow.list.map { it.id } else null },
-                            haptic = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
-                            onDrop = { ids -> actions.saveOrder(ids, lvNow.ordCtx) }
-                        ),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        }
+                    )
+            ) {
+                // the cards (WebView scrolls them itself)
+                GridWebView(grid, cNow.bg, Modifier.fillMaxSize())
+
+                // the Kotlin header (welcome box, buttons, tabs, search ...) sits on top and moves up with the page
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .offset { IntOffset(0, -grid.scrollY) }
+                        .onSizeChanged { grid.setTop(it.height / dens) }
+                        .pointerInput(Unit) { detectVerticalDragGestures { _, dy -> grid.web?.scrollBy(0, -dy.roundToInt()) } }
+                        .padding(start = 16.dp, end = 16.dp, top = 16.dp)
                 ) {
                     if (view == "library") {
-                        item(key = "hero", span = { GridItemSpan(maxLineSpan) }) {
-                            Box(Modifier.padding(bottom = 14.dp)) { Hero(AppData.uname, onAdd = { add.openAdd(lib.tab, folderEff) }) }
-                        }
-                        item(key = "hsw", span = { GridItemSpan(maxLineSpan) }) {
-                            Box(Modifier.padding(bottom = if (home == "trend" && AppData.apis.key.isNotEmpty()) 0.dp else 12.dp)) {
-                                HomeSwitch(home, onPick = { h ->
-                                    if (h == "lib") lib.openTab("all")
-                                    if (h != home) {
-                                        home = h
-                                        Ls.setItem("library.home", h)
-                                        view = "library"
-                                        toTop()
-                                    } else if (h == "lib") AppData.render()
-                                })
-                            }
+                        Box(Modifier.padding(bottom = 14.dp)) { Hero(AppData.uname, onAdd = { add.openAdd(lib.tab, folderEff) }) }
+                        Box(Modifier.padding(bottom = if (home == "trend" && AppData.apis.key.isNotEmpty()) 0.dp else 12.dp)) {
+                            HomeSwitch(home, onPick = { h ->
+                                if (h == "lib") lib.openTab("all")
+                                if (h != home) {
+                                    home = h
+                                    Ls.setItem("library.home", h)
+                                    view = "library"
+                                    toTop()
+                                } else if (h == "lib") AppData.render()
+                            })
                         }
                     }
-
                     if (view == "library" && home == "lib") {
-                        item(key = "bar", span = { GridItemSpan(maxLineSpan) }) {
-                            Column(Modifier.padding(bottom = 12.dp)) {
-                                TabsRow(
-                                    tabs = lv.tabs, selected = lib.tab,
-                                    onSelect = { t ->
-                                        if (t == lib.tab && t != "all") actions.editStatus()
-                                        else lib.openTab(t)
-                                    },
-                                    onAddStatus = { actions.addStatus() },
-                                    drag = tabDrag,
-                                    onReorder = { ids -> actions.saveTabOrder(ids) }
-                                )
-                                Box(Modifier.padding(top = 10.dp)) {
-                                    SearchRow(qBox, { qBox = it }, LibraryLogic.fmtK(lv.inTabCount))
-                                }
+                        Column(
+                            Modifier
+                                .padding(bottom = 12.dp)
+                                .onGloballyPositioned { barBox[0] = it.positionInWindow().y; barBox[1] = it.size.height.toFloat() }
+                        ) {
+                            TabsRow(
+                                tabs = lv.tabs, selected = lib.tab,
+                                onSelect = { t ->
+                                    if (t == lib.tab && t != "all") actions.editStatus()
+                                    else lib.openTab(t)
+                                },
+                                onAddStatus = { actions.addStatus() },
+                                drag = tabDrag,
+                                onReorder = { ids -> actions.saveTabOrder(ids) }
+                            )
+                            Box(Modifier.padding(top = 10.dp)) {
+                                SearchRow(qBox, { qBox = it }, LibraryLogic.fmtK(lv.inTabCount))
                             }
                         }
                         if (lv.showFilters) {
-                            item(key = "fold", span = { GridItemSpan(maxLineSpan) }) {
-                                Column(Modifier.padding(bottom = if (lv.emptyText != null) 4.dp else 6.dp)) {
-                                    FolderChips(
-                                        view = lv,
-                                        onAll = { lib.folder = null; lib.lim = 60 },
-                                        onFolder = { id ->
-                                            if (lib.folder == id) actions.editFolder(id)
-                                            else { lib.folder = id; lib.country = "all"; lib.lim = 60 }
-                                        },
-                                        onFolderLong = { id -> actions.editFolder(id) },
-                                        onNew = { actions.newFolder() }
-                                    )
-                                    FilterRow(
-                                        ff = ffEff,
-                                        onOpen = { k -> fkey = k },
-                                        onReset = { lib.ff = FilterState(); lib.lim = 60 }
-                                    )
-                                }
-                            }
-                        }
-                        if (lv.emptyText != null) {
-                            item(key = "empty", span = { GridItemSpan(maxLineSpan) }) { EmptyBox(lv.emptyText) }
-                        } else {
-                            itemsIndexed(cards, key = { _, it -> it.id }, contentType = { _, _ -> "card" }) { i, m ->
-                                MovieCard(
-                                    m, AppData.statuses, AppData.SL,
-                                    upd = Refresh.upd.containsKey(m.id),
-                                    chg = remember(rev) { Enrich.chgSet.contains(m.id) },
-                                    onClick = {
-                                        if (!cardDrag.recentlyDragged()) {
-                                            Enrich.chgSet.remove(m.id)
-                                            add.openLib(m, false, 800L)
-                                        }
+                            Column(Modifier.padding(bottom = if (lv.emptyText != null) 4.dp else 6.dp)) {
+                                FolderChips(
+                                    view = lv,
+                                    onAll = { lib.folder = null; lib.lim = 60 },
+                                    onFolder = { id ->
+                                        if (lib.folder == id) actions.editFolder(id)
+                                        else { lib.folder = id; lib.country = "all"; lib.lim = 60 }
                                     },
-                                    // the placement animation is only needed while a card is being dragged; the modifier costs
-                                    // time on every layout pass of every visible card, so normal scrolling does not carry it
-                                    modifier = Modifier
-                                        .padding(bottom = 14.dp)
-                                        .then(
-                                            if (cardDrag.active) Modifier.animateItem(
-                                                fadeInSpec = null,
-                                                placementSpec = tween(180, easing = EaseCss),
-                                                fadeOutSpec = null
-                                            ) else Modifier
-                                        ),
-                                    placeholder = cardDrag.key == m.id
+                                    onFolderLong = { id -> actions.editFolder(id) },
+                                    onNew = { actions.newFolder() }
                                 )
-                            }
-                            if (lv.total > lib.lim) {
-                                item(key = "more", span = { GridItemSpan(maxLineSpan) }) {
-                                    Box(Modifier.padding(top = 4.dp, bottom = 32.dp)) { MoreDots() }
-                                }
-                            }
-                        }
-                    }
-
-                    if (view == "library" && home == "trend") {
-                        if (AppData.apis.key.isEmpty()) {
-                            item(key = "trend", span = { GridItemSpan(maxLineSpan) }) {
-                                TrendNone("Add your TMDB key in Settings to see Trending.")
-                            }
-                        } else {
-                            for (tid in Trending.ORDER) {
-                                item(key = "tr-$tid", span = { GridItemSpan(maxLineSpan) }) {
-                                    TrendSection(
-                                        id = tid,
-                                        list = Trending.lists[tid],
-                                        failed = Trending.failed[tid] == true,
-                                        libIds = libIds,
-                                        onTap = { o ->
-                                            val d0 = AppData.movies.firstOrNull { it.tmdbId == o.id }
-                                            val us = if (AppData.statuses.any { it.id == "upcoming" }) "upcoming"
-                                            else if (AppData.statuses.any { it.id == "plan" }) "plan" else AppData.statuses[0].id
-                                            add.choose(o.id, d0?.status ?: us, fromUp = true)
-                                        },
-                                        onRetry = { scope.launch { try { Trending.load(true) } catch (e: CancellationException) { throw e } catch (e: Exception) { } } }
-                                    )
-                                }
+                                FilterRow(
+                                    ff = ffEff,
+                                    onOpen = { k -> fkey = k },
+                                    onReset = { lib.ff = FilterState(); lib.lim = 60 }
+                                )
                             }
                         }
                     }
                     if (view == "up") {
-                        releasesItems(
+                        ReleasesHeader(
                             searchText = usText,
                             onSearchText = { usText = it; Releases.onQuery(it) },
-                            libIds = libIds,
-                            onOpenFilter = { k -> ufkey = k },
-                            onTap = { m ->
-                                val d0 = AppData.movies.firstOrNull { it.tmdbId == m.id }
-                                val us = if (AppData.statuses.any { it.id == "upcoming" }) "upcoming"
-                                else if (AppData.statuses.any { it.id == "plan" }) "plan" else AppData.statuses[0].id
-                                add.choose(m.id, d0?.status ?: us, minMs = if (Releases.umode == "soon") 600L else 1300L, fromUp = true, initial = m.toQItem())
-                            }
+                            onOpenFilter = { k -> ufkey = k }
                         )
-                    }
-                }
-
-                // the card that follows the finger (.card.fly: scale 1.07, tilt 1.5 degrees, soft shadow)
-                val dragged = if (cardDrag.active) lv.list.firstOrNull { it.id == cardDrag.key } else null
-                if (dragged != null) {
-                    val wDp = (cardDrag.size.width / dens).dp
-                    Box(
-                        Modifier
-                            .offset { IntOffset((cardDrag.pos.x - cardDrag.grab.x).roundToInt(), (cardDrag.pos.y - cardDrag.grab.y).roundToInt()) }
-                            .width(wDp)
-                            .graphicsLayer { scaleX = 1.07f; scaleY = 1.07f; rotationZ = 1.5f; alpha = 0.97f }
-                            .shadow(
-                                24.dp, RoundedCornerShape(12.dp), clip = false,
-                                ambientColor = Color.Black.copy(alpha = 0.6f), spotColor = Color.Black.copy(alpha = 0.6f)
-                            )
-                    ) {
-                        MovieCard(dragged, AppData.statuses, AppData.SL, onClick = {})
                     }
                 }
             }
