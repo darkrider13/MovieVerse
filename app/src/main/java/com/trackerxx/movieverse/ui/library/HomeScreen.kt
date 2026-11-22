@@ -132,7 +132,7 @@ fun HomeScreen(splashGone: Boolean) {
         AppScope.launch { Enrich.backfill() }
         // the app starts on Trending: show what was cached at once, then refresh it from the network
         Trending.showCached()
-        AppScope.launch { try { Trending.load(true) } catch (e: CancellationException) { throw e } catch (e: Exception) { } }
+        AppScope.launch { try { com.trackerxx.movieverse.util.Quiet.await(); Trending.load(true) } catch (e: CancellationException) { throw e } catch (e: Exception) { } }
     }
 
     // ---- what the page shows -------------------------------------------------------------------------------------------
@@ -165,7 +165,10 @@ fun HomeScreen(splashGone: Boolean) {
     // The new rev is applied as soon as the scroll has stopped.
     var revApplied by remember { mutableIntStateOf(AppData.rev) }
     LaunchedEffect(gridState) {
-        snapshotFlow { Pair(AppData.rev, gridState.isScrollInProgress) }.collect { (r, scrolling) -> if (!scrolling) revApplied = r }
+        snapshotFlow { Pair(AppData.rev, gridState.isScrollInProgress) }.collect { (r, scrolling) ->
+            com.trackerxx.movieverse.util.Quiet.scroll(scrolling)
+            if (!scrolling) revApplied = r
+        }
     }
     val lvFull = remember(revApplied, ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lvOn) {
         val held = lvHold[0]
