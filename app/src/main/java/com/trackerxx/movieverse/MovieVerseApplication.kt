@@ -13,6 +13,8 @@ import com.trackerxx.movieverse.trending.Trending
 class MovieVerseApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
+        // first seconds after the start belong to the UI: background refresh work starts after this
+        com.trackerxx.movieverse.util.Quiet.untilMs = android.os.SystemClock.uptimeMillis() + 7000L
         Ls.init(this)
         AppData.init(this)
         Fx.load()
