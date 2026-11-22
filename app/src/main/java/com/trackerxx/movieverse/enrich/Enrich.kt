@@ -619,6 +619,7 @@ object Enrich {
      * Called on start, when the app comes back to the front and every 30 minutes.
      */
     suspend fun backfill() = withContext(StateDispatcher) {
+        com.trackerxx.movieverse.util.Quiet.await()   // not while the app starts / the list is scrolled
         if (bfBusy || key.isEmpty()) return@withContext
         val todo = AppData.movies.toTypedArray().filter { needsAny(it) }.take(25)
         if (todo.isEmpty()) return@withContext
@@ -629,7 +630,9 @@ object Enrich {
             coroutineScope {
                 repeat(minOf(6, todo.size)) {
                     launch {
-                        while (i < todo.size) {
+                        while (true) {
+                            com.trackerxx.movieverse.util.Quiet.await()
+                            if (i >= todo.size) break
                             val m = todo[i++]
                             val bf = snapF?.invoke(m)
                             val x: List<Boolean> = try {
