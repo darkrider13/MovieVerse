@@ -64,6 +64,10 @@ object MvIcons {
     val Search = MvIconData(listOf(s(circ(11f, 11f, 7f)), s("M20 20l-3.5-3.5")), 2.2f, false)
     val Eye = MvIconData(listOf(s("M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"), s(circ(12f, 12f, 3f))), 2f, true)
     val Plus = MvIconData(listOf(s("M12 5v14M5 12h14")), 2.6f, false)
+    val Back = MvIconData(listOf(s("M15 5l-7 7 7 7")), 2.4f, true)
+    val Chevron = MvIconData(listOf(s("M9 5l7 7-7 7")), 2.4f, true)
+    /** subtitles (CC box) */
+    val Subtitle = MvIconData(listOf(s(rrect(3f, 5f, 18f, 14f, 3f)), s("M7 11h4M13 11h4M7 15h2M12 15h5")), 2f, true)
     val CheckGreen = MvIconData(listOf(IconShape("M5 12l5 5L20 7", color = Color(0xFF00B800))), 2.5f, true)
     val CrossRed = MvIconData(listOf(IconShape("M6 6l12 12M18 6L6 18", color = Color(0xFFE24B4B))), 2.5f, false)
     val PlayWhite = MvIconData(listOf(IconShape("M8 5.5v13l11-6.5z", fill = true, color = Color.White)))
