@@ -46,6 +46,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.LayoutAwareModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.invalidateDraw
+import androidx.compose.ui.node.requireLayoutCoordinates
 import com.trackerxx.movieverse.ui.components.detailGlow
 import com.trackerxx.movieverse.ui.components.drawGlow
 import com.trackerxx.movieverse.ui.components.isDarkBg
@@ -187,8 +196,6 @@ fun HomeScreen(splashGone: Boolean) {
     // until its own cards have arrived (no half-drawn list, no cards of the old pill).
     var shownKey by remember { mutableStateOf<String?>(null) }
     var hdrDp by remember { mutableStateOf(0f) }
-    // system bars (+ keyboard) insets: read here (composable), used by the draw blocks of the cover / loading box below
-    val ins = WindowInsets.systemBars.union(WindowInsets.ime)
 
     // ---- what the page shows -------------------------------------------------------------------------------------------
     val rev = AppData.rev
@@ -617,18 +624,8 @@ fun HomeScreen(splashGone: Boolean) {
                 if (libReady && view == "library" && home == "lib" && shownKey != fctx) {
                     Box(
                         Modifier.fillMaxSize().padding(top = hdrDp.dp).background(cNow.bg)
-                            .drawBehind {
-                                if (isDarkBg(cNow.bg)) {
-                                    // the app background glow covers the WHOLE screen; this page is inset by the system bars, so the cover
-                                    // must draw the glow with the same origin and size, otherwise it shifts for a moment (= blink)
-                                    val t = hdrDp.dp.toPx()
-                                    val il = ins.getLeft(this, layoutDirection).toFloat()
-                                    val ir = ins.getRight(this, layoutDirection).toFloat()
-                                    val it0 = ins.getTop(this).toFloat()
-                                    val ib = ins.getBottom(this).toFloat()
-                                    translate(-il, -(t + it0)) { drawGlow(size.width + il + ir, size.height + t + it0 + ib) }
-                                }
-                            }
+                            // the glow is drawn from the cover's REAL position on screen (see AppGlowNode), so it lines up with the app background
+                            .then(if (isDarkBg(cNow.bg)) Modifier.then(AppGlowElement) else Modifier)
                             .pointerInput(Unit) { }
                     )
                 }
@@ -636,15 +633,9 @@ fun HomeScreen(splashGone: Boolean) {
                 // "Loading your library": nothing of the library is shown before everything is ready
                 if (view == "library" && home == "lib" && !libReady) {
                     Box(
-                        Modifier.fillMaxSize().background(cNow.bg).drawBehind {
-                            if (isDarkBg(cNow.bg)) {
-                                val il = ins.getLeft(this, layoutDirection).toFloat()
-                                val ir = ins.getRight(this, layoutDirection).toFloat()
-                                val it0 = ins.getTop(this).toFloat()
-                                val ib = ins.getBottom(this).toFloat()
-                                translate(-il, -it0) { drawGlow(size.width + il + ir, size.height + it0 + ib) }
-                            }
-                        }.pointerInput(Unit) { },
+                        Modifier.fillMaxSize().background(cNow.bg)
+                            .then(if (isDarkBg(cNow.bg)) Modifier.then(AppGlowElement) else Modifier)
+                            .pointerInput(Unit) { },
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -735,5 +726,36 @@ private fun TrendNone(text: String) {
     val h = (LocalConfiguration.current.screenHeightDp * 0.55f).dp
     Box(Modifier.fillMaxWidth().heightIn(min = h).padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
         MvText(text, size = 14.sp, color = Mv.c.mut, align = TextAlign.Center)
+    }
+}
+
+/**
+ * Draws the app background glow onto a cover so that it is pixel-identical to the real app background behind it.
+ * The app glow is painted once over the whole window. A cover sits somewhere inside the window (below the status bar, the top bar,
+ * the header, maybe moved by the keyboard), so the old way of guessing that offset from the system-bar insets was always a bit off
+ * -> the glow jumped for a moment when the cover came or went (blink). Here the cover asks the layout where it REALLY is
+ * (position in the window + window size) every time it is drawn, so no guessing and nothing to get out of sync.
+ */
+internal object AppGlowElement : ModifierNodeElement<AppGlowNode>() {
+    override fun create() = AppGlowNode()
+    override fun update(node: AppGlowNode) {}
+    override fun equals(other: Any?) = other === this
+    override fun hashCode() = 7
+}
+
+internal class AppGlowNode : Modifier.Node(), DrawModifierNode, LayoutAwareModifierNode {
+    // moved / resized (header grows, keyboard opens, rotation) -> draw again with the new origin
+    override fun onPlaced(coordinates: LayoutCoordinates) { invalidateDraw() }
+
+    override fun ContentDrawScope.draw() {
+        val c = requireLayoutCoordinates()
+        if (c.isAttached) {
+            val o = c.positionInRoot()
+            val r = c.findRootCoordinates().size
+            clipRect {   // only inside the cover, never over the header / top bar
+                translate(-o.x, -o.y) { drawGlow(r.width.toFloat(), r.height.toFloat()) }
+            }
+        }
+        drawContent()
     }
 }
