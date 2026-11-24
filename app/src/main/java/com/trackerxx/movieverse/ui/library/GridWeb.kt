@@ -81,9 +81,28 @@ class GridHost {
         web = null
     }
 
+    /** newest page data that arrived while the finger was scrolling: it is sent a moment after the scrolling stops */
+    private var held: String? = null
+
+    fun scrollState(on: Boolean) {
+        scrolling = on
+        if (!on) main.postDelayed({ flushHeld() }, 150)
+    }
+
+    private fun flushHeld() {
+        if (scrolling) return
+        val j = held ?: return
+        held = null
+        if (ready) send("MV.set(" + JSONObject.quote(j) + ")")
+    }
+
     fun setPayload(json: String) {
         pPayload = json
-        if (ready) send("MV.set(" + JSONObject.quote(json) + ")")
+        if (!ready) return
+        // ratings / lists that arrive from the internet must never rebuild the page in the middle of a scroll
+        if (scrolling) { held = json; return }
+        held = null
+        send("MV.set(" + JSONObject.quote(json) + ")")
     }
 
     fun setTheme(json: String) {
@@ -106,7 +125,7 @@ class GridHost {
 /** methods the page can call (window.Android.*) */
 class GridBridge(private val h: GridHost) {
     @JavascriptInterface fun ready() { h.post { h.markReady() } }
-    @JavascriptInterface fun scrolling(on: Boolean) { h.post { h.scrolling = on } }
+    @JavascriptInterface fun scrolling(on: Boolean) { h.post { h.scrollState(on) } }
     @JavascriptInterface fun more() { h.post { h.onMore() } }
     @JavascriptInterface fun buzz() { h.post { h.onBuzz() } }
     @JavascriptInterface fun tapLib(id: String) { h.post { h.onTapLib(id) } }
@@ -143,8 +162,7 @@ fun GridWebView(host: GridHost, bg: Color, modifier: Modifier = Modifier) {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = false
                 settings.textZoom = 100
-                // smooth scrolling: GPU-composited page, no zoom/find/save-form work, images cached on disk
-                setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                // no zoom / save-form work, images cached on disk
                 settings.setSupportZoom(false)
                 settings.builtInZoomControls = false
                 settings.displayZoomControls = false
