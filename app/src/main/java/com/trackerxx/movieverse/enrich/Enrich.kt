@@ -433,9 +433,12 @@ object Enrich {
 
     // ---- MDBList + TMDB score ----------------------------------------------------------------------------------------
 
+    /** failed-lookup key: a movie that is not in the library yet (Trending / Releases preview) has no id, so use its TMDB id */
+    private fun mdKey(m: Movie): String = m.id.ifEmpty { "t" + m.tmdbId }
+
     fun mdSkip(m: Movie): Boolean {
         if (m.tmdbId == 0L) return true
-        val bad = mdBad[m.id]
+        val bad = mdBad[mdKey(m)]
         return bad != null && nowMs() - bad < 6e5
     }
 
@@ -483,7 +486,7 @@ object Enrich {
             val okM = o is MdResult.Data
             val okT = t.text != null
             if (!okM && !okT) {
-                if (o is MdResult.Failed || (!t.undefinedNoKey && t.text == null)) mdBad[m.id] = nowMs()
+                if (o is MdResult.Failed || (!t.undefinedNoKey && t.text == null)) mdBad[mdKey(m)] = nowMs()
                 return@withContext false
             }
             if (o is MdResult.Data) {
@@ -499,7 +502,7 @@ object Enrich {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            mdBad[m.id] = nowMs()
+            mdBad[mdKey(m)] = nowMs()
             false
         }
     }
