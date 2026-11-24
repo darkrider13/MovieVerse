@@ -34,6 +34,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -299,7 +300,8 @@ fun HomeScreen(splashGone: Boolean) {
             onReleases = { view = if (view == "up") "library" else "up" },
             onSettings = { settingsOpen = true }
         )
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        // clipToBounds: the header (translated up while scrolling) must never draw over the top bar
+        Box(Modifier.weight(1f).fillMaxWidth().clipToBounds(), contentAlignment = Alignment.TopCenter) {
             Box(
                 Modifier
                     .widthIn(max = 1100.dp)
