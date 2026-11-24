@@ -413,6 +413,7 @@ fun HomeSwitch(selected: Int, onPick: (Int) -> Unit) {
     val scope = rememberCoroutineScope()
     var hover by remember { mutableIntStateOf(-1) }          // position under the finger (quick slide)
     val pickNow by rememberUpdatedState(onPick)
+    val selNow by rememberUpdatedState(selected)
     var order by remember { mutableStateOf(loadSwitchOrder()) }   // ids from left to right
     var dragId by remember { mutableIntStateOf(-1) }         // id of the lifted pill, -1 = none
     var dragX by remember { mutableFloatStateOf(0f) }        // left edge of the lifted pill (px, inside the row)
@@ -437,8 +438,9 @@ fun HomeSwitch(selected: Int, onPick: (Int) -> Unit) {
                     var cur = idx(down.position.x)
                     hover = cur
                     // 1) held still long enough: the pill is lifted and can be moved
-                    // Trending (id 0) is fixed: it is never lifted, so it skips this and works as a plain tap / slide
-                    val lp = if (order[cur] == 0) null else awaitLongPressOrCancellation(down.id)
+                    // Trending (id 0) is fixed: it is never lifted, so it skips this and works as a plain tap / slide.
+                    // A pill that is not selected yet cannot be lifted either: select it first (tap), then hold and drag.
+                    val lp = if (order[cur] == 0 || order[cur] != selNow) null else awaitLongPressOrCancellation(down.id)
                     if (lp != null) {
                         val id = order[cur]
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -637,7 +639,8 @@ fun TabsRow(
                     pillTop = { (rowH - pillH) / 2f },
                     pillHeight = { pillH },
                     haptic = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
-                    onDrop = onReorder
+                    onDrop = onReorder,
+                    canPick = { it == selected }   // only the tab that is already selected can be lifted
                 ),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,

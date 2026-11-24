@@ -159,11 +159,13 @@ fun Modifier.tabReorder(
     pillTop: () -> Float,
     pillHeight: () -> Int,
     haptic: () -> Unit,
-    onDrop: (List<String>) -> Unit
+    onDrop: (List<String>) -> Unit,
+    canPick: (String) -> Boolean = { true }
 ): Modifier {
     val idsNow by rememberUpdatedState(ids)
     val dropNow by rememberUpdatedState(onDrop)
     val hapticNow by rememberUpdatedState(haptic)
+    val canPickNow by rememberUpdatedState(canPick)
     val topNow by rememberUpdatedState(pillTop)
     val heightNow by rememberUpdatedState(pillHeight)
     return this.pointerInput(drag, list) {
@@ -172,7 +174,7 @@ fun Modifier.tabReorder(
                 val order = idsNow()
                 val hit = list.layoutInfo.visibleItemsInfo.firstOrNull { it2 ->
                     val k = it2.key
-                    k is String && order.contains(k) && offset.x >= it2.offset && offset.x < it2.offset + it2.size
+                    k is String && order.contains(k) && canPickNow(k) && offset.x >= it2.offset && offset.x < it2.offset + it2.size
                 }
                 if (hit != null) {
                     drag.order = order
