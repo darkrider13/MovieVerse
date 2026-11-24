@@ -351,17 +351,18 @@ fun Hero(name: String, onAdd: () -> Unit) {
 
 private const val SWITCH_ORDER_KEY = "library.switchOrder"
 
-/** the saved order of the three home pills as ids (0 = Trending, 1 = Your Library, 2 = Releases); anything unexpected = default */
+/** the saved order of the three home pills as ids (0 = Trending, 1 = Your Library, 2 = Releases). Trending is fixed at the first place; anything unexpected = default */
 private fun loadSwitchOrder(): List<Int> {
     val l = try { Ls.getItem(SWITCH_ORDER_KEY)?.split(",")?.mapNotNull { it.trim().toIntOrNull() } } catch (e: Exception) { null }
-    return if (l != null && l.size == 3 && l.toSet() == setOf(0, 1, 2)) l else listOf(0, 1, 2)
+    return if (l != null && l.size == 3 && l.toSet() == setOf(0, 1, 2) && l[0] == 0) l else listOf(0, 1, 2)   // Trending always first
 }
 
 /**
  * .hsw : Trending | Your Library | Releases. A tap picks a pill; touch and slide the finger over the pills: the
  * highlight follows the finger (a small tick on every pill) and the pill under the finger is picked when the finger lifts.
- * Press and HOLD a pill (same as the library tabs) and it lifts: drag it left / right, the other pills glide out of the way,
- * and the new order is saved. Dropping a pill does not switch the page.
+ * Press and HOLD Your Library or Releases (same as the library tabs) and it lifts: drag it left / right, the other one glides out of
+ * the way, and the new order is saved. Trending is fixed at the first place (it cannot be lifted and nothing goes before it).
+ * Dropping a pill does not switch the page.
  * selected: 0 = Trending, 1 = Your Library, 2 = Releases (ids, not positions: the order of the pills can change)
  */
 @Composable
@@ -378,7 +379,8 @@ fun HomeSwitch(selected: Int, onPick: (Int) -> Unit) {
     val offs = remember { List(3) { Animatable(0f) } }       // glide offset of every pill (px)
     val gapPx = with(LocalDensity.current) { 8.dp.toPx() }
     val step = if (widthPx > 0) (widthPx - 2 * gapPx) / 3f + gapPx else 0f
-    val on = if (hover >= 0) hover else order.indexOf(selected)
+    // the lifted pill keeps the white "selected" look for the whole drag (the page behind does not change)
+    val on = if (hover >= 0) hover else if (dragId >= 0) order.indexOf(dragId) else order.indexOf(selected)
     Row(
         Modifier
             .fillMaxWidth()
@@ -394,21 +396,22 @@ fun HomeSwitch(selected: Int, onPick: (Int) -> Unit) {
                     var cur = idx(down.position.x)
                     hover = cur
                     // 1) held still long enough: the pill is lifted and can be moved
-                    val lp = awaitLongPressOrCancellation(down.id)
+                    // Trending (id 0) is fixed: it is never lifted, so it skips this and works as a plain tap / slide
+                    val lp = if (order[cur] == 0) null else awaitLongPressOrCancellation(down.id)
                     if (lp != null) {
                         val id = order[cur]
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         hover = -1
                         dragId = id
                         val grab = down.position.x - cur * stp
-                        dragX = (lp.position.x - grab).coerceIn(0f, w - pw)
+                        dragX = (lp.position.x - grab).coerceIn(stp, w - pw)
                         while (true) {
                             val ev = awaitPointerEvent()
                             val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
                             ch.consume()
                             if (!ch.pressed) break
-                            dragX = (ch.position.x - grab).coerceIn(0f, w - pw)
-                            val to = ((dragX + pw / 2f) / stp).toInt().coerceIn(0, 2)
+                            dragX = (ch.position.x - grab).coerceIn(stp, w - pw)   // never in front of Trending
+                            val to = ((dragX + pw / 2f) / stp).toInt().coerceIn(1, 2)
                             val from = order.indexOf(id)
                             if (to != from) {
                                 val l = order.toMutableList()
