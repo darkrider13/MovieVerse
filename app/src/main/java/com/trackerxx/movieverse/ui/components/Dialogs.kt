@@ -500,6 +500,24 @@ private fun PageWindowSetup() {
     }
 }
 
+/** Movie details background: black with a soft red glow in the top-left corner and a deep blue glow on the right (drawn once, no animation). */
+private fun Modifier.detailGlow(): Modifier = drawBehind {
+    val w = size.width
+    val h = size.height
+    drawRect(
+        Brush.radialGradient(
+            0f to Color(0x66C00018), 0.45f to Color(0x33800010), 1f to Color.Transparent,
+            center = Offset(w * 0.02f, h * 0.06f), radius = w * 1.0f
+        )
+    )
+    drawRect(
+        Brush.radialGradient(
+            0f to Color(0x4D2B4BFF), 0.5f to Color(0x261A2FA0), 1f to Color.Transparent,
+            center = Offset(w * 1.0f, h * 0.38f), radius = w * 0.9f
+        )
+    )
+}
+
 /**
  * A full-screen page (movie details, subtitles). It is its own window above the library, so the popups that open
  * from it (trailer, person, questions, toasts) still stack on top. Back button / the arrow in the bar = onBack.
@@ -536,13 +554,13 @@ fun MvPage(
         )
     ) {
         PageWindowSetup()
-        Box(Modifier.fillMaxSize().background(c.bg)) {
+        Box(Modifier.fillMaxSize().background(c.bg).then(if (edgeFade && c.bg.red + c.bg.green + c.bg.blue < 0.6f) Modifier.detailGlow() else Modifier)) {
           // the page is blurred while a popup (trailer, person, question ...) is open on top of it
           Box(Modifier.fillMaxSize().coveredBlur(toast, layer)) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.ime))) {
                 // top bar
                 Row(
-                    Modifier.fillMaxWidth().height(52.dp).background(c.nav).padding(horizontal = 6.dp),
+                    Modifier.fillMaxWidth().height(52.dp).then(if (edgeFade) Modifier else Modifier.background(c.nav)).padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
