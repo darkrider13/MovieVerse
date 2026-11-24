@@ -1,6 +1,12 @@
 package com.trackerxx.movieverse.ui.add
 
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.exponentialDecay
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.lazy.LazyListState
+import kotlin.math.abs
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -148,23 +154,24 @@ fun CastBlock(data: CastData, onPerson: (Long) -> Unit) {
 }
 
 /**
- * One row, four people visible. Normal, smooth native scrolling: the row flings freely with the finger's speed and then the
- * snap behaviour glides it to the nearest card start, so every card ends exactly in its slot (a person is never left cut in
- * half, not at the left, not at the right, not at the end of the row). At the end of the row the last four cards fill the width
- * exactly (card width = (row width - 3 gaps) / 4), so the end position is aligned too.
+ * One row, exactly four people visible. The row scrolls card by card: whatever the speed of the finger, it always comes to rest
+ * with a card exactly at the left edge, so nobody is ever left cut in half at the sides (left or right, also at the end of the row:
+ * the card width is (row width - 3 gaps) / 4, so the last four cards fill the width exactly).
  * The small dot between the crew and the actors is not a row item: it is drawn in the 6dp gap in front of the first actor,
  * so every slot has the same width.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CastRow(crew: List<CastPerson>, cast: List<CastPerson>, cw: androidx.compose.ui.unit.Dp, onPerson: (Long) -> Unit) {
     val st = rememberLazyListState()
+    val dens = LocalDensity.current
+    val slotPx = with(dens) { (cw + 6.dp).toPx() }
+    val total = crew.size + cast.size
+    val fling = remember(st, slotPx, total) { CardSnapFling(st, slotPx, (total - 4).coerceAtLeast(0)) }
     LazyRow(
         Modifier.fillMaxSize(), state = st,
         contentPadding = PaddingValues(top = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        // native fling + snap to the card grid (no custom settle animation that can be interrupted and leave the row stuck)
-        flingBehavior = rememberSnapFlingBehavior(st)
+        flingBehavior = fling
     ) {
         items(crew) { p -> CastCard(p, cw, onPerson) }
         itemsIndexed(cast) { i, p ->
@@ -178,6 +185,39 @@ private fun CastRow(crew: List<CastPerson>, cast: List<CastPerson>, cw: androidx
                 CastCard(p, cw, onPerson)
             }
         }
+    }
+}
+
+/**
+ * Card-by-card snapping for the cast row. It runs every time the finger lifts (also with zero speed, so a slow drag that stops
+ * between two cards is pulled into place too): it works out where the fling would stop, rounds that to a whole card, keeps it
+ * within one row (4 cards) of where the gesture started and inside the list (0 .. last card that still fills the row), then
+ * glides there with a soft spring (no bounce). A new touch simply takes over, and its own release settles again, so the row
+ * can never stay stuck half way.
+ */
+private class CardSnapFling(
+    private val st: LazyListState,
+    private val slotPx: Float,
+    private val lastStart: Int
+) : FlingBehavior {
+    override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
+        if (slotPx <= 0f) return initialVelocity
+        val pos = st.firstVisibleItemIndex + st.firstVisibleItemScrollOffset / slotPx   // position in cards
+        val base = pos.roundToInt()
+        // initialVelocity > 0 = finger moves right = list goes back
+        val reach = exponentialDecay<Float>().calculateTargetValue(0f, -initialVelocity) / slotPx
+        val target = (pos + reach).roundToInt().coerceIn(base - 4, base + 4).coerceIn(0, lastStart)
+        val distance = (target - pos) * slotPx
+        if (abs(distance) < 0.5f) return 0f
+        var done = 0f
+        animate(
+            initialValue = 0f, targetValue = distance, initialVelocity = -initialVelocity,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+        ) { v, _ ->
+            val d = v - done
+            done += scrollBy(d)
+        }
+        return 0f
     }
 }
 

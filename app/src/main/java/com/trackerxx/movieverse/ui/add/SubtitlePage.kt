@@ -1,5 +1,7 @@
 package com.trackerxx.movieverse.ui.add
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -27,6 +29,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,17 +88,23 @@ fun SubtitlePage(flow: SubsFlow) {
             }
             is SubsUi.Ready -> {
                 val list = flow.visible()
-                if (list.isEmpty()) {
-                    Note(
-                        when (flow.lang) {
-                            "BN" -> "No Bangla subtitle found for this title."
-                            "EN" -> "No English subtitle found for this title."
-                            else -> "No Bangla or English subtitle found on SubSource."
+                // key(lang): switching All / Bangla / English builds the list fresh, so it plays the entrance again.
+                // "Show more" keeps the rows that are already there (they stay still) and only the new ones come in.
+                key(flow.lang) {
+                    if (list.isEmpty()) {
+                        Reveal(0) {
+                            Note(
+                                when (flow.lang) {
+                                    "BN" -> "No Bangla subtitle found for this title."
+                                    "EN" -> "No English subtitle found for this title."
+                                    else -> "No Bangla or English subtitle found on SubSource."
+                                }
+                            )
                         }
-                    )
-                } else {
-                    Column(Modifier.fillMaxWidth()) {
-                        list.forEachIndexed { i, s -> SubRow(flow, s, i == 0, i + 1) }
+                    } else {
+                        Column(Modifier.fillMaxWidth()) {
+                            list.forEachIndexed { i, s -> Reveal(i) { SubRow(flow, s, i == 0, i + 1) } }
+                        }
                     }
                 }
                 if (flow.canMore()) {
@@ -108,6 +120,21 @@ fun SubtitlePage(flow: SubsFlow) {
         Spacer(Modifier.height(32.dp))
         }
     }
+}
+
+/**
+ * Light entrance for a list row: fades in and rises 10dp, each row a little after the one before it (the delay stops growing
+ * after 8 rows, so a long list never waits). Only alpha + translation on a graphics layer: no relayout, no recomposition per frame.
+ */
+@Composable
+private fun Reveal(index: Int, content: @Composable () -> Unit) {
+    val p = remember { Animatable(0f) }
+    val rise = with(LocalDensity.current) { 10.dp.toPx() }
+    LaunchedEffect(Unit) {
+        delay(minOf(index, 8) * 30L)
+        p.animateTo(1f, tween(240, easing = FastOutSlowInEasing))
+    }
+    Box(Modifier.graphicsLayer { alpha = p.value; translationY = (1f - p.value) * rise }) { content() }
 }
 
 @Composable
