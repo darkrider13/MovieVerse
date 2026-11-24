@@ -48,5 +48,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp app/build/outputs/apk/release/app-release.apk MovieVerse.apk
+          # small file the app reads first (a plain download, not limited like the GitHub API)
+          echo "{\"versionCode\":${VERSION_CODE},\"size\":$(stat -c%s MovieVerse.apk)}" > version.json
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest MovieVerse.apk --title "MovieVerse APK" --notes "Latest build. versionCode: ${VERSION_CODE}" --target ${{ github.sha }}
+          gh release create latest MovieVerse.apk version.json --title "MovieVerse APK" --notes "Latest build. versionCode: ${VERSION_CODE}" --target ${{ github.sha }}
