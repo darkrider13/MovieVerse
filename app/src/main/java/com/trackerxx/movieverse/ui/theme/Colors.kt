@@ -21,7 +21,7 @@ class MvColors(
     val onAcc: Color,     // --onacc
     val w: Color,         // --w    (watched / green)
     val p: Color,         // --p    (plan / amber)
-    val n: Color,         // --n    (watching / purple)
+    val n: Color,         // --n    (watching / parrot green)
     val dialogBg: Color,  // final dialog background
     val cg: Color,        // .cg
     val cy: Color,        // .cy
@@ -33,7 +33,7 @@ val DarkColors = MvColors(
     s = rgba(255, 255, 255, .07f), s2 = rgba(255, 255, 255, .10f),
     ink = Color(0xFFF1F2FC), mut = Color(0xFFA3A9C9), line = rgba(255, 255, 255, .11f),
     acc = Color(0xFFFF1A1A), onAcc = Color(0xFFFFFFFF),
-    w = Color(0xFF00B800), p = Color(0xFFE8A33D), n = Color(0xFF9A7BFF),
+    w = Color(0xFF00B800), p = Color(0xFFE8A33D), n = Color(0xFF6CC644),
     dialogBg = Color(0xFF000000),
     cg = Color(0xFF00B800), cy = Color(0xFFF2C230), cr = Color(0xFFFF6B6B)
 )
