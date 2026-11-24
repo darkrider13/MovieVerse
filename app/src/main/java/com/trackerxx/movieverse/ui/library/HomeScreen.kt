@@ -155,8 +155,10 @@ fun HomeScreen(splashGone: Boolean) {
     var libHeaderWarm by remember { mutableStateOf(false) }
     LaunchedEffect(loaded) {
         if (!loaded) return@LaunchedEffect
-        delay(350)
-        while (grid.scrolling) delay(150)
+        // warm it right after the first frames of the loaded app (was: 350 ms + waiting for any scroll to stop), so Your Library is
+        // ready long before the first tap. One-time cost, header is hidden (zero height) until Your Library is opened.
+        withFrameNanos { }
+        withFrameNanos { }
         libHeaderWarm = true
     }
 
@@ -208,7 +210,7 @@ fun HomeScreen(splashGone: Boolean) {
         @Suppress("UNCHECKED_CAST")
         val heldIn = lvHold[1] as List<Any?>?
         if (lvOn && (heldIn == null || heldIn.drop(1) != inputs.drop(1))) return@LaunchedEffect
-        delay(250)
+        delay(60)
         while (grid.scrolling) delay(150)
         val mv = AppData.movies.toTypedArray().toList()
         val fo = AppData.folders.toList()
