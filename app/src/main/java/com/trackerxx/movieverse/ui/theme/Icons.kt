@@ -68,6 +68,11 @@ object MvIcons {
     val Chevron = MvIconData(listOf(s("M9 5l7 7-7 7")), 2.4f, true)
     /** subtitles (CC box) */
     val Subtitle = MvIconData(listOf(s(rrect(3f, 5f, 18f, 14f, 3f)), s("M7 11h4M13 11h4M7 15h2M12 15h5")), 2f, true)
+    /** green "Already added" bookmark (web: viewBox 24x28, fill #00c800) */
+    val BookmarkGreen = MvIconData(
+        listOf(IconShape("M6.5 3h11A1.5 1.5 0 0 1 19 4.5V25l-7-5-7 5V4.5A1.5 1.5 0 0 1 6.5 3z", fill = true, color = Color(0xFF00C800))),
+        2f, true, 28f
+    )
     val CheckGreen = MvIconData(listOf(IconShape("M5 12l5 5L20 7", color = Color(0xFF00B800))), 2.5f, true)
     val CrossRed = MvIconData(listOf(IconShape("M6 6l12 12M18 6L6 18", color = Color(0xFFE24B4B))), 2.5f, false)
     val PlayWhite = MvIconData(listOf(IconShape("M8 5.5v13l11-6.5z", fill = true, color = Color.White)))
