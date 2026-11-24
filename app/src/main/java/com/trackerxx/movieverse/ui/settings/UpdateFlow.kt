@@ -46,6 +46,9 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Locale
 
+/** result of a check that was already made (the button spins while it runs): info = update found, error = failed, both null = up to date */
+class UpdateCheck(val info: Updater.Info?, val error: String?)
+
 private sealed class UpState {
     object Checking : UpState()
     object UpToDate : UpState()
@@ -64,10 +67,20 @@ private fun mb(b: Long): String =
  * (percentage, MB done / total, speed) in the app's own dialog style, and finally opens the Android installer.
  */
 @Composable
-fun UpdateFlow(onClose: () -> Unit, initial: Updater.Info? = null) {
+fun UpdateFlow(onClose: () -> Unit, initial: Updater.Info? = null, pre: UpdateCheck? = null) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    var st by remember { mutableStateOf<UpState>(if (initial != null) UpState.Available(initial) else UpState.Checking) }
+    var st by remember {
+        mutableStateOf<UpState>(
+            when {
+                initial != null -> UpState.Available(initial)
+                pre?.info != null -> UpState.Available(pre.info)
+                pre?.error != null -> UpState.Failed(pre.error, null)
+                pre != null -> UpState.UpToDate
+                else -> UpState.Checking
+            }
+        )
+    }
     var job by remember { mutableStateOf<Job?>(null) }
     var done by remember { mutableStateOf(0L) }
     var total by remember { mutableStateOf(0L) }
@@ -113,7 +126,7 @@ fun UpdateFlow(onClose: () -> Unit, initial: Updater.Info? = null) {
         }
     }
 
-    LaunchedEffect(Unit) { if (initial == null) check() }
+    LaunchedEffect(Unit) { if (initial == null && pre == null) check() }
 
     when (val s = st) {
         UpState.Checking -> MvApiLoadingDialog(
@@ -124,7 +137,7 @@ fun UpdateFlow(onClose: () -> Unit, initial: Updater.Info? = null) {
 
         UpState.UpToDate -> MvOkDialog(
             title = "You're up to date",
-            message = "MovieVerse is already the newest version.",
+            message = "No new update found. MovieVerse is already running the newest version.",
             onOk = onClose
         )
 
