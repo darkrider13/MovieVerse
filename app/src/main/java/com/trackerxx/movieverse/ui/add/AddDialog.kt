@@ -341,8 +341,9 @@ private fun MoviePage(flow: AddFlow) {
 
     MvPage(
         onBack = { flow.close() },
-        title = if (flow.isEdit) "Movie details" else "Add to Library",
-        edgeFade = true
+        title = "Movie details",
+        edgeFade = true,
+        resetKey = m
     ) {
         // ---- poster, title (year), overview, Trailer + Subtitle buttons ---------------------------------------------------
         PvHeader(flow, m, copyName)
