@@ -1,7 +1,6 @@
 package com.trackerxx.movieverse.data
 
 import android.content.Context
-import com.trackerxx.movieverse.ui.theme.ThemeState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -19,7 +18,6 @@ object AppData {
         private set
     lateinit var apis: ApiKeys
         private set
-    lateinit var theme: ThemeState
         private set
 
     /** the library (loaded from the database at start) */
@@ -115,12 +113,6 @@ object AppData {
 
         apis = ApiKeys()
 
-        // theme: 'library.theme' || 'dark'
-        val t = Ls.getItem("library.theme")
-        theme = ThemeState(initialDark = t != "light") { dark ->
-            Ls.setItem("library.theme", if (dark) "dark" else "light")
-        }
-
         initBk()
     }
 
@@ -190,7 +182,7 @@ object AppData {
     fun settingsJson(): String {
         val o = JSONObject()
         o.put("name", uname)
-        o.put("theme", Ls.getItem("library.theme") ?: "dark")
+        o.put("theme", "dark")
         o.put("apis", apis.apisJson())
         return o.toString()
     }
@@ -203,8 +195,6 @@ object AppData {
             uname = nm.trim()
             Ls.setItem("library.name", uname)
         }
-        val th = t.opt("theme")
-        if (th == "dark" || th == "light") theme.set(th == "dark")
         val a = t.optJSONArray("apis")
         if (a != null) apis.restore(a)
     }
