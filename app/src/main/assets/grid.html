@@ -41,8 +41,8 @@ img{-webkit-user-drag:none;pointer-events:none}
 /* ---- trending rows ---- */
 .tt{font-size:15px;font-weight:700;margin:16px 0 4px}
 /* each Trending row fades up once when it first comes on screen (opacity + transform only, so it stays smooth) */
-.trow.fu{opacity:0;transform:translate3d(0,18px,0)}
-.trow.fu.in{opacity:1;transform:none;transition:opacity .45s cubic-bezier(.22,.61,.36,1),transform .45s cubic-bezier(.22,.61,.36,1);transition-delay:var(--fd,0ms)}
+.trow.fu{opacity:0;transform:translate3d(0,14px,0)}
+.trow.fu.in{opacity:1;transform:none;transition:opacity .35s cubic-bezier(.22,.61,.36,1),transform .35s cubic-bezier(.22,.61,.36,1);transition-delay:var(--fd,0ms)}
 .crow{display:flex;gap:10px;overflow-x:auto;padding:4px 0 8px;overscroll-behavior-x:contain;scrollbar-width:none;scroll-snap-type:x mandatory}
 /* a swipe moves exactly one page of three posters: every 3rd poster is a snap point, so no poster is ever cut off */
 .tcard:nth-child(3n+1){scroll-snap-align:start;scroll-snap-stop:always}
@@ -145,7 +145,11 @@ function fuWatch(el){
       if(!e.isIntersecting)return;
       var t=e.target;fuIO.unobserve(t);
       t.style.setProperty('--fd',Math.min(fuN++,4)*70+'ms');
-      requestAnimationFrame(function(){t.classList.add('in');setTimeout(function(){fuN=Math.max(0,fuN-1)},400)});
+      requestAnimationFrame(function(){
+        t.classList.add('in');
+        /* after the animation the row is a normal element again (no extra compositing layer to keep while scrolling) */
+        setTimeout(function(){fuN=Math.max(0,fuN-1);t.classList.remove('fu','in');t.style.removeProperty('--fd')},500+Math.min(fuN,4)*70);
+      });
     });
   },{threshold:0.04});
   fuIO.observe(el);
@@ -183,6 +187,17 @@ function paint(){
   setMore(d);
   chk();
 }
+/* background posters (Library while Trending is open): loaded when the browser is idle and nobody is scrolling, so they never compete with the first scroll */
+function warm(box){
+  if(box._w)return;box._w=1;
+  var run=function(){
+    if(sc){setTimeout(run,800);return}
+    box._w=0;
+    var im=box.querySelectorAll('img[loading="lazy"]');
+    for(var i=0;i<14&&i<im.length;i++)im[i].loading='eager';
+  };
+  if(window.requestIdleCallback)requestIdleCallback(run,{timeout:6000});else setTimeout(run,3000);
+}
 function setMode(m){
   if(cur.mode===m)return;
   cur.mode=m;window.scrollTo(0,0);paint();
@@ -191,7 +206,7 @@ function show(d){
   var m=d.mode;S[m]=d;
   if(!cur.mode)cur.mode=m;
   var vis=(m===cur.mode);
-  EG=vis?0:24;                 /* hidden list: its first posters load now, so they are ready when you switch */
+  EG=0;
   if(!d.msg){
     if(m==='trend'){
       sync(rows,d.rows,function(r){return r.id},function(r){return mkRow(r)},function(r){return r.id});
@@ -201,13 +216,14 @@ function show(d){
         if(tt.textContent!==r.title)tt.textContent=r.title;
         fail.style.display=r.failed?'block':'none';
         crow.style.display=r.failed?'none':'flex';
-        if(!r.failed){sync(crow,r.items,function(o){return o.id},function(o){return trCard(o)},trSig);r.items.forEach(function(o){var c=crow._m.get(o.id);if(c)setTrRate(c,o)})}
+        if(!r.failed){EG=6;sync(crow,r.items,function(o){return o.id},function(o){return trCard(o)},trSig);r.items.forEach(function(o){var c=crow._m.get(o.id);if(c)setTrRate(c,o)})}
       });
     }else{
       sync(m==='up'?gridUp:grid,d.cards,function(c){return c.id},function(c){return m==='up'?upCard(c):libCard(c)});
     }
   }
   EG=0;
+  if(!vis&&m!=='trend')warm(m==='up'?gridUp:grid);   /* a list that is not on screen: its first posters are fetched later, when the phone is idle */
   if(vis)paint();
 }
 
@@ -294,7 +310,7 @@ function tw(){document.documentElement.style.setProperty('--tw',Math.max(60,(inn
 addEventListener('resize',tw);tw();
 window.MV={
   set:function(s){if(D.on){D.pending=s;return}show(JSON.parse(s))},
-  mode:function(m){setMode(m)},
+  mode:function(m,t){if(t>=0)$('#top').style.height=t+'px';setMode(m)},
   top:function(px){$('#top').style.height=px+'px';chk()},
   toTop:function(){window.scrollTo(0,0)},
   theme:function(s){
