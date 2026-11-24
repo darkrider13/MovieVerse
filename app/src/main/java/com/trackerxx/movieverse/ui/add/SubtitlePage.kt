@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.LaunchedEffect
@@ -91,7 +92,7 @@ fun SubtitlePage(flow: SubsFlow) {
                     )
                 } else {
                     Column(Modifier.fillMaxWidth()) {
-                        list.forEachIndexed { i, s -> SubRow(flow, s, i == 0) }
+                        list.forEachIndexed { i, s -> SubRow(flow, s, i == 0, i + 1) }
                     }
                 }
                 if (flow.canMore()) {
@@ -122,7 +123,7 @@ private val VoteDown = Color(0xFFEF4444)
 
 /** one subtitle: name + uploader, a details arrow and a red download button; the details open under it */
 @Composable
-private fun SubRow(flow: SubsFlow, s: SubItem, first: Boolean) {
+private fun SubRow(flow: SubsFlow, s: SubItem, first: Boolean, n: Int) {
     val c = Mv.c
     val btn = RoundedCornerShape(10.dp)
     val busy = flow.busy.contains(s.id)
@@ -144,6 +145,11 @@ private fun SubRow(flow: SubsFlow, s: SubItem, first: Boolean) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            // 1, 2, 3 ... counting of the subtitles
+            MvText(
+                n.toString() + ".", Modifier.widthIn(min = 20.dp), size = 13.sp, weight = FontWeight.Bold,
+                color = c.mut, lineHeight = 1.3f, maxLines = 1, align = TextAlign.End
+            )
             Column(
                 Modifier.weight(1f).clickable(interactionSource = noRipple, indication = null) { flow.toggleDetails(s.id) },
                 verticalArrangement = Arrangement.spacedBy(3.dp)
