@@ -91,6 +91,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.zIndex
+import com.trackerxx.movieverse.R
 import com.trackerxx.movieverse.ui.theme.EaseCss
 import com.trackerxx.movieverse.ui.theme.Mv
 import com.trackerxx.movieverse.ui.theme.MvFixed
@@ -111,6 +112,8 @@ private fun DialogWindowSetup() {
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         window.setDimAmount(0.5f)
+        // no platform fade in / out: the dim shows and goes away instantly together with the blur of the page behind
+        window.setWindowAnimations(R.style.MvNoWindowAnim)
         // the blur itself is done in MovieVerseApp (Modifier.blur on the page): FLAG_BLUR_BEHIND is ignored by many phones
     }
 }
@@ -145,9 +148,14 @@ fun MvDialog(
     var myDepth by remember { mutableIntStateOf(0) }
     DisposableEffect(toast) {
         toast.dialogs = toast.dialogs + 1
+        toast.popups = toast.popups + 1
         myDepth = toast.dialogs
-        onDispose { toast.dialogs = toast.dialogs - 1 }
+        onDispose { toast.dialogs = toast.dialogs - 1; toast.popups = toast.popups - 1 }
     }
+    // the popup rises smoothly (fade + 18dp up, 260 ms); closing has NO animation, the window is simply removed
+    val enter = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { enter.animateTo(1f, tween(260, easing = EaseCss)) }
+    val rise = with(LocalDensity.current) { 18.dp.toPx() }
     Dialog(
         onDismissRequest = { currentDismiss?.invoke() },
         properties = DialogProperties(
@@ -173,6 +181,11 @@ fun MvDialog(
             val shape = RoundedCornerShape(16.dp)
             Box(
                 modifier
+                    .graphicsLayer {
+                        val v = enter.value
+                        alpha = v
+                        translationY = (1f - v) * rise
+                    }
                     .width(boxW)
                     .then(if (fillHeight) Modifier.height(boxMaxH) else Modifier.heightIn(max = boxMaxH))
                     .shadow(
@@ -418,6 +431,33 @@ private fun Modifier.pageEdgeFade(scroll: ScrollState, topMax: Dp = 36.dp, botto
             drawRect(brush, blendMode = BlendMode.DstIn)
         }
 
+/**
+ * Soft fade at the top and bottom edge of a scrolling area. Each edge fades only while there is more content to
+ * scroll to on that side (top: 0 at the very top, bottom: 0 at the very end), up to [fade] high.
+ * Put it BEFORE verticalScroll so the mask stays at the edges while the content moves under it.
+ */
+fun Modifier.scrollEdgeFade(scroll: ScrollState, fade: Dp = 32.dp): Modifier =
+    this
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            val h = size.height
+            if (h <= 0f) return@drawWithContent
+            val f = fade.toPx()
+            val ft = scroll.value.toFloat().coerceIn(0f, f)
+            val fb = (scroll.maxValue - scroll.value).toFloat().coerceIn(0f, f)
+            if (ft <= 0f && fb <= 0f) return@drawWithContent
+            val a = (ft / h).coerceIn(0f, 1f)
+            val b = ((h - fb) / h).coerceIn(a, 1f)
+            val brush = Brush.verticalGradient(
+                0f to (if (ft > 0f) Color.Transparent else Color.Black),
+                a to Color.Black,
+                b to Color.Black,
+                1f to (if (fb > 0f) Color.Transparent else Color.Black)
+            )
+            drawRect(brush, blendMode = BlendMode.DstIn)
+        }
+
 /** Window setup of a full page: no dim, light system bar icons. */
 @Composable
 private fun PageWindowSetup() {
@@ -426,6 +466,8 @@ private fun PageWindowSetup() {
         val window = (view.parent as? DialogWindowProvider)?.window ?: return@SideEffect
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        // going back closes the page instantly (no fade / blur while the library shows again)
+        window.setWindowAnimations(R.style.MvPageAnim)
         val ic = WindowCompat.getInsetsController(window, view)
         ic.isAppearanceLightStatusBars = false
         ic.isAppearanceLightNavigationBars = false
@@ -443,6 +485,7 @@ fun MvPage(
     title: String,
     bottomBar: (@Composable () -> Unit)? = null,
     edgeFade: Boolean = false,
+    scrollable: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val c = Mv.c
@@ -489,8 +532,9 @@ fun MvPage(
                             .widthIn(max = 640.dp)
                             .fillMaxSize()
                             .then(if (edgeFade) Modifier.pageEdgeFade(pageScroll) else Modifier)
-                            .verticalScroll(pageScroll)
-                            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (edgeFade) 56.dp else 24.dp),
+                            // scrollable = false: the page itself stays still, the content decides what scrolls
+                            .then(if (scrollable) Modifier.verticalScroll(pageScroll) else Modifier)
+                            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (!scrollable) 0.dp else if (edgeFade) 56.dp else 24.dp),
                         content = content
                     )
                 }

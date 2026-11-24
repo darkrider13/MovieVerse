@@ -52,6 +52,9 @@ class ToastState(private val scope: CoroutineScope) {
     /** number of open dialogs (each dialog is its own window; the toast is drawn in the top one) */
     var dialogs by mutableIntStateOf(0)
 
+    /** number of open POPUPS (not full pages): only these blur the page behind. A full page is opaque, so it never needs the blur. */
+    var popups by mutableIntStateOf(0)
+
     fun show(message: String, ms: Long = 2600L) {
         job?.cancel()
         text = message
