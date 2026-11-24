@@ -17,7 +17,8 @@ import java.util.zip.ZipOutputStream
  * The backup as an Excel file (.xlsx), written without any library: an .xlsx is a zip of small XML files.
  *
  * Sheets:
- *  - Movies   : one row per movie. Columns A-E are for reading: Title, Year, Status, My Rating (= LibraryLogic.scoreOf, the movie's own
+ *  - One sheet per status (tab), in this order: Watched, Coming Soon, Plan to watch, then the other statuses (a sheet is named like its
+ *               status). Movies whose status no longer exists go to an "Other" sheet. Each sheet has one row per movie. Columns A-E are for reading: Title, Year, Status, My Rating (= LibraryLogic.scoreOf, the movie's own
  *               score), IMDb Rating (= Enrich.imdbRating, IMDb only). Title / Year / Status are the real fields. After them every other
  *               field of the movies has its own column (named like the field); objects and arrays are JSON text in one cell.
  *  - Folders, Statuses : one row each, one column per field.
@@ -42,6 +43,24 @@ object XlsxBackup {
         val folders = AppData.folders.map { it.j }
         val statuses = AppData.statuses.map { it.j }
 
+        // one sheet per status: Watched, Coming Soon, Plan to watch first, then the others in their own order
+        val sts = AppData.statuses.toList()
+        val first = listOf("watched", "upcoming", "plan").mapNotNull { id -> sts.firstOrNull { it.id == id } }
+        val ordered = first + sts.filter { x -> first.none { it.id == x.id } }
+        val used = HashSet<String>()
+        for (n in FIXED) used.add(n.lowercase())
+        val groups = ArrayList<Pair<String, List<Movie>>>()
+        for (st in ordered) {
+            groups.add(cleanName(st.name, used) to movies.filter { it.status == st.id })
+        }
+        val known = HashSet<String>()
+        for (st in sts) known.add(st.id)
+        val orphans = movies.filter { !known.contains(it.status) }
+        if (orphans.isNotEmpty()) groups.add(cleanName("Other", used) to orphans)
+        val names = ArrayList<String>()
+        for (g in groups) names.add(g.first)
+        for (n in FIXED) names.add(n)
+
         val zip = ZipOutputStream(BufferedOutputStream(out, 1 shl 16))
         zip.setLevel(Deflater.BEST_SPEED)
         val w = BufferedWriter(OutputStreamWriter(zip, Charsets.UTF_8), 1 shl 16)
@@ -53,31 +72,55 @@ object XlsxBackup {
             zip.closeEntry()
         }
 
-        part("[Content_Types].xml") { w.write(contentTypes()) }
+        part("[Content_Types].xml") { w.write(contentTypes(names.size)) }
         part("_rels/.rels") { w.write(rootRels()) }
-        part("xl/workbook.xml") { w.write(workbook()) }
-        part("xl/_rels/workbook.xml.rels") { w.write(workbookRels()) }
+        part("xl/workbook.xml") { w.write(workbook(names)) }
+        part("xl/_rels/workbook.xml.rels") { w.write(workbookRels(names.size)) }
         part("xl/styles.xml") { w.write(styles()) }
-        part("xl/worksheets/sheet1.xml") { writeMovies(w, movies, onProgress) }
-        part("xl/worksheets/sheet2.xml") { writeRecords(w, folders, listOf("id", "name", "status", "color")) }
-        part("xl/worksheets/sheet3.xml") { writeRecords(w, statuses, listOf("id", "name")) }
-        part("xl/worksheets/sheet4.xml") { writeSettings(w) }
+        var done = 0
+        for ((i, g) in groups.withIndex()) {
+            val base = done
+            part("xl/worksheets/sheet" + (i + 1) + ".xml") { writeMovies(w, g.second, onProgress, base) }
+            done += g.second.size
+        }
+        val n = groups.size
+        part("xl/worksheets/sheet" + (n + 1) + ".xml") { writeRecords(w, folders, listOf("id", "name", "status", "color")) }
+        part("xl/worksheets/sheet" + (n + 2) + ".xml") { writeRecords(w, statuses, listOf("id", "name")) }
+        part("xl/worksheets/sheet" + (n + 3) + ".xml") { writeSettings(w) }
 
         zip.finish()
         zip.flush()
     }
 
+    /** an Excel sheet name: at most 31 characters, none of [ ] : * ? / \, not used twice (any case), not one of the fixed sheets */
+    private fun cleanName(raw: String, used: HashSet<String>): String {
+        var s = raw.replace(Regex("[\\[\\]:*?/\\\\]"), " ").trim().trim('\'').trim()
+        if (s.isEmpty()) s = "Movies"
+        s = s.take(31).trim()
+        var cand = s
+        var k = 2
+        while (!used.add(cand.lowercase())) {
+            val suf = " ($k)"
+            cand = s.take(31 - suf.length).trim() + suf
+            k++
+        }
+        return cand
+    }
+
+    private fun xml(t: String): String = t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+
     // ---- the fixed parts ------------------------------------------------------------------------------------------------------
 
-    private val SHEETS = arrayOf("Movies", "Folders", "Statuses", "Settings")
+    /** the sheets after the movie sheets */
+    private val FIXED = arrayOf("Folders", "Statuses", "Settings")
 
-    private fun contentTypes(): String {
+    private fun contentTypes(count: Int): String {
         val sb = StringBuilder(DECL)
         sb.append("<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">")
         sb.append("<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>")
         sb.append("<Default Extension=\"xml\" ContentType=\"application/xml\"/>")
         sb.append("<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>")
-        for (i in SHEETS.indices) {
+        for (i in 0 until count) {
             sb.append("<Override PartName=\"/xl/worksheets/sheet").append(i + 1)
                 .append(".xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>")
         }
@@ -90,23 +133,23 @@ object XlsxBackup {
         DECL + "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
             "<Relationship Id=\"rId1\" Type=\"$REL/officeDocument\" Target=\"xl/workbook.xml\"/></Relationships>"
 
-    private fun workbook(): String {
+    private fun workbook(names: List<String>): String {
         val sb = StringBuilder(DECL)
         sb.append("<workbook xmlns=\"$NS\" xmlns:r=\"$REL\"><sheets>")
-        for (i in SHEETS.indices) {
-            sb.append("<sheet name=\"").append(SHEETS[i]).append("\" sheetId=\"").append(i + 1).append("\" r:id=\"rId").append(i + 1).append("\"/>")
+        for (i in names.indices) {
+            sb.append("<sheet name=\"").append(xml(names[i])).append("\" sheetId=\"").append(i + 1).append("\" r:id=\"rId").append(i + 1).append("\"/>")
         }
         sb.append("</sheets></workbook>")
         return sb.toString()
     }
 
-    private fun workbookRels(): String {
+    private fun workbookRels(count: Int): String {
         val sb = StringBuilder(DECL)
         sb.append("<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">")
-        for (i in SHEETS.indices) {
+        for (i in 0 until count) {
             sb.append("<Relationship Id=\"rId").append(i + 1).append("\" Type=\"$REL/worksheet\" Target=\"worksheets/sheet").append(i + 1).append(".xml\"/>")
         }
-        sb.append("<Relationship Id=\"rId").append(SHEETS.size + 1).append("\" Type=\"$REL/styles\" Target=\"styles.xml\"/>")
+        sb.append("<Relationship Id=\"rId").append(count + 1).append("\" Type=\"$REL/styles\" Target=\"styles.xml\"/>")
         sb.append("</Relationships>")
         return sb.toString()
     }
@@ -288,7 +331,7 @@ object XlsxBackup {
 
     // ---- sheets ---------------------------------------------------------------------------------------------------------------------
 
-    private fun writeMovies(w: Writer, movies: Array<Movie>, onProgress: ((Int) -> Unit)?) {
+    private fun writeMovies(w: Writer, movies: List<Movie>, onProgress: ((Int) -> Unit)?, done: Int) {
         val others = scan(movies.map { it.j }, LEAD_KEYS, listOf("id"))
         sheetStart(w, intArrayOf(32, 8, 14, 11, 13))
         w.write("<row r=\"1\">")
@@ -319,10 +362,10 @@ object XlsxBackup {
                 c += col.chunks
             }
             w.write("</row>")
-            if ((k + 1) % 500 == 0 && k + 1 < movies.size) onProgress?.invoke(k + 1)
+            if ((k + 1) % 500 == 0 && k + 1 < movies.size) onProgress?.invoke(done + k + 1)
         }
         sheetEnd(w)
-        onProgress?.invoke(movies.size)
+        onProgress?.invoke(done + movies.size)
     }
 
     /** Folders / Statuses: one row per object, one column per field */

@@ -26,6 +26,7 @@ import java.util.zip.ZipFile
 class XlsxReader(file: File, private val tmpDir: File) : Closeable {
     private val zip = ZipFile(file)
     private val sheetPath = HashMap<String, String>()   // lower-case sheet name -> zip entry
+    private val movieSheets = ArrayList<String>()       // lower-case names of the movie sheets (every sheet but Folders / Statuses / Settings), in file order
     private var sstPath = "xl/sharedStrings.xml"
     private var sst: Sst? = null
 
@@ -43,7 +44,7 @@ class XlsxReader(file: File, private val tmpDir: File) : Closeable {
         try { zip.close() } catch (e: Exception) { }
     }
 
-    fun hasMovies(): Boolean = sheetPath.containsKey("movies") && zip.getEntry(sheetPath["movies"]) != null
+    fun hasMovies(): Boolean = movieSheets.any { n -> sheetPath[n]?.let { zip.getEntry(it) } != null }
 
     // ---- workbook: sheet names -> files ----------------------------------------------------------------------------------------
 
@@ -99,7 +100,9 @@ class XlsxReader(file: File, private val tmpDir: File) : Closeable {
         }
         for ((i, s) in sheets.withIndex()) {
             val path = rels[s.second] ?: ("xl/worksheets/sheet" + (i + 1) + ".xml")
-            sheetPath[s.first.trim().lowercase()] = path
+            val nm = s.first.trim().lowercase()
+            sheetPath[nm] = path
+            if (nm != "folders" && nm != "statuses" && nm != "settings") movieSheets.add(nm)
         }
     }
 
@@ -309,7 +312,44 @@ class XlsxReader(file: File, private val tmpDir: File) : Closeable {
 
     // ---- Movies -------------------------------------------------------------------------------------------------------------------
 
-    fun movieRows(): MovieRows = MovieRows(rowsOf("movies") ?: throw IllegalStateException("no Movies sheet"))
+    /**
+     * The movies of every movie sheet one after the other (the export has one sheet per status; an old backup has a single "Movies"
+     * sheet). A sheet whose header row has no Title column is not a movie sheet and is skipped.
+     */
+    fun movieRows(): AllMovieRows = AllMovieRows()
+
+    inner class AllMovieRows internal constructor() {
+        private val entries: List<ZipEntry> = movieSheets.mapNotNull { n -> sheetPath[n]?.let { zip.getEntry(it) } }
+        private var idx = 0
+        private var cur: MovieRows? = null
+        private var done = 0L
+
+        private fun size(e: ZipEntry): Long = if (e.size > 0) e.size else 1L
+
+        val total: Long = entries.sumOf { size(it) }.coerceAtLeast(1L)
+        val bytes: Long get() = done + (cur?.bytes ?: 0L)
+
+        fun next(): JSONObject? {
+            while (true) {
+                if (idx >= entries.size) return null
+                var c = cur
+                if (c == null) {
+                    c = MovieRows(Rows(entries[idx]))
+                    if (!c.hasTitle) {
+                        done += size(entries[idx])
+                        idx++
+                        continue
+                    }
+                    cur = c
+                }
+                val o = c.next()
+                if (o != null) return o
+                done += size(entries[idx])
+                idx++
+                cur = null
+            }
+        }
+    }
 
     /**
      * The movies one at a time as the JSON objects they had in the app.
@@ -330,6 +370,9 @@ class XlsxReader(file: File, private val tmpDir: File) : Closeable {
 
         val total: Long get() = rows.total
         val bytes: Long get() = rows.bytes
+
+        /** the sheet's header row has a Title column */
+        val hasTitle: Boolean get() = key.any { it == "title" }
 
         init {
             var head: ArrayList<Any?>? = null
