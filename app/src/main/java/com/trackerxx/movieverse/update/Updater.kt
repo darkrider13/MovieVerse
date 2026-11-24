@@ -26,8 +26,8 @@ import java.net.URL
 object Updater {
     private const val UA = "MovieVerse/1.0 (Android)"
 
-    /** GitHub project the updates come from: https://github.com/darkrider13/MovieVerse-V2 */
-    private const val REPO = "darkrider13/MovieVerse-V2"
+    /** GitHub project the updates come from: https://github.com/darkrider13/MovieVerse */
+    private const val REPO = "darkrider13/MovieVerse"
 
     class Info(val versionCode: Long, val url: String, val size: Long)
 
