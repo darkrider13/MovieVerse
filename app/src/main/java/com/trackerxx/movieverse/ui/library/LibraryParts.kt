@@ -1,5 +1,6 @@
 package com.trackerxx.movieverse.ui.library
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -468,7 +469,27 @@ fun TabsRow(
                 if (moved != 0f) swapAtRow(drag, state)
             }
         }
-        val shown: List<Pair<String, String>> = if (drag.active) {
+        // Lift / drop animation of the picked-up pill. lift = 0..1 while it is picked up; after the finger lifts the copy glides into
+        // its slot (settleP 0..1) and only then the real pill shows again, so the drop never "pops" and the order never jumps back.
+        val liftP = remember { Animatable(0f) }
+        val settleP = remember { Animatable(0f) }
+        var lastKey by remember { mutableStateOf<String?>(null) }
+        // true from the very frame the finger lifts (drag.key is null, lastKey is still set) until the glide into the slot is over
+        val settling = drag.key == null && lastKey != null
+        LaunchedEffect(drag.key) {
+            val k = drag.key
+            if (k != null) {
+                lastKey = k
+                settleP.snapTo(0f)
+                liftP.snapTo(0f)
+                liftP.animateTo(1f, tween(140, easing = EaseCss))
+            } else if (lastKey != null) {
+                settleP.animateTo(1f, tween(170, easing = EaseCss))
+                lastKey = null
+                liftP.snapTo(0f)
+            }
+        }
+        val shown: List<Pair<String, String>> = if (drag.active || settling) {
             val by = tabs.associateBy { it.first }
             drag.order.mapNotNull { by[it] }
         } else tabs
@@ -491,6 +512,7 @@ fun TabsRow(
         ) {
             items(shown, key = { it.first }) { t ->
                 val isDragged = drag.key == t.first
+                val isSettling = settling && lastKey == t.first
                 MvPill(
                     selected = selected == t.first,
                     onClick = { if (!drag.recentlyDragged()) onSelect(t.first) },
@@ -498,12 +520,13 @@ fun TabsRow(
                         .width(itemW)
                         .animateItem(
                             fadeInSpec = null,
-                            placementSpec = if (drag.active) tween(180, easing = EaseCss) else null,
+                            placementSpec = if (drag.active || settling) tween(180, easing = EaseCss) else null,
                             fadeOutSpec = null
                         )
                         .onSizeChanged { if (it.height > 0) pillH = it.height }
                         .then(
-                            if (isDragged) Modifier
+                            if (isSettling) Modifier.alpha(0f)
+                            else if (isDragged) Modifier
                                 .alpha(0.3f)
                                 .drawWithContent {
                                     drawContent()
@@ -534,17 +557,36 @@ fun TabsRow(
             }
         }
 
-        // the copy that follows the finger (.pill.fly: scale 1.1, tilt 1.5 degrees, shadow)
-        val dragged = shown.firstOrNull { it.first == drag.key }
-        if (dragged != null) {
+        // The copy that follows the finger. It is a plain, fully opaque layer (no alpha, no tilt): a layer with alpha < 1 or a rotation is
+        // first drawn at normal size and then scaled / rotated as a bitmap, which made the pill edges soft and jagged. Now the pill is
+        // re-drawn as a vector at the lifted size, so the curve of the edge stays sharp. The shadow lives in the same layer.
+        val dragged = shown.firstOrNull { it.first == (drag.key ?: lastKey) }
+        if (dragged != null && (drag.key != null || settling)) {
+            val shadowPx = with(LocalDensity.current) { 14.dp.toPx() }
             Box(
                 Modifier
-                    .offset { IntOffset((drag.pos.x - drag.grab.x).roundToInt(), (drag.pos.y - drag.grab.y).roundToInt()) }
-                    .graphicsLayer { scaleX = 1.1f; scaleY = 1.1f; rotationZ = 1.5f; alpha = 0.97f }
-                    .shadow(
-                        12.dp, RoundedCornerShape(99.dp), clip = false,
-                        ambientColor = Color.Black.copy(alpha = 0.55f), spotColor = Color.Black.copy(alpha = 0.55f)
-                    )
+                    .offset {
+                        val fx = drag.pos.x - drag.grab.x
+                        val fy = drag.pos.y - drag.grab.y
+                        if (drag.key == null && settling) {
+                            val slot = state.layoutInfo.visibleItemsInfo.firstOrNull { it.key == lastKey }
+                            val t = settleP.value
+                            val tx = slot?.offset?.toFloat() ?: fx
+                            val ty = (rowH - pillH) / 2f
+                            IntOffset((fx + (tx - fx) * t).roundToInt(), (fy + (ty - fy) * t).roundToInt())
+                        } else IntOffset(fx.roundToInt(), fy.roundToInt())
+                    }
+                    .graphicsLayer {
+                        val up = if (drag.key == null && settling) 1f - settleP.value else liftP.value
+                        val sc = 1f + 0.06f * up
+                        scaleX = sc
+                        scaleY = sc
+                        shadowElevation = shadowPx * up
+                        shape = RoundedCornerShape(99.dp)
+                        clip = false
+                        ambientShadowColor = Color.Black
+                        spotShadowColor = Color.Black
+                    }
             ) {
                 MvPill(
                     selected = selected == dragged.first, onClick = {}, modifier = Modifier.width(itemW),
