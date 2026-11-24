@@ -73,6 +73,14 @@ object MvIcons {
     val PlayWhite = MvIconData(listOf(IconShape("M8 5.5v13l11-6.5z", fill = true, color = Color.White)))
 
     /** #trl : red outlined YouTube button in the title box (28px, 1px red outline) */
+    /** the Trailer button's icon: red rounded rectangle with a white triangle (viewBox 24) */
+    val YtFill = MvIconData(
+        listOf(
+            IconShape(rrect(1.5f, 4.5f, 21f, 15f, 4.6f), fill = true, color = Color(0xFFFF0000)),
+            IconShape("M10 9l5 3-5 3z", fill = true, color = Color.White)
+        ), 1f, true
+    )
+
     val YtOutline = MvIconData(
         listOf(
             IconShape(rrect(1.6f, 4.8f, 20.8f, 14.4f, 4.6f), color = Color(0xFFFF0000), strokeWidth = 1f),
