@@ -281,7 +281,42 @@ object Credits {
     private val SELF = Regex("\\bSelf\\b", RegexOption.IGNORE_CASE)
     private val ACT = Regex("^(as |Actor)")
 
+    private val personMem = ConcurrentHashMap<Long, PersonData>()
+    private val awardsMem = ConcurrentHashMap<String, List<AwRow>>()
+
+    /** a person that was already loaded (or prefetched): the popup opens with everything in it at once */
+    fun cachedPerson(pid: Long): PersonData? = personMem[pid]
+
+    /** awards that were already loaded: null = not yet */
+    fun cachedAwards(wikidata: String, name: String): List<AwRow>? = awardsMem[name + "|" + wikidata]
+
+    /**
+     * Prepares the person popups of the cast in the background (one after the other, low priority) while the movie page is open,
+     * so tapping a person finds the details and the awards ready.
+     */
+    fun prefetchPeople(ids: List<Long>, awardsFor: Int = 4) {
+        AppScope.launch {
+            for ((i, id) in ids.withIndex()) {
+                try {
+                    val p = person(id)
+                    if (i < awardsFor) { try { awards(p.wikidataId, p.all, p.name) } catch (e: CancellationException) { throw e } catch (e: Exception) { } }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                }
+                delay(150)
+            }
+        }
+    }
+
     suspend fun person(pid: Long): PersonData {
+        personMem[pid]?.let { return it }
+        val r = personLoad(pid)
+        personMem[pid] = r
+        return r
+    }
+
+    private suspend fun personLoad(pid: Long): PersonData {
         val p = Net.tmdb.get("/person/$pid", mapOf("append_to_response" to "combined_credits,external_ids"))
         val cc = p.optJSONObject("combined_credits") ?: JSONObject()
         val td = Fmt.todayL()
@@ -549,6 +584,14 @@ object Credits {
 
     /** the Awards page: Wikipedia's list first, Wikidata as fallback. Throws AwardsFail with the text to show (and a Retry button). */
     suspend fun awards(wikidata: String, all: List<PCredit>, name: String): List<AwRow> {
+        val key = name + "|" + wikidata
+        awardsMem[key]?.let { return it }
+        val r = awardsLoad(wikidata, all, name)
+        awardsMem[key] = r
+        return r
+    }
+
+    private suspend fun awardsLoad(wikidata: String, all: List<PCredit>, name: String): List<AwRow> {
         if (name.isEmpty()) {
             return try { awardsWD(wikidata, all) } catch (e: CancellationException) { throw e } catch (e: Exception) { throw AwardsFail("Could not load awards.") }
         }
