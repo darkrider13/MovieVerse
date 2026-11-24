@@ -676,12 +676,13 @@ private fun PvHeader(flow: AddFlow, m: Movie, copyName: (String) -> Unit) {
                     }
                 }
                 Box(
-                    Modifier.align(Alignment.TopEnd).padding(end = 3.dp)
+                    Modifier.align(Alignment.TopEnd)
                         .size(30.dp, 34.dp)
                         .plainClickable { showSt = !showSt },
-                    contentAlignment = Alignment.TopCenter
+                    contentAlignment = Alignment.TopEnd
                 ) {
-                    MvIcon(MvIcons.BookmarkGreen, 30.dp)
+                    // the icon's own empty margin (5/24 of its width at the right, 3/28 at the top) is moved out, so the green shape touches the poster's top-right edge
+                    MvIcon(MvIcons.BookmarkGreen, 30.dp, Modifier.offset(x = 9.64.dp, y = (-3.21).dp))
                 }
                 if (showSt) {
                     Box(
