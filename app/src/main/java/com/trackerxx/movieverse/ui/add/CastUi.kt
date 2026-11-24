@@ -44,6 +44,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -158,104 +159,51 @@ fun CastBlock(data: CastData, onPerson: (Long) -> Unit) {
 }
 
 /**
- * One row, exactly four people visible. The row scrolls page by page (4 cards, see CardSnapFling): it always comes to rest with
- * four whole cards in view, so nobody is ever left cut in half at the sides (left or right, also at the end of the row:
- * the card width is (row width - 3 gaps) / 4, so the last four cards fill the width exactly).
- * The small dot between the crew and the actors is not a row item: it is drawn in the 6dp gap in front of the first actor,
- * so every slot has the same width.
+ * One row, exactly four people visible, page by page.
+ * A HorizontalPager is used on purpose: it always comes to rest on a whole page, so the carousel can never stop between two cards
+ * (the old LazyRow + hand written fling / "safety net" could be left half way, which cut a card in half at both edges).
+ * Every page is one row of four slots of the SAME width cw = (row width - 3 gaps) / 4, so four whole cards + three 6dp gaps fill the width
+ * exactly: nothing is cut on the left or the right. Page starts are 0, 4, 8 ... and the last page starts at (total - 4), so the final
+ * page also shows four whole cards (it overlaps the page before it when the count is not a multiple of four).
+ * The small dot between the crew and the actors is drawn in the 6dp gap in front of the first actor (when that gap is inside a page).
  */
 @Composable
 private fun CastRow(crew: List<CastPerson>, cast: List<CastPerson>, cw: androidx.compose.ui.unit.Dp, onPerson: (Long) -> Unit) {
-    val st = rememberLazyListState()
-    val dens = LocalDensity.current
-    val slotPx = with(dens) { (cw + 6.dp).toPx() }
-    val total = crew.size + cast.size
-    val lastStart = (total - 4).coerceAtLeast(0)
-    val fling = remember(st, slotPx, lastStart) { CardSnapFling(st, slotPx, lastStart) }
-    // Safety net: whenever the row stands still (whatever way it got there: fling, slow drag, new data, rotation) and it is not exactly
-    // on a snap point, it glides to the nearest one. So a half card at the left or right edge can never stay.
-    LaunchedEffect(st, slotPx, lastStart) {
-        val pts = (0 until lastStart step 4).toList() + lastStart
-        snapshotFlow { st.isScrollInProgress }.collectLatest { busy ->
-            if (busy || slotPx <= 0f) return@collectLatest
-            delay(60)   // a fling may start right after the finger lifts; a new emission cancels this wait
-            if (st.isScrollInProgress) return@collectLatest
-            val pos = st.firstVisibleItemIndex + st.firstVisibleItemScrollOffset / slotPx
-            val t = pts.minByOrNull { abs(it - pos) } ?: 0
-            if (abs(t - pos) > 0.02f) {
-                try {
-                    st.animateScrollToItem(t)
-                } catch (e: CancellationException) {
-                    // a touch took over: only a real cancellation of this effect may stop here, otherwise the next release settles again
-                    currentCoroutineContext().ensureActive()
-                }
-            }
-        }
+    val all = remember(crew, cast) { crew + cast }
+    val total = all.size
+    val starts = remember(total) {
+        val last = (total - 4).coerceAtLeast(0)
+        (0 until last step 4).toList() + last
     }
-    LazyRow(
+    val pager = rememberPagerState(pageCount = { starts.size })
+    HorizontalPager(
+        state = pager,
         // clipToBounds: while it moves, a card never draws outside the row (not over the label, not up to the screen edge)
-        Modifier.fillMaxSize().clipToBounds(), state = st,
+        modifier = Modifier.fillMaxSize().clipToBounds(),
         contentPadding = PaddingValues(top = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        flingBehavior = fling
-    ) {
-        items(crew) { p -> CastCard(p, cw, onPerson) }
-        itemsIndexed(cast) { i, p ->
-            if (i == 0 && crew.isNotEmpty()) {
-                Box {
-                    CastCard(p, cw, onPerson)
-                    // the dot between the crew and the actors: centre of the 6dp gap, level with the middle of the round photos (44dp)
-                    Box(Modifier.offset(x = (-5).dp, y = 20.dp).size(4.dp).clip(CircleShape).background(Mv.c.mut))
+        pageSpacing = 0.dp,
+        beyondViewportPageCount = 1
+    ) { page ->
+        val from = starts[page]
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (slot in 0 until 4) {
+                val i = from + slot
+                if (i < total) {
+                    val p = all[i]
+                    if (i == crew.size && crew.isNotEmpty()) {
+                        Box {
+                            CastCard(p, cw, onPerson)
+                            // the dot between the crew and the actors: centre of the 6dp gap, level with the middle of the round photos (44dp)
+                            Box(Modifier.offset(x = (-5).dp, y = 20.dp).size(4.dp).clip(CircleShape).background(Mv.c.mut))
+                        }
+                    } else {
+                        CastCard(p, cw, onPerson)
+                    }
+                } else {
+                    Spacer(Modifier.width(cw))   // fewer than four people: the empty slots keep the same width
                 }
-            } else {
-                CastCard(p, cw, onPerson)
             }
         }
-    }
-}
-
-/**
- * Page snapping for the cast row, the same rules as the Trending rows (CSS scroll-snap with "stop always"): every 4th card is a
- * snap point, so one swipe moves exactly one page of four cards, never more, and the row always comes to rest with four whole
- * cards in view (nobody cut in half at the sides). The last snap point is the position where the final four cards fill the row.
- * It runs every time the finger lifts (also with zero speed): a flick goes to the next / previous snap point, a slow drag that
- * stops between two points goes to the nearest one. Then it glides there with a soft spring (no bounce). A new touch simply takes
- * over, and its own release settles again, so the row can never stay stuck half way.
- */
-private class CardSnapFling(
-    private val st: LazyListState,
-    private val slotPx: Float,
-    private val lastStart: Int
-) : FlingBehavior {
-    private val points: List<Int> = (0 until lastStart step 4).toList() + lastStart
-
-    override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
-        if (slotPx <= 0f) return initialVelocity
-        val pos = st.firstVisibleItemIndex + st.firstVisibleItemScrollOffset / slotPx   // position in cards
-        val eps = 0.001f
-        val flick = abs(initialVelocity) > slotPx * 2f   // faster than two cards per second
-        val target: Int = if (!flick) {
-            points.minByOrNull { abs(it - pos) } ?: 0
-        } else if (initialVelocity < 0f) {
-            // finger moves left = forward: the next snap point after the one the gesture started from
-            val from = points.lastOrNull { it <= pos + eps } ?: 0
-            points.firstOrNull { it > from } ?: from
-        } else {
-            // finger moves right = back: the previous snap point before the one the gesture started from
-            val from = points.firstOrNull { it >= pos - eps } ?: lastStart
-            points.lastOrNull { it < from } ?: from
-        }
-        val distance = (target - pos) * slotPx
-        if (abs(distance) < 0.5f) return 0f
-        var done = 0f
-        animate(
-            initialValue = 0f, targetValue = distance, initialVelocity = -initialVelocity,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
-        ) { v, _ ->
-            val d = v - done
-            done += scrollBy(d)
-        }
-        return 0f
     }
 }
 
