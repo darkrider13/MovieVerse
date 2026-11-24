@@ -160,13 +160,14 @@ private val gradCache = HashMap<Triple<Float, Color, Color>, Brush>()
 
 private val EaseInOutCss = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
 
-/** .nav : brand, Releases / Home button, Settings button (glows red while there is un-exported data) */
+/** .nav : brand, Your Library / Home button, Settings button (glows red while there is un-exported data) */
 @Composable
 fun TopNav(
-    releasesLabel: String,
+    libraryLabel: String,
+    librarySelected: Boolean,
     dirty: Boolean,
     onBrand: () -> Unit,
-    onReleases: () -> Unit,
+    onLibrary: () -> Unit,
     onSettings: () -> Unit,
     onSettingsLong: () -> Unit = {}
 ) {
@@ -202,7 +203,7 @@ fun TopNav(
                         )
                     }
                 }
-                NavTextButton(releasesLabel, onReleases)
+                NavTextButton(libraryLabel, onLibrary, librarySelected)
                 SettingsButton(dirty, onSettings, onSettingsLong)
             }
         }
@@ -211,20 +212,20 @@ fun TopNav(
 }
 
 @Composable
-private fun NavTextButton(text: String, onClick: () -> Unit) {
+private fun NavTextButton(text: String, onClick: () -> Unit, selected: Boolean = false) {
     val c = Mv.c
     val shape = RoundedCornerShape(9.dp)
     Box(
         Modifier
             .height(34.dp)
             .clip(shape)
-            .background(c.s)
-            .border(1.dp, c.line, shape)
+            .background(if (selected) c.ink else c.s)
+            .border(1.dp, if (selected) c.ink else c.line, shape)
             .plainClickable(onClick = onClick)
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center
     ) {
-        MvText(text, size = 12.5.sp, maxLines = 1, softWrap = false)
+        MvText(text, size = 12.5.sp, color = if (selected) c.bg else Color.Unspecified, maxLines = 1, softWrap = false)
     }
 }
 
@@ -340,12 +341,12 @@ fun Hero(name: String, onAdd: () -> Unit) {
     )
 }
 
-/** .hsw : Trending / Your Library */
+/** .hsw : Trending / Releases (Your Library moved to the top bar, next to the gear) */
 @Composable
-fun HomeSwitch(home: String, onPick: (String) -> Unit) {
+fun HomeSwitch(home: String, onTrending: () -> Unit, onReleases: () -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        MvPill("Trending", home == "trend", { onPick("trend") }, Modifier.weight(1f), padH = 0.dp, padV = 10.dp, weight = FontWeight.Bold)
-        MvPill("Your Library", home == "lib", { onPick("lib") }, Modifier.weight(1f), padH = 0.dp, padV = 10.dp, weight = FontWeight.Bold)
+        MvPill("Trending", home == "trend", onTrending, Modifier.weight(1f), padH = 0.dp, padV = 10.dp, weight = FontWeight.Bold)
+        MvPill("Releases", false, onReleases, Modifier.weight(1f), padH = 0.dp, padV = 10.dp, weight = FontWeight.Bold)
     }
 }
 

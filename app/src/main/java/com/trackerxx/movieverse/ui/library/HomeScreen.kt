@@ -379,6 +379,17 @@ fun HomeScreen(splashGone: Boolean) {
         toTop()
     }
 
+    /** the old Trending / Your Library switch action (now Trending pill + Your Library button in the top bar) */
+    fun pickHome(h: String) {
+        // coming back from Trending keeps the tab / folder / filter as they were: the finished list is shown, nothing is rebuilt
+        if (h != home) {
+            home = h
+            Ls.setItem("library.home", h)
+            view = "library"
+            toTop()
+        } else if (h == "lib") AppData.render()
+    }
+
     /** apiBusy(keyLoad(), 900, 45000): "Fetching your API key" dialog (at least 0.9 s, at most 45 s); returns the error text or null */
     suspend fun runKeyBusy(): String? {
         keyBusy = true
@@ -405,10 +416,11 @@ fun HomeScreen(splashGone: Boolean) {
     }
     Column(Modifier.fillMaxSize()) {
         TopNav(
-            releasesLabel = if (view == "up") "Home" else "Releases",
+            libraryLabel = if (view == "up") "Home" else "Your Library",
+            librarySelected = view == "library" && home == "lib",
             dirty = dirty,
             onBrand = { view = "library" },
-            onReleases = { view = if (view == "up") "library" else "up" },
+            onLibrary = { if (view == "up") view = "library" else pickHome("lib") },
             onSettings = { settingsOpen = true }
         )
         // clipToBounds: the header (translated up while scrolling) must never draw over the top bar
@@ -456,15 +468,7 @@ fun HomeScreen(splashGone: Boolean) {
                     if (view == "library") {
                         Box(Modifier.padding(bottom = 14.dp)) { Hero(AppData.uname, onAdd = { add.openAdd(lib.tab, folderEff) }) }
                         Box(Modifier.padding(bottom = if (home == "trend" && AppData.apis.key.isNotEmpty()) 0.dp else 12.dp)) {
-                            HomeSwitch(home, onPick = { h ->
-                                // coming back from Trending keeps the tab / folder / filter as they were: the finished list is shown, nothing is rebuilt
-                                if (h != home) {
-                                    home = h
-                                    Ls.setItem("library.home", h)
-                                    view = "library"
-                                    toTop()
-                                } else if (h == "lib") AppData.render()
-                            })
+                            HomeSwitch(home, onTrending = { pickHome("trend") }, onReleases = { view = "up" })
                         }
                     }
                     val libShown = view == "library" && home == "lib"
