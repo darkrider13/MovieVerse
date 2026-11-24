@@ -69,10 +69,11 @@ img{-webkit-user-drag:none;pointer-events:none}
 .trfail .btn{margin-top:12px}
 
 /* ---- messages, buttons, dots ---- */
-.msg{display:none;min-height:50vh;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;color:var(--mut);font-size:14px;padding:24px}
+.msg{display:none;min-height:60vh;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;color:var(--mut);font-size:14px;padding:24px}
+.msg.ld{font-size:17px;font-weight:600}
 .btn{display:inline-block;background:var(--acc);color:#fff;font-weight:700;font-size:14px;border-radius:12px;padding:10px 22px;cursor:pointer}
 .mbtn{margin:4px auto 32px;display:table}
-.spin{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--mut);animation:ptrs .8s linear infinite;display:inline-block;vertical-align:middle;margin-right:10px}
+.spin{width:46px;height:46px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--acc);animation:ptrs .8s linear infinite;display:block;margin:0 auto 14px}
 .dots{display:flex;height:30px;margin:4px 0 32px;justify-content:center;align-items:center}
 .dots i{width:7px;height:7px;border-radius:50%;background:var(--mut);margin:0 3px;animation:blk 1s ease-in-out infinite}
 .dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
@@ -154,14 +155,15 @@ function setTrRate(el,o){
 function trSig(o){return o.id+'|'+o.p+'|'+o.t+'|'+o.d+'|'+(o.lib?1:0)+'|'+(o.r||0)}
 function mkRow(r){return mkRow0(r)}
 function mkRow0(r){
-  return html2el('<section class="trow" data-row="'+esc(r.id)+'"><div class="tt"></div><div class="crow"></div><div class="trfail">Could not load.<br><div class="btn" data-k="trretry">Retry</div></div></section>');
+  return html2el('<section class="trow" data-row="'+esc(r.id)+'"><div class="tt"></div><div class="crow"></div><div class="trfail"></div></section>');
 }
 
 /* ---- screens ---- */
 function setMsg(m){
-  if(!m){msg.style.display='none';return}
+  if(!m){msg.style.display='none';msg.classList.remove('ld');return}
   msg.style.display='flex';
-  msg.innerHTML=(m.load?'<div><span class="spin"></span>'+esc(m.t)+'</div>':'<div>'+esc(m.t)+'</div>')+(m.retry?'<div class="btn" data-k="upretry">Retry</div>':'');
+  msg.classList.toggle('ld',!!m.load);
+  msg.innerHTML=(m.load?'<div><span class="spin"></span>'+esc(m.t)+'</div>':'<div>'+esc(m.t)+'</div>')+(m.retry?'<div class="btn" data-k="'+(m.k||'upretry')+'">Retry</div>':'');
 }
 function setMore(d){
   if(d.dots)more.innerHTML='<div class="dots"><i></i><i></i><i></i></div>';
@@ -270,7 +272,7 @@ function show(d){
         var el=rows._m.get(r.id);if(!el)return;
         var tt=el.firstChild,crow=tt.nextSibling,fail=crow.nextSibling;
         if(tt.textContent!==r.title)tt.textContent=r.title;
-        fail.style.display=r.failed?'block':'none';
+        fail.style.display='none';
         crow.style.display=r.failed?'none':'flex';
         if(!r.failed){EG=(ri<2?6:0);var ob=crow._m,nid=[];r.items.forEach(function(o){if(!ob||!ob.has(o.id))nid.push(o.id)});sync(crow,r.items,function(o){return o.id},function(o){return trCard(o)},trSig);nid.forEach(function(id){var c=crow._m.get(id);if(c)fresh.push(c)});r.items.forEach(function(o){var c=crow._m.get(o.id);if(c)setTrRate(c,o)})}
       });
