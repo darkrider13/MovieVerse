@@ -622,9 +622,14 @@ private fun PvHeader(flow: AddFlow, m: Movie, copyName: (String) -> Unit) {
     val posterH = 168.dp
     val shown = if (m.title.isNotEmpty()) m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "") else "New movie"
     val bx = InfoModel.boxOf(m)
+    // "Running": released in cinemas within the last 21 days. It no longer waits for Budget + Collection (a new release often has no collection yet).
+    val runNow = m.tmdbId > 0 && !m.truthy("direct") && !Enrich.unrel(m) && m.rel.isNotEmpty() &&
+        (System.currentTimeMillis() - Fmt.dayStartMs(m.rel)) / 864e5 < 21
     val titleAnn = buildAnnotatedString {
         append(shown)
-        if (bx != null && !bx.bo && !bx.go) {
+        if (runNow) {
+            withStyle(SpanStyle(color = Color(0xFFA855F7), fontSize = 12.sp, fontWeight = FontWeight.Bold)) { append("\u00A0\u00A0Running") }
+        } else if (bx != null && !bx.bo && !bx.go) {
             val col = when (bx.tone) {
                 VerdictTone.Running -> Color(0xFFA855F7)
                 VerdictTone.Good -> c.w
