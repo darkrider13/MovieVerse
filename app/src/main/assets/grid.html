@@ -98,6 +98,8 @@ function A(){return window.Android}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 var EG=0;
 var LOADED={};
+/* app start: Trending appears at once, with NO entrance animation. It stays true until the user leaves Trending, so every later switch still animates. */
+var calm=true;
 document.addEventListener('animationend',function(e){if(e.animationName==='mventer')e.target.classList.remove('enter')},true);
 document.addEventListener('animationend',function(e){if(e.animationName==='mvstag'){var t=e.target;t.classList.remove('stg');t.style.animationDelay=''}},true);
 function pin(x){x.classList.add('in');LOADED[x.getAttribute('src')]=1}
@@ -219,11 +221,13 @@ function enterCards(list){
   for(var j=0;j<v.length;j++){v[j].style.animationDelay=(j*70)+'ms';v[j].classList.add('stg')}
 }
 function enterMode(m){
+  if(calm&&m==='trend')return;   /* app start: no entrance animation */
   if(m==='trend')enterCards(rows.querySelectorAll('.tcard'));
   else if(m==='up')enterCards(gridUp.querySelectorAll('.card'));
 }
 function setMode(m){
   if(cur.mode===m)return;
+  if(cur.mode!==null||m!=='trend')calm=false;   /* first real switch: animations are back */
   cur.mode=m;window.scrollTo(0,0);
   var el=m==='lib'?grid:m==='up'?gridUp:rows;
   if(m==='lib'&&grid.children.length){
@@ -235,7 +239,8 @@ function setMode(m){
     paint();
     enterMode(m);
   }else{
-    el.classList.remove('enter');void el.offsetWidth;el.classList.add('enter');
+    el.classList.remove('enter');
+    if(!(calm&&m==='trend')){void el.offsetWidth;el.classList.add('enter')}   /* no fade-in of the whole list at app start */
     paint();
   }
 }
@@ -281,7 +286,7 @@ function show(d){
   if(m==='lib')libReady(d,kc);
   if(!vis&&m!=='trend')warm(m==='up'?gridUp:grid);   /* a list that is not on screen: its first posters are fetched later, when the phone is idle */
   if(vis)paint();
-  if(vis&&!d.msg&&(m==='trend'||m==='up')){
+  if(vis&&!d.msg&&(m==='trend'||m==='up')&&!(calm&&m==='trend')){   /* (not at app start) */
     if(wasMsg)enterMode(m);            /* loading finished (or first list): every card on screen comes in one after the other */
     else if(fresh.length)enterCards(fresh);   /* a new row / new cards that are already on screen */
   }
