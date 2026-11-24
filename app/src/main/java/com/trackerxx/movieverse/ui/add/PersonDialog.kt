@@ -134,6 +134,26 @@ private fun RetryBox(text: String, onRetry: () -> Unit) {
     }
 }
 
+/** big spinner + text in the middle of the free space of the page */
+@Composable
+private fun ColumnScope.BigLoading(text: String = "Loading…") {
+    val c = Mv.c
+    Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            com.trackerxx.movieverse.ui.components.MvSpinner(46.dp, 4.dp, c.line, c.acc)
+            MvText(text, size = 17.sp, weight = FontWeight.SemiBold, color = c.mut)
+        }
+    }
+}
+
+/** one Retry button in the middle of the free space of the page */
+@Composable
+private fun ColumnScope.CenterRetry(text: String, onRetry: () -> Unit) {
+    Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+        RetryBox(text, onRetry)
+    }
+}
+
 @Composable
 private fun Ph3(text: String) {
     MvText(text, Modifier.padding(top = 14.dp, bottom = 2.dp), size = 13.sp, weight = FontWeight.Bold)
@@ -147,11 +167,11 @@ private fun ColumnScope.PersonBody(pf: PersonFlow) {
     val copy = rememberCopyName()
     val scope = rememberCoroutineScope()
     if (pf.failed) {
-        RetryBox("Could not load details.") { pf.retry() }
+        CenterRetry("Could not load details.") { pf.retry() }
         return
     }
     if (d == null) {
-        NoteP("Loading…")
+        BigLoading()
         return
     }
     // ---- header: photo, name, facts, known credits ----
@@ -305,9 +325,9 @@ private fun ColumnScope.AwardsPage(pf: PersonFlow) {
     }
     MhRow(head)
     when (a) {
-        is AwState.Loading -> MvText("Loading…", size = 14.sp, color = Mv.c.mut)
+        is AwState.Loading -> BigLoading()
         is AwState.Note -> MvText(a.text, size = 14.sp, color = Mv.c.mut)
-        is AwState.Fail -> RetryBox(a.text) { pf.retry() }
+        is AwState.Fail -> CenterRetry(a.text) { pf.retry() }
         is AwState.Rows -> {
             val st = pf.scroll.aw
             LazyColumn(
