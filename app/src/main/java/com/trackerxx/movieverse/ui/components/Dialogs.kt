@@ -452,7 +452,7 @@ fun MvApiLoadingDialog(
  * Top: always 24dp (also at rest). Bottom: always 40dp. The mask is drawn outside the scroll,
  * so it stays at the edges while the content moves under it.
  */
-private fun Modifier.pageEdgeFade(scroll: ScrollState, topMax: Dp = 24.dp, bottom: Dp = 40.dp): Modifier =
+private fun Modifier.pageEdgeFade(scroll: ScrollState, topMax: Dp = 24.dp, bottom: Dp = 40.dp, topFollowsScroll: Boolean = false): Modifier =
     this
         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithContent {
@@ -460,11 +460,14 @@ private fun Modifier.pageEdgeFade(scroll: ScrollState, topMax: Dp = 24.dp, botto
             val h = size.height
             if (h <= 0f) return@drawWithContent
             // the top fade is ALWAYS there (also at rest, not only while scrolling): content melts softly under the header
-            val ft = minOf(topMax.toPx(), h / 2f)
+            // topFollowsScroll (movie details): at rest nothing is faded, so the poster can sit close under the header; the fade grows
+            // with the scroll up to topMax, so scrolled content still melts under the header
+            val ftMax = minOf(topMax.toPx(), h / 2f)
+            val ft = if (topFollowsScroll) scroll.value.toFloat().coerceIn(0f, ftMax) else ftMax
             val fb = minOf(bottom.toPx(), h / 2f)
             val a = (ft / h).coerceIn(0f, 1f)
             val b = ((h - fb) / h).coerceIn(a, 1f)
-            val brush = Brush.verticalGradient(0f to Color.Transparent, a to Color.Black, b to Color.Black, 1f to Color.Transparent)
+            val brush = Brush.verticalGradient(0f to (if (ft > 0f) Color.Transparent else Color.Black), a to Color.Black, b to Color.Black, 1f to Color.Transparent)
             drawRect(brush, blendMode = BlendMode.DstIn)
         }
 
@@ -546,6 +549,7 @@ fun MvPage(
     title: String,
     bottomBar: (@Composable () -> Unit)? = null,
     edgeFade: Boolean = false,
+    tightTop: Boolean = false,   // movie details: the content starts close under the header (no big empty gap)
     scrollable: Boolean = true,
     instantIn: Boolean = false,
     resetKey: Any? = null,
@@ -610,10 +614,10 @@ fun MvPage(
                         Modifier
                             .widthIn(max = 640.dp)
                             .fillMaxSize()
-                            .then(if (edgeFade) Modifier.pageEdgeFade(pageScroll) else Modifier)
+                            .then(if (edgeFade) Modifier.pageEdgeFade(pageScroll, topFollowsScroll = tightTop) else Modifier)
                             // scrollable = false: the page itself stays still, the content decides what scrolls
                             .then(if (scrollable) Modifier.verticalScroll(pageScroll) else Modifier)
-                            .padding(start = 16.dp, end = 16.dp, top = if (edgeFade) 22.dp else 8.dp, bottom = if (!scrollable) 0.dp else if (edgeFade) 56.dp else 24.dp),
+                            .padding(start = 16.dp, end = 16.dp, top = if (edgeFade && tightTop) 6.dp else if (edgeFade) 22.dp else 8.dp, bottom = if (!scrollable) 0.dp else if (edgeFade) 56.dp else 24.dp),
                         content = content
                     )
                 }
