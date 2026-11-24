@@ -180,6 +180,20 @@ function setMode(m){
   if(cur.mode===m)return;
   cur.mode=m;window.scrollTo(0,0);paint();
 }
+/* Library: the first posters (about two screens) are fetched and decoded RIGHT AWAY, also while the list is hidden (Trending open),
+   so showing it later (or opening another pill) draws complete cards at once. The app is told when they are ready (max 1.5 s). */
+function libReady(d){
+  var done=false,fin=function(){if(done)return;done=true;if(A())A().libShown(String(d.key||''))};
+  if(d.msg){fin();return}
+  var im=grid.querySelectorAll('img'),ps=[];
+  for(var i=0;i<im.length&&i<12;i++){
+    var x=im[i];x.loading='eager';
+    if(!x.complete||!x.naturalWidth){ps.push(x.decode?x.decode().catch(function(){}):Promise.resolve())}
+  }
+  if(!ps.length){requestAnimationFrame(function(){requestAnimationFrame(fin)});return}
+  Promise.all(ps).then(function(){requestAnimationFrame(fin)});
+  setTimeout(fin,1500);
+}
 function show(d){
   var m=d.mode;S[m]=d;
   if(!cur.mode)cur.mode=m;
@@ -201,6 +215,7 @@ function show(d){
     }
   }
   EG=0;
+  if(m==='lib')libReady(d);
   if(!vis&&m!=='trend')warm(m==='up'?gridUp:grid);   /* a list that is not on screen: its first posters are fetched later, when the phone is idle */
   if(vis)paint();
 }
