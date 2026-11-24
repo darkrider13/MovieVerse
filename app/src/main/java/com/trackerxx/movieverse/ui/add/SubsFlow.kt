@@ -62,6 +62,33 @@ class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState)
     private var tok = 0
     private var job: Job? = null
 
+    /** the Subtitle button of the details page: 0 = still looking (shimmer), 1 = available, 2 = "Subtitle not found" */
+    var probe by mutableStateOf(1)
+        private set
+    private var probeTok = 0
+
+    /** looks for subtitles in the background when a movie page opens (subProbe); a failed look-up never blocks the button */
+    fun probeFor(m: Movie) {
+        val my = ++probeTok
+        if (m.tmdbId == 0L || !Subs.hasKey()) {
+            probe = 1
+            return
+        }
+        probe = 0
+        scope.launch {
+            val has = try {
+                val bn = async { Subs.search(m, "BN", 1) }
+                val en = async { Subs.search(m, "EN", 1) }
+                bn.await().items.isNotEmpty() || en.await().items.isNotEmpty()
+            } catch (x: CancellationException) {
+                throw x
+            } catch (x: Exception) {
+                true
+            }
+            if (my == probeTok) probe = if (has) 1 else 2
+        }
+    }
+
     fun openFor(m: Movie) {
         movie = m
         lang = "all"

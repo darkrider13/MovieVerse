@@ -65,20 +65,30 @@ class CastFlow(private val scope: CoroutineScope, private val toast: ToastState)
     /** the red YouTube button inside the title box (#trl) is only shown when TMDB knows a trailer or teaser */
     var trailerOk by mutableStateOf(false)
         private set
+
+    /** the Trailer button of the details page: 0 = still looking (shimmer), 1 = found, 2 = "Trailer not found" */
+    var trailerState by mutableStateOf(0)
+        private set
     private var trailerMovie: Movie? = null
 
     /** the trailer part of showForm */
     fun resetTrailer(m: Movie) {
         trailerMovie = m
         trailerOk = false
+        trailerState = if (m.tmdbId == 0L) 2 else 0
         if (m.tmdbId == 0L) return
         scope.launch {
             try {
                 val i = Credits.trailerInfo(m.tmdbId)
-                if (trailerMovie === m && (i.t.isNotEmpty() || i.s.isNotEmpty())) trailerOk = true
+                if (trailerMovie === m) {
+                    val ok = i.t.isNotEmpty() || i.s.isNotEmpty()
+                    trailerOk = ok
+                    trailerState = if (ok) 1 else 2
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                if (trailerMovie === m) trailerState = 2
             }
         }
     }

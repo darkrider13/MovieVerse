@@ -470,6 +470,7 @@ class AddFlow(
         soOpen = false
         infoRev++
         cast.resetTrailer(m)
+        subs.probeFor(m)
         cast.load(m)
     }
 

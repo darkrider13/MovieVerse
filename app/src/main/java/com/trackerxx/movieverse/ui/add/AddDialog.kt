@@ -343,55 +343,8 @@ private fun MoviePage(flow: AddFlow) {
         title = if (flow.isEdit) "Movie details" else "Add to Library",
         bottomBar = if (busy) null else ({ PageActions(flow, m, focus) })
     ) {
-        // ---- poster, title (year), overview ---------------------------------------------------------------------------------
-        Row(
-            Modifier.fillMaxWidth().padding(top = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Box(Modifier.size(92.dp, 138.dp).clip(RoundedCornerShape(12.dp)).background(c.s2)) {
-                if (!m.poster.isNullOrEmpty()) {
-                    AsyncImage(
-                        model = Tmdb.imgUrl(m.poster, "w342"), contentDescription = null, contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
-            Column(Modifier.weight(1f)) {
-                val bx = InfoModel.boxOf(m)
-                MvText(
-                    buildAnnotatedString {
-                        append(if (m.title.isNotEmpty()) m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "") else "New movie")
-                        if (bx != null && !bx.bo && !bx.go) {
-                            val col = when (bx.tone) {
-                                VerdictTone.Running -> Color(0xFFA855F7)
-                                VerdictTone.Good -> c.w
-                                VerdictTone.Average -> Color(0xFFF5C518)
-                                VerdictTone.Flop -> Color(0xFFFF8C42)
-                                VerdictTone.Disaster -> Color(0xFFFF4D4D)
-                            }
-                            withStyle(SpanStyle(color = col, fontSize = 12.sp, fontWeight = FontWeight.Bold)) { append("\u00A0\u00A0" + bx.verdict) }
-                        }
-                    },
-                    size = 19.sp, weight = FontWeight.Bold, lineHeight = 1.3f,
-                    modifier = Modifier.plainClickable { copyName(if (m.title.isNotEmpty()) m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "") else "") }
-                )
-                val ov = m.str("ov") ?: ""
-                if (ov.isNotEmpty()) {
-                    var openOv by remember(m) { mutableStateOf(false) }
-                    val maxOpen = with(LocalDensity.current) { (19.sp * 9).toDp() }
-                    Box(
-                        Modifier.padding(top = 8.dp).plainClickable { openOv = !openOv }
-                            .then(if (openOv) Modifier.heightIn(max = maxOpen).verticalScroll(rememberScrollState()) else Modifier)
-                    ) {
-                        MvText(
-                            ov, size = 13.sp, color = c.mut, lineHeight = 19f / 13f,
-                            maxLines = if (openOv) Int.MAX_VALUE else 5, overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-        }
+        // ---- poster, title (year), overview, Trailer + Subtitle buttons ---------------------------------------------------
+        PvHeader(flow, m, copyName)
 
         // ---- title -----------------------------------------------------------------------------------------------------
         DlgLabel("Title", top = 18.dp) {
@@ -402,15 +355,7 @@ private fun MoviePage(flow: AddFlow) {
                 )
             }
         }
-        if (lock) Box(Modifier.fillMaxWidth()) {
-            StaticField(flow.ft, badge = m.str("cert")?.takeIf { it.isNotEmpty() }, trailer = flow.cast.trailerOk)
-            if (flow.cast.trailerOk) {
-                Box(
-                    Modifier.align(Alignment.CenterEnd).padding(end = 4.dp).size(34.dp).plainClickable { flow.cast.openTrailer(m) },
-                    contentAlignment = Alignment.Center
-                ) { MvIcon(MvIcons.YtOutline, 28.dp) }
-            }
-        }
+        if (lock) StaticField(flow.ft, badge = m.str("cert")?.takeIf { it.isNotEmpty() })
         else MvTextField(flow.ft, { flow.ft = it }, Modifier.focusRequester(focus), placeholder = "Title", size = FieldSize.Dialog)
 
         // ---- duration + country ------------------------------------------------------------------------------------
@@ -438,10 +383,6 @@ private fun MoviePage(flow: AddFlow) {
         if (!busy) {
             // ---- cast & crew ------------------------------------------------------------------------------------------------
             flow.cast.data?.let { cd -> CastBlock(cd) { id -> flow.person.openPerson(id) } }
-
-            // ---- subtitles (Bangla + English) --------------------------------------------------------------------------------
-            DlgLabel("Subtitle", top = 16.dp)
-            SubtitleEntry { flow.subs.openFor(m) }
 
             // ---- status ---------------------------------------------------------------------------------------------------
             DlgLabel("Status", top = 16.dp)
@@ -482,31 +423,6 @@ private fun PageActions(flow: AddFlow, m: Movie, focus: FocusRequester) {
         if (flow.isEdit) {
             MvButton("Delete", { flow.delete() }, Modifier.weight(1f), danger = true, size = BtnSize.Dialog)
         }
-    }
-}
-
-/** the "Subtitle" option: a wide tappable box that opens the Subtitles page */
-@Composable
-private fun SubtitleEntry(onClick: () -> Unit) {
-    val c = Mv.c
-    val shape = RoundedCornerShape(10.dp)
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(c.s2)
-            .border(1.dp, c.line, shape)
-            .plainClickable(onClick = onClick)
-            .padding(start = 11.dp, end = 10.dp, top = 9.dp, bottom = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        MvIcon(MvIcons.Subtitle, 20.dp, tint = c.ink)
-        Column(Modifier.weight(1f)) {
-            MvText("Subtitles", weight = FontWeight.Bold)
-            MvText("Bangla & English", size = 11.sp, color = c.mut, lineHeight = 1.3f)
-        }
-        MvIcon(MvIcons.Chevron, 16.dp, tint = c.mut)
     }
 }
 
@@ -667,5 +583,182 @@ private fun RatingBlock(flow: AddFlow) {
                 color = when (cls) { RateClass.Good -> c.cg; RateClass.Mid -> c.cy; RateClass.Bad -> c.cr; else -> c.mut }
             )
         }
+    }
+}
+
+
+/**
+ * Poster (112 x 168) + title + summary + Trailer + Subtitle (pvFit): the right column ends exactly at the poster's bottom edge.
+ * If a long title wraps, the closed summary loses a line (or the title gets smaller) instead of the buttons crossing the edge.
+ */
+@Composable
+private fun PvHeader(flow: AddFlow, m: Movie, copyName: (String) -> Unit) {
+    val c = Mv.c
+    val dens = LocalDensity.current
+    val tm = androidx.compose.ui.text.rememberTextMeasurer()
+    val posterH = 168.dp
+    val shown = if (m.title.isNotEmpty()) m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "") else "New movie"
+    val bx = InfoModel.boxOf(m)
+    val titleAnn = buildAnnotatedString {
+        append(shown)
+        if (bx != null && !bx.bo && !bx.go) {
+            val col = when (bx.tone) {
+                VerdictTone.Running -> Color(0xFFA855F7)
+                VerdictTone.Good -> c.w
+                VerdictTone.Average -> Color(0xFFF5C518)
+                VerdictTone.Flop -> Color(0xFFFF8C42)
+                VerdictTone.Disaster -> Color(0xFFFF4D4D)
+            }
+            withStyle(SpanStyle(color = col, fontSize = 12.sp, fontWeight = FontWeight.Bold)) { append("\u00A0\u00A0" + bx.verdict) }
+        }
+    }
+    val ov = m.str("ov") ?: ""
+    var openOv by remember(m) { mutableStateOf(false) }
+    val showTrailer = m.tmdbId != 0L
+
+    Row(
+        Modifier.fillMaxWidth().padding(top = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(Modifier.size(112.dp, posterH).clip(RoundedCornerShape(12.dp)).background(c.s2)) {
+            if (!m.poster.isNullOrEmpty()) {
+                AsyncImage(
+                    model = Tmdb.imgUrl(m.poster, "w342"), contentDescription = null, contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+        BoxWithConstraints(Modifier.weight(1f)) {
+            val wPx = with(dens) { maxWidth.roundToPx() }
+            val btnN = (if (showTrailer) 1 else 0) + 1
+            // [summary lines, title size] : first step that fits under the poster's bottom edge
+            val fit: Pair<Int, Int> = if (openOv || wPx <= 0) {
+                3 to 21
+            } else {
+                val limit = with(dens) { posterH.toPx() } + 1f
+                val steps = listOf(3 to 21, 2 to 21, 3 to 18, 2 to 18, 2 to 16, 1 to 16)
+                var pick = steps.last()
+                for (st in steps) {
+                    val th = tm.measure(
+                        titleAnn,
+                        style = com.trackerxx.movieverse.ui.theme.mvTextStyle(st.second.sp, FontWeight.Bold, c.ink, 1.25f),
+                        constraints = androidx.compose.ui.unit.Constraints(maxWidth = wPx)
+                    ).size.height
+                    var h = th.toFloat()
+                    if (ov.isNotEmpty()) {
+                        h += with(dens) { 4.dp.toPx() } + tm.measure(
+                            androidx.compose.ui.text.AnnotatedString(ov),
+                            style = com.trackerxx.movieverse.ui.theme.mvTextStyle(13.sp, FontWeight.Normal, c.mut, 19f / 13f),
+                            overflow = TextOverflow.Ellipsis,
+                            maxLines = st.first,
+                            constraints = androidx.compose.ui.unit.Constraints(maxWidth = wPx)
+                        ).size.height
+                    }
+                    h += with(dens) { (8.dp + 46.dp * btnN + 6.dp * (btnN - 1)).toPx() }
+                    if (h <= limit) {
+                        pick = st
+                        break
+                    }
+                }
+                pick
+            }
+            Column(Modifier.fillMaxWidth().heightIn(min = posterH)) {
+                MvText(
+                    titleAnn,
+                    size = fit.second.sp, weight = FontWeight.Bold, lineHeight = 1.25f,
+                    modifier = Modifier.plainClickable { copyName(if (m.title.isNotEmpty()) shown else "") }
+                )
+                if (ov.isNotEmpty()) {
+                    val maxOpen = with(dens) { (19.sp * 9).toDp() }
+                    Box(
+                        Modifier.padding(top = 4.dp).plainClickable { openOv = !openOv }
+                            .then(if (openOv) Modifier.heightIn(max = maxOpen).verticalScroll(rememberScrollState()) else Modifier)
+                    ) {
+                        MvText(
+                            ov, size = 13.sp, weight = FontWeight.Normal, color = c.mut, lineHeight = 19f / 13f,
+                            maxLines = if (openOv) Int.MAX_VALUE else fit.first, overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (showTrailer) {
+                        val st = flow.cast.trailerState
+                        QuickOpt(
+                            icon = MvIcons.YtFill, red = true,
+                            title = if (st == 2) "Trailer not found" else "Trailer",
+                            sub = if (st == 2) "Not available on YouTube" else "Watch on YouTube",
+                            loading = st == 0, na = st == 2,
+                            onClick = { flow.cast.openTrailer(m) }
+                        )
+                    }
+                    val sp = flow.subs.probe
+                    QuickOpt(
+                        icon = MvIcons.Subtitle, red = false,
+                        title = if (sp == 2) "Subtitle not found" else "Subtitle",
+                        sub = if (sp == 2) "Not available on SubDL" else "Bangla \u00B7 English",
+                        loading = sp == 0, na = sp == 2,
+                        onClick = { flow.subs.openFor(m) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** .qopt : the wide Trailer (red) / Subtitle (grey) buttons next to the poster; loading = shimmer line, na = greyed and not tappable */
+@Composable
+private fun QuickOpt(
+    icon: com.trackerxx.movieverse.ui.theme.MvIconData,
+    red: Boolean,
+    title: String,
+    sub: String,
+    loading: Boolean,
+    na: Boolean,
+    onClick: () -> Unit
+) {
+    val c = Mv.c
+    val shape = RoundedCornerShape(12.dp)
+    val plain = loading || na
+    val bg: Brush = when {
+        na -> SolidColor(c.s2)
+        red -> Brush.linearGradient(listOf(Color(0x57FF2828), Color(0x33960000)))
+        else -> Brush.linearGradient(listOf(Color(0x42AAB0C4), Color(0x295A6074)))
+    }
+    val bd: Color = when {
+        na -> c.line
+        red -> Color(0x80FF5050)
+        else -> Color(0x52CDD2E4)
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(46.dp)
+            .clip(shape)
+            .background(bg)
+            .border(1.dp, bd, shape)
+            .plainClickable(enabled = !plain, onClick = onClick)
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
+        MvIcon(icon, 22.dp, Modifier.alpha(if (na) 0.55f else 1f), tint = c.ink)
+        Column(Modifier.weight(1f).alpha(if (na) 0.75f else 1f)) {
+            MvText(title, size = 13.sp, weight = FontWeight.ExtraBold, lineHeight = 1.15f, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (loading) {
+                val a by androidx.compose.animation.core.rememberInfiniteTransition(label = "qsh").animateFloat(
+                    initialValue = 0.08f, targetValue = 0.28f,
+                    animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                        animation = androidx.compose.animation.core.tween<Float>(600),
+                        repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+                    ),
+                    label = "qsh-a"
+                )
+                Box(Modifier.padding(top = 3.dp).size(74.dp, 10.dp).clip(RoundedCornerShape(4.dp)).background(c.ink.copy(alpha = a)))
+            } else {
+                MvText(sub, size = 10.5.sp, weight = FontWeight.SemiBold, color = c.mut, lineHeight = 1.15f, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        if (!plain) MvIcon(MvIcons.Chevron, 16.dp, tint = c.ink)
     }
 }
