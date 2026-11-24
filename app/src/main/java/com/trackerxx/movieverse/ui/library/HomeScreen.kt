@@ -55,6 +55,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -609,12 +610,19 @@ fun HomeScreen(splashGone: Boolean) {
                 // another pill / folder was opened: the old cards are covered for the few frames until the new card frames arrive.
                 // Plain cover, no spinner / text (a spinner flashing for a moment looked like flicker). The posters then fade in on their own.
                 if (libReady && view == "library" && home == "lib" && shownKey != fctx) {
+                    // The glow of this cover must sit EXACTLY where the glow of the app background sits (the app background is drawn over the
+                    // whole window, this cover only over the page area below the header). Before, the cover drew its own glow with other
+                    // coordinates, so the colours flashed for a few frames at every pill change. Now it draws the window glow shifted by the
+                    // cover's own position in the window, so cover and background are pixel-identical and the switch is invisible.
+                    var coverPos by remember { mutableStateOf(Offset.Zero) }
+                    val winSize = LocalWindowInfo.current.containerSize
                     Box(
-                        Modifier.fillMaxSize().padding(top = hdrDp.dp).background(cNow.bg)
+                        Modifier.fillMaxSize().padding(top = hdrDp.dp)
+                            .onGloballyPositioned { coverPos = it.positionInWindow() }
+                            .background(cNow.bg)
                             .drawBehind {
                                 if (isDarkBg(cNow.bg)) {
-                                    val t = hdrDp.dp.toPx()
-                                    translate(0f, -t) { drawGlow(size.width, size.height + t) }
+                                    translate(-coverPos.x, -coverPos.y) { drawGlow(winSize.width.toFloat(), winSize.height.toFloat()) }
                                 }
                             }
                             .pointerInput(Unit) { }
