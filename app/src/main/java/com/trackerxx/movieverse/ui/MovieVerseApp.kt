@@ -44,11 +44,9 @@ import com.trackerxx.movieverse.ui.theme.MovieVerseTheme
 /** Root of the app. Later steps put the Library / Trending / Releases screens here. */
 @Composable
 fun MovieVerseApp() {
-    // theme comes from storage ("library.theme", dark by default) and is saved when it changes
-    val themeState = AppData.theme
     var showSplash by remember { mutableStateOf(true) }
 
-    MovieVerseTheme(themeState) {
+    MovieVerseTheme {
         val c = Mv.c
         val toast = rememberToastState()
         val modal = remember { ModalState() }
