@@ -582,7 +582,9 @@ fun HomeScreen(splashGone: Boolean) {
                             )
                         }
                         val w = grid.web
-                        val left = if (w == null) 0f else w.contentHeight * density - w.height - y
+                        // height not known yet (first open, cards still arriving): treat as "more below" so the bottom fade is there from the start
+                        val ch = grid.contentH
+                        val left = if (w == null || ch <= 0) edge else ch * density - w.height - y
                         val bot = (left / edge).coerceIn(0f, 1f)
                         if (bot > 0f) {
                             drawRect(

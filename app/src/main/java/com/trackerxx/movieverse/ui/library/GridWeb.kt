@@ -8,6 +8,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +28,7 @@ import com.trackerxx.movieverse.ui.theme.MvColors
 import com.trackerxx.movieverse.util.Fmt
 import com.trackerxx.movieverse.util.Js
 import com.trackerxx.movieverse.util.RateClass
+import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
@@ -44,6 +46,9 @@ class GridHost {
 
     /** scroll position of the page in px: the Kotlin header above the cards moves with it */
     var scrollY by mutableIntStateOf(0)
+
+    /** height of the page content (CSS px), 0 = not known yet; a state so the bottom fade redraws when the cards arrive */
+    var contentH by mutableIntStateOf(0)
 
     /** the finger is scrolling the list right now */
     var scrolling by mutableStateOf(false)
@@ -181,6 +186,14 @@ class GridBridge(private val h: GridHost) {
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun GridWebView(host: GridHost, bg: Color, modifier: Modifier = Modifier) {
+    // the content height changes without any scrolling (cards arrive, tab switch): publish it so the bottom edge fade follows
+    LaunchedEffect(host) {
+        while (true) {
+            val h = host.web?.contentHeight ?: 0
+            if (h != host.contentH) host.contentH = h
+            delay(250)
+        }
+    }
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
