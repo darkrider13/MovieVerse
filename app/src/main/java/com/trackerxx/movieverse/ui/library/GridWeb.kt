@@ -66,6 +66,9 @@ class GridHost {
     var onMoreTap: () -> Unit = {}
     var onBuzz: () -> Unit = {}
 
+    /** the page has drawn the first posters of the Library list with this key (see GridJson.lib / MV.set) */
+    var onLibShown: (String) -> Unit = {}
+
     fun post(f: () -> Unit) { main.post(f) }
 
     private fun send(js: String) { web?.evaluateJavascript(js, null) }
@@ -151,6 +154,7 @@ class GridBridge(private val h: GridHost) {
     @JavascriptInterface fun scrolling(on: Boolean) { h.post { h.scrollState(on) } }
     @JavascriptInterface fun more() { h.post { h.onMore() } }
     @JavascriptInterface fun buzz() { h.post { h.onBuzz() } }
+    @JavascriptInterface fun libShown(key: String) { h.post { h.onLibShown(key) } }
     @JavascriptInterface fun tapLib(id: String) { h.post { h.onTapLib(id) } }
     @JavascriptInterface fun tapTrend(id: String) { id.toLongOrNull()?.let { v -> h.post { h.onTapTrend(v) } } }
     @JavascriptInterface fun tapUp(id: String) { id.toLongOrNull()?.let { v -> h.post { h.onTapUp(v) } } }
@@ -236,9 +240,9 @@ object GridJson {
     /** Your Library */
     fun lib(
         lv: LibView, cards: List<Movie>, statuses: List<Status>, SL: Map<String, String>, c: MvColors,
-        upd: Set<String>, chg: Set<String>
+        upd: Set<String>, chg: Set<String>, key: String = ""
     ): String {
-        val o = JSONObject().put("mode", "lib").put("order", lv.canOrder)
+        val o = JSONObject().put("mode", "lib").put("order", lv.canOrder).put("key", key)
         val et = lv.emptyText
         if (et != null) {
             o.put("msg", if (LibraryLogic.isLoadingText(et)) msg("Loading your library…", load = true) else msg(et))

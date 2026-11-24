@@ -332,6 +332,7 @@ fun HomeScreen(splashGone: Boolean) {
         grid.onRetryTrend = { scope.launch { try { Trending.load(true) } catch (e: CancellationException) { throw e } catch (e: Exception) { } } }
         grid.onRetryUp = { Releases.retry() }
         grid.onMoreTap = { Releases.loadMore() }
+        grid.onLibShown = { k -> shownKey = k }
         grid.onBuzz = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
     }
     LaunchedEffect(Unit) { grid.setTheme(GridJson.theme(cNow)) }
@@ -355,16 +356,13 @@ fun HomeScreen(splashGone: Boolean) {
         val sl = AppData.SL
         val updSet = HashSet(Refresh.upd.keys)
         val chgCopy = HashSet(Enrich.chgSet)
-        val json = withContext(Dispatchers.Default) { GridJson.lib(lv, cards, sts, sl, cNow, updSet, chgCopy) }
+        val json = withContext(Dispatchers.Default) { GridJson.lib(lv, cards, sts, sl, cNow, updSet, chgCopy, key) }
         grid.setPayload("lib", json)
         libPayloadIn = true
-        withFrameNanos { }
-        withFrameNanos { }
-        delay(90)
-        shownKey = key
+        // shownKey is set by the page itself (grid.onLibShown) once the first posters are really drawn
     }
-    LaunchedEffect(libHeaderWarm, libPayloadIn) {
-        if (libReady || !libHeaderWarm || !libPayloadIn) return@LaunchedEffect
+    LaunchedEffect(libHeaderWarm, libPayloadIn, shownKey) {
+        if (libReady || !libHeaderWarm || !libPayloadIn || shownKey == null) return@LaunchedEffect
         while (hdrPx[0] <= 0f) withFrameNanos { }
         withFrameNanos { }
         withFrameNanos { }
