@@ -436,13 +436,13 @@ fun HomeScreen(splashGone: Boolean) {
         } else pickHome(h)
     }
 
-    /** apiBusy(keyLoad(), 900, 45000): "Fetching your API key" dialog (at least 0.9 s, at most 45 s); returns the error text or null */
+    /** apiBusy(keyLoad(), 4000, 45000): "Fetching your API key" dialog (at least 4 s, at most 45 s); returns the error text or null */
     suspend fun runKeyBusy(): String? {
         keyBusy = true
         val t0 = System.currentTimeMillis()
         val job = scope.async { KeySave.keyLoad(home == "trend" && view != "up") }
         val err = withTimeoutOrNull(45000L) { job.await() }
-        val wait = 900L - (System.currentTimeMillis() - t0)
+        val wait = 4000L - (System.currentTimeMillis() - t0)
         if (wait > 0) delay(wait)
         keyBusy = false
         return err
@@ -704,7 +704,7 @@ fun HomeScreen(splashGone: Boolean) {
                             try { Trending.load(true) } catch (e: CancellationException) { throw e } catch (e: Exception) { }
                         }
                     } else {
-                        // apiBusy(keyLoad().then(after), 900, 45000)
+                        // apiBusy(keyLoad().then(after), 4000, 45000)
                         keyBusy = true
                         val t0 = System.currentTimeMillis()
                         val job = async {
@@ -713,7 +713,7 @@ fun HomeScreen(splashGone: Boolean) {
                             e
                         }
                         val err = withTimeoutOrNull(45000L) { job.await() }
-                        val wait = 900L - (System.currentTimeMillis() - t0)
+                        val wait = 4000L - (System.currentTimeMillis() - t0)
                         if (wait > 0) delay(wait)
                         keyBusy = false
                         if (err != null) toast.show(err, 4000L)
