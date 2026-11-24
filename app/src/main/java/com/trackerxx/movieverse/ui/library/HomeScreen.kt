@@ -83,6 +83,7 @@ import com.trackerxx.movieverse.ui.add.AddDialog
 import com.trackerxx.movieverse.ui.add.AddFlow
 import com.trackerxx.movieverse.ui.settings.SettingsDialog
 import com.trackerxx.movieverse.ui.components.riseIn
+import com.trackerxx.movieverse.ui.components.switchEnter
 import com.trackerxx.movieverse.ui.components.LocalModal
 import com.trackerxx.movieverse.ui.components.LocalToast
 import com.trackerxx.movieverse.ui.components.MvApiLoadingDialog
@@ -518,14 +519,8 @@ fun HomeScreen(splashGone: Boolean) {
                     val libShown = view == "library" && home == "lib"
                     if (libShown || libHeaderWarm) {
                         // light switch animation: tabs / search / filters fade in and rise a few dp (instant hide when leaving)
-                        val libA by androidx.compose.animation.core.animateFloatAsState(
-                            targetValue = if (libShown) 1f else 0f,
-                            animationSpec = if (libShown) androidx.compose.animation.core.tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
-                            else androidx.compose.animation.core.snap(),
-                            label = "libEnter"
-                        )
                         Column(
-                            Modifier.graphicsLayer { alpha = libA; translationY = (1f - libA) * 12f * dens }.layout { m, c ->
+                            Modifier.switchEnter(libShown).layout { m, c ->
                                 val p = m.measure(c)
                                 hdrPx[0] = p.height.toFloat()
                                 layout(p.width, if (libShown) p.height else 0) { if (libShown) p.placeRelative(0, 0) }
