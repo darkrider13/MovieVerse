@@ -13,6 +13,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
+import androidx.compose.ui.zIndex
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.key
+import kotlinx.coroutines.launch
+import com.trackerxx.movieverse.data.Ls
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -342,27 +349,89 @@ fun Hero(name: String, onAdd: () -> Unit) {
     )
 }
 
+private const val SWITCH_ORDER_KEY = "library.switchOrder"
+
+/** the saved order of the three home pills as ids (0 = Trending, 1 = Your Library, 2 = Releases); anything unexpected = default */
+private fun loadSwitchOrder(): List<Int> {
+    val l = try { Ls.getItem(SWITCH_ORDER_KEY)?.split(",")?.mapNotNull { it.trim().toIntOrNull() } } catch (e: Exception) { null }
+    return if (l != null && l.size == 3 && l.toSet() == setOf(0, 1, 2)) l else listOf(0, 1, 2)
+}
+
 /**
- * .hsw : Trending | Your Library | Releases. A tap picks a pill; press and hold, then slide the finger over the pills: the
+ * .hsw : Trending | Your Library | Releases. A tap picks a pill; touch and slide the finger over the pills: the
  * highlight follows the finger (a small tick on every pill) and the pill under the finger is picked when the finger lifts.
- * selected: 0 = Trending, 1 = Your Library, 2 = Releases
+ * Press and HOLD a pill (same as the library tabs) and it lifts: drag it left / right, the other pills glide out of the way,
+ * and the new order is saved. Dropping a pill does not switch the page.
+ * selected: 0 = Trending, 1 = Your Library, 2 = Releases (ids, not positions: the order of the pills can change)
  */
 @Composable
 fun HomeSwitch(selected: Int, onPick: (Int) -> Unit) {
     val labels = listOf("Trending", "Your Library", "Releases")
     val haptic = LocalHapticFeedback.current
-    var hover by remember { mutableIntStateOf(-1) }
+    val scope = rememberCoroutineScope()
+    var hover by remember { mutableIntStateOf(-1) }          // position under the finger (quick slide)
     val pickNow by rememberUpdatedState(onPick)
-    val on = if (hover >= 0) hover else selected
+    var order by remember { mutableStateOf(loadSwitchOrder()) }   // ids from left to right
+    var dragId by remember { mutableIntStateOf(-1) }         // id of the lifted pill, -1 = none
+    var dragX by remember { mutableFloatStateOf(0f) }        // left edge of the lifted pill (px, inside the row)
+    var widthPx by remember { mutableIntStateOf(0) }
+    val offs = remember { List(3) { Animatable(0f) } }       // glide offset of every pill (px)
+    val gapPx = with(LocalDensity.current) { 8.dp.toPx() }
+    val step = if (widthPx > 0) (widthPx - 2 * gapPx) / 3f + gapPx else 0f
+    val on = if (hover >= 0) hover else order.indexOf(selected)
     Row(
         Modifier
             .fillMaxWidth()
+            .onSizeChanged { widthPx = it.width }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    fun idx(x: Float): Int = ((x / size.width.toFloat()) * 3f).toInt().coerceIn(0, 2)
+                    val w = size.width.toFloat()
+                    val gap = 8.dp.toPx()
+                    val pw = (w - 2 * gap) / 3f
+                    val stp = pw + gap
+                    fun idx(x: Float): Int = (x / stp).toInt().coerceIn(0, 2)
                     var cur = idx(down.position.x)
                     hover = cur
+                    // 1) held still long enough: the pill is lifted and can be moved
+                    val lp = awaitLongPressOrCancellation(down.id)
+                    if (lp != null) {
+                        val id = order[cur]
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        hover = -1
+                        dragId = id
+                        val grab = down.position.x - cur * stp
+                        dragX = (lp.position.x - grab).coerceIn(0f, w - pw)
+                        while (true) {
+                            val ev = awaitPointerEvent()
+                            val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
+                            ch.consume()
+                            if (!ch.pressed) break
+                            dragX = (ch.position.x - grab).coerceIn(0f, w - pw)
+                            val to = ((dragX + pw / 2f) / stp).toInt().coerceIn(0, 2)
+                            val from = order.indexOf(id)
+                            if (to != from) {
+                                val l = order.toMutableList()
+                                l.removeAt(from); l.add(to, id)
+                                order = l
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
+                        }
+                        // dropped: the pill glides from where the finger left it into its slot
+                        val tx = dragX - order.indexOf(id) * stp
+                        dragId = -1
+                        try { Ls.setItem(SWITCH_ORDER_KEY, order.joinToString(",")) } catch (e: Exception) { }
+                        scope.launch { offs[id].snapTo(tx); offs[id].animateTo(0f, tween(170)) }
+                        return@awaitEachGesture
+                    }
+                    // 2) the finger lifted before the long press: a tap
+                    val still = currentEvent.changes.firstOrNull { it.id == down.id }
+                    if (still == null || !still.pressed) {
+                        hover = -1
+                        pickNow(order[cur])
+                        return@awaitEachGesture
+                    }
+                    // 3) the finger moved: slide over the pills, the one under the finger is picked on lift
                     var commit = false
                     val slopY = 28.dp.toPx()
                     while (true) {
@@ -379,13 +448,33 @@ fun HomeSwitch(selected: Int, onPick: (Int) -> Unit) {
                         if (n != idx(down.position.x)) ch.consume()
                     }
                     hover = -1
-                    if (commit) pickNow(cur)
+                    if (commit) pickNow(order[cur])
                 }
             },
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        labels.forEachIndexed { i, t ->
-            MvPill(t, on == i, {}, Modifier.weight(1f), fontSize = 14.sp, padH = 0.dp, padV = 10.dp, weight = FontWeight.Bold)
+        order.forEachIndexed { slot, id ->
+            key(id) {
+                // when a pill gets a new position it starts from where it was and glides to the new place
+                var prev by remember { mutableIntStateOf(slot) }
+                LaunchedEffect(slot) {
+                    if (prev != slot) {
+                        offs[id].snapTo(offs[id].value + (prev - slot) * step)
+                        prev = slot
+                        offs[id].animateTo(0f, tween(180))
+                    }
+                }
+                MvPill(
+                    labels[id], on == slot, {},
+                    Modifier.weight(1f).zIndex(if (dragId == id) 1f else 0f).graphicsLayer {
+                        val lifted = dragId == id
+                        translationX = if (lifted) dragX - slot * step else offs[id].value
+                        val sc = if (lifted) 1.06f else 1f
+                        scaleX = sc; scaleY = sc
+                    },
+                    fontSize = 14.sp, padH = 0.dp, padV = 10.dp, weight = FontWeight.Bold
+                )
+            }
         }
     }
 }
