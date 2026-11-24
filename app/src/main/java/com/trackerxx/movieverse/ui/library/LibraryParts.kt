@@ -177,7 +177,8 @@ fun TopNav(
     dirty: Boolean,
     onBrand: () -> Unit,
     onSettings: () -> Unit,
-    onSettingsLong: () -> Unit = {}
+    onSettingsLong: () -> Unit = {},
+    onUpdate: () -> Unit = {}
 ) {
     val c = Mv.c
     val tgSp = (LocalConfiguration.current.screenWidthDp * 0.026f).coerceIn(8.5f, 11f)
@@ -230,10 +231,30 @@ fun TopNav(
                         )
                     }
                 }
+                // "check for updates": same size and look as the gear, right next to it on its left
+                UpdateButton(onUpdate)
                 SettingsButton(dirty, onSettings, onSettingsLong)
             }
         }
         if (!glow) Box(Modifier.fillMaxWidth().height(1.dp).background(c.line))
+    }
+}
+
+/** 34x34 "check for updates" button (two round arrows), the twin of the gear button */
+@Composable
+private fun UpdateButton(onClick: () -> Unit) {
+    val c = Mv.c
+    val shape = RoundedCornerShape(9.dp)
+    Box(
+        Modifier
+            .size(34.dp)
+            .clip(shape)
+            .background(c.s)
+            .border(1.dp, c.line, shape)
+            .pointerInput(onClick) { detectTapGestures(onTap = { onClick() }) },
+        contentAlignment = Alignment.Center
+    ) {
+        MvIcon(MvIcons.Sync, 18.dp, tint = c.ink)
     }
 }
 
