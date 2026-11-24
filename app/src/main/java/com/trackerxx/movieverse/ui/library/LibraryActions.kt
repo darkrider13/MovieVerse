@@ -135,7 +135,7 @@ class LibraryActions(
     }
 
     /** saveOrder(ids): the shown cards were re-ordered; write "ord" for the whole tab so the order survives */
-    fun saveOrder(ids: List<String>, ordCtx: List<String>?) {
+    fun saveOrder(ids: List<String>, ordCtx: List<String>?, key: String = "ord") {
         if (ordCtx == null) {
             AppData.render()
             return
@@ -150,8 +150,8 @@ class LibraryActions(
         val ch = ArrayList<Movie>()
         full.forEachIndexed { i, id ->
             val m = by[id]
-            if (m != null && m.num("ord") != i.toDouble()) {
-                m.set("ord", i)
+            if (m != null && m.num(key) != i.toDouble()) {
+                m.set(key, i)
                 ch.add(m)
             }
         }

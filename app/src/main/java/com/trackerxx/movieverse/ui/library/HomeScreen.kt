@@ -354,7 +354,7 @@ fun HomeScreen(splashGone: Boolean) {
             if (view == "library" && home == "lib" && lvNow.total > lib.lim) lib.lim += 60
             if (view == "up") Releases.checkMore()
         }
-        grid.onReorder = { ids -> actions.saveOrder(ids, lvNow.ordCtx) }
+        grid.onReorder = { ids -> actions.saveOrder(ids, lvNow.ordCtx, lvNow.ordKey) }
         grid.onRetryTrend = { scope.launch { try { Trending.load(true) } catch (e: CancellationException) { throw e } catch (e: Exception) { } } }
         grid.onRetryUp = { Releases.retry() }
         grid.onMoreTap = { Releases.loadMore() }

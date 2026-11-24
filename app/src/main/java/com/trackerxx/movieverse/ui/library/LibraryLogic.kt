@@ -70,7 +70,9 @@ class LibView(
     val emptyText: String?,                  // text when there is nothing to show
     val showFilters: Boolean,
     private val ord: Lazy<List<String>>?,    // ids of the whole tab in "my order" (null = cards cannot be dragged here); sorted only when needed
-    private val full: List<Movie> = list     // the whole sorted list (list = its first lim cards)
+    private val full: List<Movie> = list,    // the whole sorted list (list = its first lim cards)
+    /** which field keeps the dragged order: "ord" (plain tab / folder) or "ordAll" (the All chip of a tab that has folders) */
+    val ordKey: String = "ord"
 ) {
     /** true when the cards of this view can be dragged (cheap, no sorting) */
     val canOrder: Boolean get() = ord != null
@@ -80,7 +82,7 @@ class LibView(
 
     /** the same page with only the first [lim] cards: cheap, nothing is filtered or sorted again */
     fun cut(lim: Int): LibView =
-        LibView(tabs, fo, folder, allCount, folderCounts, full.take(lim), total, inTabCount, flat, emptyText, showFilters, ord, full)
+        LibView(tabs, fo, folder, allCount, folderCounts, full.take(lim), total, inTabCount, flat, emptyText, showFilters, ord, full, ordKey)
 }
 
 private const val LOADING = "\u0001loading"
@@ -192,6 +194,28 @@ object LibraryLogic {
         return if (v.isNaN()) 0.0 else v
     }
 
+    private val addedDescCmp = Comparator<Movie> { a, b -> b.added.compareTo(a.added) }
+
+    /** the dragged order of the "All" chip of a tab that has folders (ordAll); movies without it are new = on top */
+    private val ordAllCmp = Comparator<Movie> { a, b ->
+        val ao = a.num("ordAll")
+        val bo = b.num("ordAll")
+        when {
+            ao == null && bo == null -> b.added.compareTo(a.added)
+            ao == null -> -1
+            bo == null -> 1
+            else -> ao.compareTo(bo)
+        }
+    }
+
+    /** the order the "All" chip of status [status] shows its cards in (the main All tab follows it) */
+    private fun tabAllCmp(status: String, movies: List<Movie>, folders: List<Folder>): Comparator<Movie> {
+        if (folders.any { it.status == status }) {
+            return if (movies.any { it.status == status && it.num("ordAll") != null }) ordAllCmp else addedDescCmp
+        }
+        return comparatorFor("new", status)
+    }
+
     private fun comparatorFor(key: String, tab: String): Comparator<Movie> {
         /* rating sort value: Watched tab = my own rating; every other tab = IMDb rating. Unrated / N/A always go last. */
         fun sv(m: Movie): Double = if (tab == "watched") scoreOf(m) else imdbValue(m)
@@ -277,16 +301,21 @@ object LibraryLogic {
         var cmp: Comparator<Movie> = comparatorFor(if (tab != "all") ff.s else "new", tab)
         val upAuto = tab == "upcoming" && ff.s == "new"
         if (upAuto) cmp = upCmp
-        if (allw && !upAuto && ff.s == "new") cmp = Comparator<Movie> { a, b -> b.added.compareTo(a.added) }
+        // the All chip of a tab with folders has its own dragged order ("ordAll"), so it never touches the order inside the folders;
+        // until the first drag it stays "new on top"
+        if (allw && !upAuto && ff.s == "new") cmp = tabAllCmp(tab, movies, folders)
         // my own order can be changed by dragging, only in a plain tab / folder view
         val cmpF = cmp
-        val ordCtx: Lazy<List<String>>? = if (tab != "all" && !upAuto && !flat && !allw && (folder == null || ff.s == "new"))
+        val ordCtx: Lazy<List<String>>? = if (tab != "all" && !upAuto && !flat && (folder == null || ff.s == "new"))
             lazy(LazyThreadSafetyMode.NONE) { inTab.sortedWith(cmpF).map { it.id } } else null
         if (tab == "all") {
             // order of the All tab: max 1 Watching, max 1 Plan to watch, all Coming Soon, the rest of Plan to watch,
             // the rest of Watching, then Favourite / other statuses, and Watched at the very end
-            val wt1 = list.filter { it.status == "watching" }.sortedWith(cmp).firstOrNull()
-            val pl1 = list.filter { it.status == "plan" }.sortedWith(cmp).firstOrNull()
+            // inside every status the cards follow the order of that status's own "All" chip, so the first card there is the one shown here
+            val cmpCache = HashMap<String, Comparator<Movie>>()
+            fun cmpOf(st: String): Comparator<Movie> = cmpCache.getOrPut(st) { tabAllCmp(st, movies, folders) }
+            val wt1 = list.filter { it.status == "watching" }.sortedWith(cmpOf("watching")).firstOrNull()
+            val pl1 = list.filter { it.status == "plan" }.sortedWith(cmpOf("plan")).firstOrNull()
             val rkMap = mapOf("upcoming" to 1.0, "plan" to 2.0, "watching" to 3.0, "favourite" to 3.5, "watched" to 9.0)
             fun rk(m: Movie): Double {
                 if (wt1 != null && m === wt1) return -3.0
@@ -299,7 +328,7 @@ object LibraryLogic {
             }
             list = list.sortedWith { a, b ->
                 val d = sign(rk(a) - rk(b))
-                if (d != 0) d else if (a.status == "upcoming" && b.status == "upcoming") upCmp.compare(a, b) else cmp.compare(a, b)
+                if (d != 0) d else if (a.status == "upcoming" && b.status == "upcoming") upCmp.compare(a, b) else if (a.status == b.status) cmpOf(a.status).compare(a, b) else cmp.compare(a, b)
             }
         } else {
             list = list.sortedWith(cmp)
@@ -337,7 +366,8 @@ object LibraryLogic {
             flat = flat,
             emptyText = empty,
             showFilters = tab != "all",
-            ord = ordCtx
+            ord = ordCtx,
+            ordKey = if (allw) "ordAll" else "ord"
         )
     }
 
