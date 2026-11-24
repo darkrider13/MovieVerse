@@ -57,9 +57,9 @@ fun PersonDialog(flow: AddFlow) {
     MvDialog(
         onDismiss = { pf.close() },
         onClose = { pf.close() },
-        // #pdlg{background:#000} / light: rgba(255,255,255,.96); .pdsc has 2px right padding instead of 4
+        // #pdlg{background:#000}; .pdsc has 2px right padding instead of 4
         padding = PaddingValues(start = 18.dp, top = 18.dp, end = 16.dp, bottom = 18.dp),
-        solidBackground = if (c.dark) Color.Black else Color(1f, 1f, 1f, 0.96f),
+        solidBackground = Color.Black,
         scrollState = pf.scroll.body
     ) {
         PersonBody(pf)
@@ -157,8 +157,8 @@ private fun PersonBody(pf: PersonFlow) {
             sc.pages.firstVisibleItemIndex > 0 || sc.pages.firstVisibleItemScrollOffset > w / 2
         }
     }
-    val on = if (c.dark) Color.White else Color(0xFF161830)
-    val off = if (c.dark) Color(1f, 1f, 1f, 0.28f) else Color(20 / 255f, 24 / 255f, 70 / 255f, 0.25f)
+    val on = Color.White
+    val off = Color(1f, 1f, 1f, 0.28f)
     Row(
         Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally)

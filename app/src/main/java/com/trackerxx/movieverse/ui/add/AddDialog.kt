@@ -164,7 +164,7 @@ private fun FindPhase(flow: AddFlow) {
                     Box(
                         Modifier.align(Alignment.CenterEnd).offset(x = 24.dp).size(16.dp).plainClickable { flow.onQuery("") }
                     ) {
-                        MvIcon(MvIcons.Close, 16.dp, tint = if (c.dark) Color.White else Color(0xFF111111))
+                        MvIcon(MvIcons.Close, 16.dp, tint = Color.White)
                     }
                 }
             }
