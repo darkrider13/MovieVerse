@@ -14,7 +14,7 @@ import java.net.URL
 import java.util.concurrent.Executors
 
 /** status + body of a finished request (like fetch's Response after .text()) */
-class HttpResult(val status: Int, val body: String) {
+class HttpResult(val status: Int, val body: String, val retryAfter: Int = 0) {
     /** r.ok */
     val ok: Boolean get() = status in 200..299
 }
@@ -64,7 +64,9 @@ object Http {
             val code = c.responseCode
             val stream = if (code in 200..399) c.inputStream else c.errorStream
             val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
-            HttpResult(code, text)
+            // "Retry-After: <seconds>" of a 429 / 503 answer (0 = not given or not a number of seconds)
+            val wait = c.getHeaderField("Retry-After")?.trim()?.toIntOrNull() ?: 0
+            HttpResult(code, text, wait)
         } finally {
             c.disconnect()
         }
