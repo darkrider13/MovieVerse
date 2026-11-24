@@ -121,8 +121,6 @@ fun SettingsDialog(
     val modal = LocalModal.current
     val scope = rememberCoroutineScope()
     val uri = LocalUriHandler.current
-    var updateOpen by remember { mutableStateOf(false) }
-    if (updateOpen) UpdateFlow(onClose = { updateOpen = false })
 
     MvDialog(
         onDismiss = onClose,
@@ -217,12 +215,6 @@ fun SettingsDialog(
                 MvButton("Save", { commitAndNotify(st, onSaved) }, Modifier.fillMaxWidth(), kind = BtnKind.Primary, size = BtnSize.Settings)
 
                 Row(Modifier.padding(top = 10.dp).fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-                    // small muted link on the empty left side of the credit: manual "check for updates"
-                    MvText(
-                        "Check for updates",
-                        Modifier.plainClickable { updateOpen = true }.padding(top = 8.dp, end = 12.dp, bottom = 2.dp),
-                        size = 9.sp, color = c.mut, lineHeight = 1.35f, letterSpacing = 0.2.sp
-                    )
                     Credit(uri::openUri, Modifier.weight(1f))
                 }
             }
