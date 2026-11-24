@@ -7,19 +7,28 @@ import android.os.Environment
 import android.provider.MediaStore
 import com.trackerxx.movieverse.data.AppData
 import com.trackerxx.movieverse.data.Movie
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipInputStream
 
 /** one subtitle of the list: Bangla or English only */
 class SubItem(
-    val url: String,
+    /** SubSource's subtitle id (used for the download) */
+    val id: String,
     val release: String,
     val code: String,      // BN | EN
     val author: String,
@@ -28,91 +37,353 @@ class SubItem(
     val hi: Boolean
 ) {
     val langName: String get() = if (code == "BN") "Bangla" else "English"
-    /** stable id for the row (download state) */
-    val id: String get() = url
 }
 
-/** answer of one search page */
+/** answer of one search page (SubSource sends the whole list at once, so `more` is always false) */
 class SubPage(val items: List<SubItem>, val more: Boolean)
 
 /**
- * Subtitles from SubDL (api.subdl.com). The key lives in Settings > "Subtitles" (api id `subs`, several keys are tried in turn).
- * Only Bangla (BN) and English (EN) are asked for. Download = the zip from dl.subdl.com, the subtitle files inside are
- * saved straight into the phone's Download folder.
+ * Subtitles from SubSource (api.subsource.net), same steps as the web version:
+ *  1. find the film's SubSource entries (IMDb id first, then a title search; a series has one entry per season),
+ *  2. list the Bangla / English subtitles of those entries,
+ *  3. download = the zip of that subtitle, the subtitle files inside are saved straight into the phone's Download folder.
+ * The key lives in Settings > "Subtitles" (api id `subs`) and is sent as the X-API-Key header.
  */
 object Subs {
-    private const val BASE = "https://api.subdl.com/api/v1/subtitles"
-    private const val DL = "https://dl.subdl.com"
-    const val PER_PAGE = 30
+    private const val BASE = "https://api.subsource.net/api/v1"
+    private val LANGS = mapOf("BN" to "bengali", "EN" to "english")
+
+    /** a SubSource entry of the film (a series has one per season; season 0 = a movie or a season-less entry) */
+    private class Entry(val id: String, val season: Int)
+
+    /** tmdbId -> entries found (so the two languages and the probe search only once) */
+    private val cache = ConcurrentHashMap<Long, List<Entry>>()
+    /** tmdbId -> entries with the same name and year but another IMDb id, tried only if the main ones have no subtitle */
+    private val altCache = ConcurrentHashMap<Long, List<Entry>>()
 
     fun keys(): List<String> = AppData.apis.apiKeys("subs").map { it.trim() }.filter { it.isNotEmpty() }
 
     fun hasKey(): Boolean = keys().isNotEmpty()
 
-    /** one language, one page. Throws an Exception with a readable message. */
-    suspend fun search(m: Movie, code: String, page: Int): SubPage {
-        val ks = keys()
-        if (ks.isEmpty()) throw IOException("NOKEY")
-        var last: Exception? = null
-        for (k in ks) {
-            try {
-                return one(m, code, page, k)
-            } catch (e: IOException) {
-                last = e
-                if (e.message == "NOKEY") throw e
-            }
-        }
-        throw last ?: IOException("Could not load subtitles")
+    // ---- low level -----------------------------------------------------------------------------------------------------
+
+    private fun check(status: Int) {
+        if (status == 401 || status == 403) throw IOException("The SubSource API key was not accepted")
+        if (status == 429) throw IOException("Too many requests. Try again in a minute.")
+        if (status == 404) throw IOException("NOTFOUND")
+        if (status >= 400) throw IOException("Could not load subtitles")
     }
 
-    private suspend fun one(m: Movie, code: String, page: Int, key: String): SubPage {
-        val tv = m.tmdbId < 0
-        val q = StringBuilder(BASE)
-        q.append("?api_key=").append(URLEncoder.encode(key, "UTF-8"))
-        q.append("&languages=").append(code)
-        q.append("&subs_per_page=").append(PER_PAGE)
-        q.append("&page=").append(page)
-        q.append("&type=").append(if (tv) "tv" else "movie")
-        if (m.tmdbId != 0L) {
-            q.append("&tmdb_id=").append(Math.abs(m.tmdbId))
-        } else {
-            q.append("&film_name=").append(URLEncoder.encode(m.title, "UTF-8"))
-            if (m.year.isNotEmpty()) q.append("&year=").append(URLEncoder.encode(m.year, "UTF-8"))
+    /** GET a JSON answer of SubSource; a 404 answers null */
+    private suspend fun getJson(path: String): Any? {
+        val k = keys().firstOrNull() ?: throw IOException("NOKEY")
+        val r = Http.get(
+            BASE + path, mapOf("X-API-Key" to k, "Accept" to "application/json"),
+            connectMs = 20000, readMs = 40000
+        )
+        try {
+            check(r.status)
+        } catch (e: IOException) {
+            if (e.message == "NOTFOUND") return null
+            throw e
         }
-        val r = Http.get(q.toString(), connectMs = 20000, readMs = 30000)
-        if (r.status == 401 || r.status == 403) throw IOException("The subtitle API key was not accepted")
-        if (r.status == 429) throw IOException("Subtitle limit reached, try again later")
-        val o = try { Http.parseObject(r.body) } catch (e: Exception) { throw IOException("Could not load subtitles") }
-        if (o.has("status") && !o.optBoolean("status", true)) {
-            val msg = o.optString("error", "")
-            throw IOException(if (msg.isNotEmpty()) msg else "Could not load subtitles")
-        }
-        val arr = o.optJSONArray("subtitles")
-        val out = ArrayList<SubItem>()
-        if (arr != null) {
-            for (i in 0 until arr.length()) {
-                val s = arr.optJSONObject(i) ?: continue
-                val url = s.optString("url", "")
-                if (url.isEmpty()) continue
-                val lc = s.optString("language", "").uppercase()
-                val ln = s.optString("lang", "").lowercase()
-                val c = when {
-                    lc == "BN" || ln.startsWith("bengali") || ln.startsWith("bangla") -> "BN"
-                    lc == "EN" || ln.startsWith("english") -> "EN"
-                    else -> continue
+        return try { Http.parseAny(r.body) } catch (e: Exception) { throw IOException("Could not load subtitles") }
+    }
+
+    /** the first list inside an answer (the answer may be a list, or hold it under data / results / subtitles / movies / items) */
+    private fun rows(j: Any?): List<JSONObject> {
+        val arr: JSONArray? = when (j) {
+            is JSONArray -> j
+            is JSONObject -> {
+                var f: JSONArray? = null
+                for (k in arrayOf("data", "results", "subtitles", "movies", "items")) {
+                    val v = j.opt(k)
+                    if (v is JSONArray) { f = v; break }
+                    if (v is JSONObject) {
+                        val r = rows(v)
+                        if (r.isNotEmpty()) return r
+                    }
                 }
-                var rel = s.optString("release_name", "")
-                if (rel.isEmpty()) rel = s.optString("name", "")
-                if (rel.isEmpty()) rel = m.title
-                out.add(
-                    SubItem(
-                        url = url, release = rel, code = c, author = s.optString("author", ""),
-                        season = s.optInt("season", 0), episode = s.optInt("episode", 0), hi = s.optBoolean("hi", false)
-                    )
-                )
+                f
+            }
+            else -> null
+        }
+        val out = ArrayList<JSONObject>()
+        if (arr != null) for (i in 0 until arr.length()) arr.optJSONObject(i)?.let { out.add(it) }
+        return out
+    }
+
+    private fun isHard(e: Exception): Boolean {
+        val m = e.message ?: return false
+        return m == "NOKEY" || m.contains("not accepted") || m.contains("Too many")
+    }
+
+    private fun txt(o: JSONObject, vararg keys: String): String {
+        for (k in keys) {
+            val v = o.opt(k)
+            if (v == null || v == JSONObject.NULL) continue
+            if (v is JSONArray) { if (v.length() > 0 && v.opt(0) is String) return v.getString(0) else continue }
+            if (v is String) { if (v.isNotEmpty()) return v } else if (v is Number) return v.toString()
+        }
+        return ""
+    }
+
+    private fun idOf(o: JSONObject): String =
+        txt(o, "movieId", "id", "movie_id")
+
+    private fun yearOf(o: JSONObject): Int =
+        txt(o, "releaseYear", "year", "release_year").toIntOrNull() ?: 0
+
+    private fun titleOf(o: JSONObject): String =
+        Net.qsearch.qn(txt(o, "title", "name").replace(Regex("\\(\\s*\\d{4}\\s*\\)\\s*$"), ""))
+
+    /** first value of a key (matched by regex) anywhere in the object, up to 3 levels deep */
+    private fun find(o: JSONObject?, re: Regex, depth: Int = 0): String? {
+        if (o == null || depth > 2) return null
+        val iter = o.keys()
+        while (iter.hasNext()) {
+            val k = iter.next()
+            val v = o.opt(k)
+            if (re.matches(k) && v != null && v != JSONObject.NULL && v !is JSONObject && v !is JSONArray) return v.toString()
+        }
+        val iter2 = o.keys()
+        while (iter2.hasNext()) {
+            val v = o.opt(iter2.next())
+            if (v is JSONObject) find(v, re, depth + 1)?.let { return it }
+        }
+        return null
+    }
+
+    private fun imdbDigits(o: JSONObject): String {
+        val v = find(o, Regex("^imdb_?(id)?$", RegexOption.IGNORE_CASE)) ?: return ""
+        return Regex("(?:tt)?(\\d{5,10})").find(v)?.groupValues?.get(1) ?: ""
+    }
+
+    private suspend fun imdbOf(m: Movie): String {
+        val have = m.str("imdbId")
+        if (!have.isNullOrEmpty()) return have
+        return try {
+            val d = Net.tmdb.get(Tmdb.path(m.tmdbId), mapOf("append_to_response" to "external_ids"))
+            d.optJSONObject("external_ids")?.optString("imdb_id", "") ?: ""
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    // ---- step 1: the film's SubSource entries ---------------------------------------------------------------------------
+
+    private fun seasonOf(o: JSONObject): Int {
+        val n = (txt(o, "season", "seasonNumber", "season_number")).toIntOrNull() ?: 0
+        if (n > 0) return n
+        val t = txt(o, "title", "name")
+        val r = Regex("season\\s*(\\d+)", RegexOption.IGNORE_CASE).find(t) ?: Regex("\\bS(\\d{1,2})\\b", RegexOption.IGNORE_CASE).find(t)
+        return r?.groupValues?.get(1)?.toIntOrNull() ?: 0
+    }
+
+    /** series: one entry per season (the season-less "All" entry is dropped when real seasons exist) */
+    private suspend fun tvEntries(m: Movie): List<Entry> {
+        val key = m.tmdbId
+        cache[key]?.let { return it }
+        val nt = Net.qsearch.qn(m.title)
+        val im = imdbOf(m)
+        var l: List<JSONObject> = emptyList()
+        if (im.isNotEmpty()) {
+            l = try { rows(getJson("/movies/search?searchType=imdb&imdb=" + URLEncoder.encode(im, "UTF-8"))) }
+            catch (e: IOException) { if (isHard(e)) throw e else emptyList() }
+        }
+        if (l.isEmpty()) {
+            l = try {
+                rows(getJson("/movies/search?searchType=text&q=" + URLEncoder.encode(m.title, "UTF-8")))
+                    .filter { Net.qsearch.qn(txt(it, "title", "name")).contains(nt) }
+            } catch (e: IOException) { if (isHard(e)) throw e else emptyList() }
+        }
+        val seen = HashSet<Int>()
+        var out = ArrayList<Entry>()
+        for (x in l) {
+            val id = idOf(x)
+            val sn = seasonOf(x)
+            if (id.isEmpty() || !seen.add(sn)) continue
+            out.add(Entry(id, sn))
+        }
+        val withSeason = out.filter { it.season > 0 }
+        val res = (if (withSeason.isNotEmpty()) withSeason else out).sortedBy { it.season }
+        cache[key] = res
+        return res
+    }
+
+    /** movie: every entry with the same title (+ year +-1); an entry with another IMDb id is kept aside as a fallback */
+    private suspend fun movieEntries(m: Movie): List<Entry> {
+        val key = m.tmdbId
+        cache[key]?.let { return it }
+        val yr = m.year.toIntOrNull() ?: m.rel.take(4).toIntOrNull() ?: 0
+        val nt = Net.qsearch.qn(m.title)
+        val ids = LinkedHashSet<String>()
+        val extra = LinkedHashSet<String>()
+        val im = imdbOf(m)
+        val myIm = im.filter { it.isDigit() }
+        fun okIm(x: JSONObject): Boolean {
+            val a = imdbDigits(x)
+            return myIm.isEmpty() || a.isEmpty() || a == myIm
+        }
+        fun same(l: List<JSONObject>): List<JSONObject> {
+            val o = ArrayList<JSONObject>()
+            for (x in l) {
+                if (titleOf(x) != nt) continue
+                val y = yearOf(x)
+                if (yr != 0 && y != 0 && Math.abs(y - yr) > 1) continue
+                if (okIm(x)) o.add(x) else idOf(x).takeIf { it.isNotEmpty() }?.let { extra.add(it) }
+            }
+            return o
+        }
+        fun byText(l: List<JSONObject>): JSONObject? {
+            for (x in l) if (okIm(x) && yr != 0 && yearOf(x) == yr && (titleOf(x).contains(nt) || nt.contains(titleOf(x)))) return x
+            if (yr == 0) for (x in l) if (okIm(x) && titleOf(x).contains(nt)) return x
+            return null
+        }
+        if (im.isNotEmpty()) {
+            try {
+                for (x in rows(getJson("/movies/search?searchType=imdb&imdb=" + URLEncoder.encode(im, "UTF-8")))) {
+                    val id = idOf(x)
+                    if (id.isEmpty()) continue
+                    if (okIm(x)) ids.add(id) else extra.add(id)
+                }
+            } catch (e: IOException) { if (isHard(e)) throw e }
+        }
+        suspend fun tq(q: String): List<JSONObject> = try {
+            val l = rows(getJson("/movies/search?searchType=text&q=" + URLEncoder.encode(q, "UTF-8")))
+            for (x in same(l)) idOf(x).takeIf { it.isNotEmpty() }?.let { ids.add(it) }
+            l
+        } catch (e: IOException) { if (isHard(e)) throw e else emptyList() }
+        val l0 = tq(m.title)
+        val l1 = if (yr != 0) tq(m.title + " " + yr) else emptyList()
+        if (ids.isEmpty()) byText(l0 + l1)?.let { x -> idOf(x).takeIf { it.isNotEmpty() }?.let { ids.add(it) } }
+        var main = ids.toList()
+        var alt = extra.filter { it !in ids }
+        if (main.isEmpty() && alt.isNotEmpty()) { main = alt; alt = emptyList() }
+        val res = main.map { Entry(it, 0) }
+        cache[key] = res
+        altCache[key] = alt.map { Entry(it, 0) }
+        return res
+    }
+
+    /** one look-up at a time: Bangla and English ask together, the second one then finds the answer in the cache */
+    private val lookLock = Mutex()
+
+    private suspend fun entries(m: Movie): List<Entry> =
+        lookLock.withLock { if (m.tmdbId < 0) tvEntries(m) else movieEntries(m) }
+
+    // ---- step 2: subtitles of the entries ------------------------------------------------------------------------------
+
+    private fun clean(t: String): String {
+        if (t.indexOf('&') < 0) return t
+        return if (Build.VERSION.SDK_INT >= 24) android.text.Html.fromHtml(t, android.text.Html.FROM_HTML_MODE_LEGACY).toString()
+        else @Suppress("DEPRECATION") android.text.Html.fromHtml(t).toString()
+    }
+
+    private fun nameOf(v: Any?): String {
+        var x = v
+        if (x is JSONArray) x = if (x.length() > 0) x.opt(0) else null
+        if (x is JSONObject) {
+            for (k in arrayOf("displayName", "display_name", "username", "userName", "name", "nickname", "fullName", "full_name")) {
+                val s = x.optString(k, "").trim()
+                if (s.isNotEmpty()) return s
+            }
+            return ""
+        }
+        return (x as? String)?.trim() ?: ""
+    }
+
+    private val OWNER = Regex(
+        "^(contributors?|uploaders?|uploader_?(name|id)?|uploaded_?by|authors?|author_?name|owners?|owner_?name|users?|user_?name|creators?|created_?by|translators?|submitted_?by|commentary_?by)$",
+        RegexOption.IGNORE_CASE
+    )
+    private val SKIP = Regex("rating|vote|file|link|release", RegexOption.IGNORE_CASE)
+
+    /** the uploader: any key that says contributor / uploader / author / owner ... (up to 3 levels deep) */
+    private fun owner(o: JSONObject?, d: Int = 0): String {
+        if (o == null || d > 3) return ""
+        val iter = o.keys()
+        while (iter.hasNext()) {
+            val k = iter.next()
+            if (OWNER.matches(k)) {
+                val v = nameOf(o.opt(k))
+                if (v.isNotEmpty() && !v.all { c -> c.isDigit() }) return v
             }
         }
-        return SubPage(out, (arr?.length() ?: 0) >= PER_PAGE)
+        val iter2 = o.keys()
+        while (iter2.hasNext()) {
+            val k = iter2.next()
+            val v = o.opt(k)
+            if (v is JSONObject && !SKIP.containsMatchIn(k)) {
+                val z = owner(v, d + 1)
+                if (z.isNotEmpty()) return z
+            }
+        }
+        return ""
+    }
+
+    /** the Bangla / English subtitles of one SubSource entry */
+    private suspend fun forEntry(e: Entry, code: String): List<SubItem> {
+        val lang = LANGS[code] ?: return emptyList()
+        val j = getJson("/subtitles?movieId=" + URLEncoder.encode(e.id, "UTF-8") + "&language=" + lang) ?: return emptyList()
+        val out = ArrayList<SubItem>()
+        for (x in rows(j)) {
+            val id = txt(x, "subtitleId", "id", "subtitle_id")
+            if (id.isEmpty()) continue
+            val l = x.optString("language", "").lowercase()
+            if (l.isNotEmpty() && !l.contains(lang) && !(code == "BN" && (l.contains("bangla") || l == "bn")) && !(code == "EN" && l == "en")) continue
+            var nm = clean(txt(x, "releaseInfo", "release_info", "release", "name", "title"))
+            if (nm.isEmpty()) nm = "Subtitle"
+            val hi = x.optBoolean("hearingImpaired", x.optBoolean("hi", false))
+            out.add(SubItem(id, nm, code, clean(owner(x)), e.season, 0, hi))
+        }
+        return out
+    }
+
+    private suspend fun forEntries(list: List<Entry>, code: String): List<SubItem> = coroutineScope {
+        val parts = list.map { e ->
+            async {
+                try { forEntry(e, code) } catch (x: CancellationException) { throw x } catch (x: IOException) { if (isHard(x)) throw x else emptyList() }
+            }
+        }
+        val seen = HashSet<String>()
+        val out = ArrayList<SubItem>()
+        for (p in parts) for (s in p.await()) if (seen.add(s.id)) out.add(s)
+        out
+    }
+
+    /** one language. SubSource sends everything at once: page 1 holds the whole list, later pages are empty. Throws an Exception with a readable message. */
+    suspend fun search(m: Movie, code: String, page: Int): SubPage {
+        if (keys().isEmpty()) throw IOException("NOKEY")
+        if (page > 1) return SubPage(emptyList(), false)
+        val es = entries(m)
+        if (es.isEmpty()) return SubPage(emptyList(), false)
+        var items = forEntries(es, code)
+        if (items.isEmpty() && m.tmdbId >= 0) {
+            val alt = altCache[m.tmdbId].orEmpty()
+            if (alt.isNotEmpty()) items = forEntries(alt, code)
+        }
+        return SubPage(items, false)
+    }
+
+    /** is there any Bangla / English subtitle? (a series: only the first 6 seasons are looked at, then "yes" so SubSource is not hammered) */
+    suspend fun probe(m: Movie): Boolean {
+        if (keys().isEmpty()) throw IOException("NOKEY")
+        val es = entries(m)
+        if (es.isEmpty()) return false
+        if (m.tmdbId < 0) {
+            for ((i, e) in es.withIndex()) {
+                if (i >= 6) return true
+                for (c in arrayOf("BN", "EN")) if (forEntry(e, c).isNotEmpty()) return true
+            }
+            return false
+        }
+        for (c in arrayOf("BN", "EN")) if (forEntries(es, c).isNotEmpty()) return true
+        val alt = altCache[m.tmdbId].orEmpty()
+        if (alt.isNotEmpty()) for (c in arrayOf("BN", "EN")) if (forEntries(alt, c).isNotEmpty()) return true
+        return false
     }
 
     private fun safe(s: String): String =
@@ -125,22 +396,31 @@ object Subs {
     }
 
     /**
-     * Downloads the zip and saves every subtitle file in it to the Download folder.
+     * Downloads the zip of a subtitle and saves every subtitle file in it to the Download folder.
      * Returns the names of the saved files (usually one).
      */
     suspend fun download(ctx: Context, m: Movie, sub: SubItem): List<String> = withContext(Dispatchers.IO) {
-        val c = URL(DL + (if (sub.url.startsWith("/")) sub.url else "/" + sub.url)).openConnection() as HttpURLConnection
+        val k = keys().firstOrNull() ?: throw IOException("NOKEY")
+        val c = URL(BASE + "/subtitles/" + URLEncoder.encode(sub.id, "UTF-8") + "/download").openConnection() as HttpURLConnection
         val bytes: ByteArray = try {
             c.connectTimeout = 20000
             c.readTimeout = 60000
             c.instanceFollowRedirects = true
             c.setRequestProperty("User-Agent", "MovieVerse/1.0 (Android)")
-            if (c.responseCode !in 200..299) throw IOException("Download failed (" + c.responseCode + ")")
+            c.setRequestProperty("X-API-Key", k)
+            c.setRequestProperty("Accept", "*/*")
+            val code = c.responseCode
+            if (code == 401 || code == 403) throw IOException("The SubSource API key was not accepted")
+            if (code == 429) throw IOException("Too many requests. Try again in a minute.")
+            if (code == 404) throw IOException("This subtitle is no longer available.")
+            if (code !in 200..299) throw IOException("Download failed ($code)")
             c.inputStream.use { st -> st.readBytes() }
         } finally {
             c.disconnect()
         }
-        val base = safe(m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "")) + " - " + sub.langName
+        // the file keeps the subtitle's own name (only characters Android does not allow are replaced)
+        val own = safe(sub.release.replace(Regex("\\.(srt|ass|ssa|vtt|sub|zip)$", RegexOption.IGNORE_CASE), "")).trimEnd('.', ' ')
+        val base = if (own.isNotEmpty()) own else safe(m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "")) + " - " + sub.langName
         val exts = setOf("srt", "ass", "ssa", "sub", "vtt")
         val files = ArrayList<Pair<String, ByteArray>>()
         val isZip = bytes.size > 4 && bytes[0] == 'P'.code.toByte() && bytes[1] == 'K'.code.toByte()
@@ -163,7 +443,7 @@ object Subs {
         for ((n, data) in files) {
             val ext = n.substringAfterLast('.', "srt").lowercase()
             val stem = safe(n.substringBeforeLast('.', n))
-            val name = (if (files.size == 1) base + (if (stem.isNotEmpty() && stem != "subtitle") " - $stem" else "") else "$base - $stem") + "." + ext
+            val name = (if (files.size == 1) base else "$base - $stem") + "." + ext
             saved.add(save(ctx, name, ext, data))
         }
         saved
