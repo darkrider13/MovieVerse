@@ -341,8 +341,8 @@ fun ReleaseFilterDialog(fk: String, onClose: () -> Unit) {
         }
         Spacer(Modifier.height(12.dp))
         val gap = 8.dp
-        Column(
-            Modifier.fillMaxWidth().heightIn(max = 136.dp).verticalScroll(rememberScrollState()).padding(vertical = 3.dp),
+        SnapFadeColumn(
+            Modifier.fillMaxWidth().heightIn(max = OPT_VIEW_3ROWS),
             verticalArrangement = Arrangement.spacedBy(gap)
         ) {
             shown.chunked(cols).forEach { row ->

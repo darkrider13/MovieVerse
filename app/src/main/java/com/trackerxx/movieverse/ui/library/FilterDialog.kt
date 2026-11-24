@@ -1,6 +1,14 @@
 package com.trackerxx.movieverse.ui.library
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.flow.filter
+import kotlin.math.abs
+import kotlin.math.roundToInt
+import com.trackerxx.movieverse.ui.components.scrollEdgeFade
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,6 +42,41 @@ import com.trackerxx.movieverse.ui.theme.MvNote
 import com.trackerxx.movieverse.ui.theme.MvText
 
 private val RATS = listOf("9" to "9+", "8" to "8+", "7" to "7+", "6" to "6+", "5" to "5+")
+
+
+/** pill height (38) + gap (8) of the option grids */
+internal val OPT_ROW_PITCH = 46.dp
+/** viewport that shows exactly three rows of pills */
+internal val OPT_VIEW_3ROWS = 130.dp
+
+/**
+ * Scrolling area of the filter dialogs: the pills melt away softly at the top / bottom edge while there is more to scroll to,
+ * and when the scrolling stops the list settles on a whole row, so no pill stays cut in half.
+ * [pitch] = distance from one row to the next (null = no settling, only the soft edges).
+ */
+@Composable
+internal fun SnapFadeColumn(
+    modifier: Modifier = Modifier,
+    pitch: Dp? = OPT_ROW_PITCH,
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val scroll = rememberScrollState()
+    val px = with(LocalDensity.current) { pitch?.toPx() ?: 0f }
+    if (pitch != null && px > 0f) {
+        LaunchedEffect(scroll, px) {
+            snapshotFlow { scroll.isScrollInProgress }.filter { !it }.collect {
+                val target = ((scroll.value / px).roundToInt() * px).roundToInt().coerceIn(0, scroll.maxValue)
+                if (abs(target - scroll.value) > 1) scroll.animateScrollTo(target)
+            }
+        }
+    }
+    Column(
+        modifier.scrollEdgeFade(scroll, 14.dp).verticalScroll(scroll),
+        verticalArrangement = verticalArrangement,
+        content = content
+    )
+}
 
 /** one option of the filter dialog (.fopts .pill) */
 @Composable
@@ -131,13 +174,9 @@ fun FilterDialog(
             )
         } else {
             val gap: Dp = 8.dp
-            val scroll = rememberScrollState()
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = if (rows3) 136.dp else maxH)
-                    .verticalScroll(scroll)
-                    .padding(vertical = if (rows3) 3.dp else 0.dp),
+            SnapFadeColumn(
+                Modifier.fillMaxWidth().heightIn(max = if (rows3) OPT_VIEW_3ROWS else maxH),
+                pitch = if (rows3) OPT_ROW_PITCH else null,
                 verticalArrangement = Arrangement.spacedBy(gap)
             ) {
                 options.chunked(cols).forEach { row ->
