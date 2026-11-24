@@ -8,7 +8,6 @@ import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.flow.filter
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import com.trackerxx.movieverse.ui.components.scrollEdgeFade
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,8 +49,7 @@ internal val OPT_ROW_PITCH = 46.dp
 internal val OPT_VIEW_3ROWS = 130.dp
 
 /**
- * Scrolling area of the filter dialogs: the pills melt away softly at the top / bottom edge while there is more to scroll to,
- * and when the scrolling stops the list settles on a whole row, so no pill stays cut in half.
+ * Scrolling area of the filter dialogs: no fade; when the scrolling stops the list settles on a whole row, so no pill stays cut in half.
  * [pitch] = distance from one row to the next (null = no settling, only the soft edges).
  */
 @Composable
@@ -72,7 +70,7 @@ internal fun SnapFadeColumn(
         }
     }
     Column(
-        modifier.scrollEdgeFade(scroll, 14.dp).verticalScroll(scroll),
+        modifier.verticalScroll(scroll),
         verticalArrangement = verticalArrangement,
         content = content
     )
