@@ -15,6 +15,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 sealed class SubsUi {
@@ -119,10 +120,12 @@ class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState)
         ui = SubsUi.Loading
         job = scope.launch {
             try {
-                val bn = async { Subs.search(m, "BN", 1) }
-                val en = async { Subs.search(m, "EN", 1) }
-                val b = bn.await()
-                val e = en.await()
+                // coroutineScope: a failing search is thrown HERE (caught below) instead of cancelling the parent job, which crashed the app
+                val (b, e) = coroutineScope {
+                    val bn = async { Subs.search(m, "BN", 1) }
+                    val en = async { Subs.search(m, "EN", 1) }
+                    Pair(bn.await(), en.await())
+                }
                 if (my != tok) return@launch
                 items.addAll(b.items)
                 items.addAll(e.items)
