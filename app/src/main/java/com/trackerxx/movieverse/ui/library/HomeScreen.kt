@@ -262,7 +262,16 @@ fun HomeScreen(splashGone: Boolean) {
     // ---- the poster grids live in a WebView: what the page tells the app, and what the app sends to the page -----------------
     val gridMode = if (view == "up") "up" else if (home == "trend") "trend" else "lib"
     // switching Trending <-> Your Library <-> Releases only shows the list that is already built in the page: instant, no reload
-    SideEffect { grid.setMode(gridMode) }
+    // Height of the Your Library block (tabs, search, filters) and of the header while Trending is open. With them the page already knows
+    // the right room for the header of Your Library WHEN the switch happens, so header and cards change in the same frame (no overlap).
+    val hdrPx = remember { FloatArray(2) }   // [0] Your Library block, [1] whole header measured on Trending
+    SideEffect {
+        if (gridMode == "lib" && hdrPx[0] > 0f && hdrPx[1] > 0f) {
+            val extra = if (AppData.apis.key.isNotEmpty()) 12f * dens else 0f   // the switch has 0 bottom space on Trending, 12dp on Your Library
+            grid.presetTop("lib", (hdrPx[1] + extra + hdrPx[0]) / dens)
+        }
+        grid.setMode(gridMode)
+    }
     SideEffect {
         grid.onTapLib = { id ->
             val m = AppData.movies.firstOrNull { it.id == id }
@@ -395,8 +404,11 @@ fun HomeScreen(splashGone: Boolean) {
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .graphicsLayer { translationY = -grid.scrollY.toFloat() }
-                        .onSizeChanged { grid.setTop(it.height / dens) }
+                        .graphicsLayer { translationY = -grid.scrollY.coerceAtLeast(0).toFloat() }   // never pushed down below its place
+                        .onSizeChanged {
+                            if (home == "trend" && view == "library") hdrPx[1] = it.height.toFloat()
+                            grid.setTop(it.height / dens)
+                        }
                         .scrollable(headScroll, Orientation.Vertical)
                         .padding(start = 16.dp, end = 16.dp, top = 16.dp)
                 ) {
@@ -419,6 +431,7 @@ fun HomeScreen(splashGone: Boolean) {
                         Column(
                             Modifier.layout { m, c ->
                                 val p = m.measure(c)
+                                hdrPx[0] = p.height.toFloat()
                                 layout(p.width, if (libShown) p.height else 0) { if (libShown) p.placeRelative(0, 0) }
                             }
                         ) {

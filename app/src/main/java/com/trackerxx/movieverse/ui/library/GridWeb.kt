@@ -127,6 +127,11 @@ class GridHost {
         if (ready) send("MV.theme(" + JSONObject.quote(json) + ")")
     }
 
+    /** room the header of list [m] will take: known BEFORE the switch, so the page gets it together with the mode (see sendMode) */
+    fun presetTop(m: String, dp: Float) {
+        topFor[m] = dp.roundToInt()
+    }
+
     /** room (in dp / CSS px) the Kotlin header takes above the first card */
     fun setTop(dp: Float) {
         pTop = dp.roundToInt()

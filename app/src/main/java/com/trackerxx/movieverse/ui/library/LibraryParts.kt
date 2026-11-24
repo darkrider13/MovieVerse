@@ -10,7 +10,14 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.horizontalScroll
@@ -364,11 +371,11 @@ fun TabsRow(
         val state = rememberLazyListState()
         var rowH by remember { mutableIntStateOf(0) }
         var pillH by remember { mutableIntStateOf(0) }
-        // The tabs sit in pages of three (All, Watching, Watched | next three ...). Item count = tabs + the "+" button.
+        // Three tabs are visible, a swipe moves one tab at a time and every tab always sits exactly in its slot (never cut in half).
+        // Item count = tabs + the "+" button.
         val totalNow by rememberUpdatedState(tabs.size + 1)
-        /** first item of the page `page`; the last page is pulled back so it is always full (never a half tab) */
-        fun pageStart(page: Int): Int = (page * 3).coerceAtMost((totalNow - 3).coerceAtLeast(0))
-        fun lastPage(): Int = ((totalNow + 2) / 3 - 1).coerceAtLeast(0)
+        /** the first visible item can be at most this one, so the last position always shows a full row of three */
+        fun maxFirst(): Int = (totalNow - 3).coerceAtLeast(0)
         /** scroll position measured in items (e.g. 1.5 = the second tab is half way) */
         fun posNow(): Float {
             val first = state.layoutInfo.visibleItemsInfo.firstOrNull() ?: return 0f
@@ -381,10 +388,10 @@ fun TabsRow(
                 val info = state.layoutInfo
                 val it = info.visibleItemsInfo.firstOrNull { x -> x.index == idx }
                 val fully = it != null && it.offset >= 0 && it.offset + it.size <= info.viewportEndOffset - info.viewportStartOffset + 1
-                if (!fully) state.scrollToItem(pageStart(idx / 3))
+                if (!fully) state.scrollToItem((idx - 1).coerceIn(0, maxFirst()))
             }
         }
-        // after a swipe (or after a tab was dropped) the row settles on the nearest page: no tab is ever left cut in half
+        // after a swipe (or after a tab was dropped) the row settles on the nearest tab: no tab is ever left cut in half
         LaunchedEffect(state) {
             var startPos = 0f
             var wasBusy = false
@@ -396,12 +403,11 @@ fun TabsRow(
                     wasBusy = false
                     if (totalNow <= 3) return@collect
                     val pos = posNow()
-                    val startPage = (startPos / 3f).roundToInt().coerceIn(0, lastPage())
-                    var page = (pos / 3f).roundToInt().coerceIn(0, lastPage())
-                    // a short swipe still turns the page
-                    val moved = pos / 3f - startPage
-                    if (page == startPage && abs(moved) > 0.12f) page = (startPage + (if (moved > 0f) 1 else -1)).coerceIn(0, lastPage())
-                    val ti = pageStart(page)
+                    val startItem = startPos.roundToInt()
+                    var ti = pos.roundToInt()
+                    // a short swipe still moves by one tab
+                    if (ti == startItem && abs(pos - startPos) > 0.12f) ti = startItem + (if (pos > startPos) 1 else -1)
+                    ti = ti.coerceIn(0, maxFirst())
                     val aligned = state.firstVisibleItemIndex == ti && state.firstVisibleItemScrollOffset <= 1
                     if (!aligned) state.animateScrollToItem(ti)
                 }
@@ -438,7 +444,7 @@ fun TabsRow(
                 ),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            flingBehavior = androidx.compose.foundation.gestures.ScrollableDefaults.flingBehavior()
+            flingBehavior = rememberSnapFlingBehavior(state)
         ) {
             items(shown, key = { it.first }) { t ->
                 val isDragged = drag.key == t.first
@@ -476,7 +482,8 @@ fun TabsRow(
                     selected = false, onClick = onAddStatus, modifier = Modifier.width(itemW),
                     fontSize = 16.sp, padH = 4.dp, padV = 8.dp, weight = FontWeight.ExtraBold
                 ) {
-                    MvText("\uFF0B", maxLines = 1, align = TextAlign.Center)
+                    // 16sp glyph, but the line box of a 12.5sp tab (12.5 * 1.45 / 16): the "+" pill is exactly as high as the other pills
+                    MvText("\uFF0B", lineHeight = 1.1328f, maxLines = 1, align = TextAlign.Center)
                 }
             }
         }
@@ -511,6 +518,12 @@ fun SearchRow(value: String, onValue: (String) -> Unit, count: String) {
     val shape = RoundedCornerShape(10.dp)
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    // The box can only get the focus after the user touches it: until then no cursor and no keyboard (nothing gives it the focus by itself).
+    // When the focus is gone again (keyboard closed, tap elsewhere) it is locked again.
+    var armed by remember { mutableStateOf(false) }
+    var hadFocus by remember { mutableStateOf(false) }
+    val focusReq = remember { FocusRequester() }
+    LaunchedEffect(armed) { if (armed) { try { focusReq.requestFocus() } catch (e: Exception) { } } }
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -519,7 +532,20 @@ fun SearchRow(value: String, onValue: (String) -> Unit, count: String) {
         BasicTextField(
             value = value,
             onValueChange = onValue,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .focusProperties { canFocus = armed }
+                .focusRequester(focusReq)
+                .onFocusChanged { st ->
+                    if (st.isFocused) hadFocus = true
+                    else if (hadFocus) { hadFocus = false; armed = false }
+                }
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        armed = true
+                    }
+                },
             singleLine = true,
             textStyle = mvTextStyle(14.sp, FontWeight.Normal, c.ink),
             cursorBrush = SolidColor(c.ink),
