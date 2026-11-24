@@ -144,18 +144,13 @@ object InfoModel {
             val votes = if (md != null && Js.truthy(md.opt("i")) && Js.truthy(md.opt("v"))) md.opt("v").toString() else s(m.j.opt("vc"))
             add("IMDb", rv, tone(Js.parseFloat(rv) * 10), "", votes)
         }
-        if (mdv("l").isNotEmpty()) add("Letterboxd", mdv("l"), tone(Js.parseFloat(mdv("l")) * 20), "/5", vts("l"))
         val rtc = if (mdv("rt").isNotEmpty()) mdv("rt") else (if (m.truthy("rt")) Js.parseInt(m.str("rt")).let { if (it.isNaN()) "NaN" else com.trackerxx.movieverse.data.jsNumToString(it) } else "")
         if (rtc.isNotEmpty() && rtc != "NaN") add("Tomatoes", "$rtc%", tone(Js.parseInt(rtc), true), "", vts("rt"), "Reviews")
         if (mdv("ra").isNotEmpty()) add("Popcorn", mdv("ra") + "%", tone(Js.parseInt(mdv("ra")), true), "", vts("ra"))
+        if (mdv("l").isNotEmpty()) add("Letterboxd", mdv("l"), tone(Js.parseFloat(mdv("l")) * 20), "/5", vts("l"))
         if (mdv("mc").isNotEmpty()) add("Metacritic", mdv("mc"), tone(Js.parseInt(mdv("mc")), true), "", vts("mc"), "Reviews")
         if (mdv("mu").isNotEmpty()) add("Metacritic Users", mdv("mu"), tone(Js.parseFloat(mdv("mu")) * 10), "", vts("mu"))
-        if (m.truthy("tm")) {
-            val tmv = m.num("tmv") ?: 0.0
-            add("TMDb", m.str("tm") ?: "", tone(Js.parseFloat(m.str("tm")) * 10), "", if (tmv > 0) Fmt.fmtV(tmv) else "")
-        }
-        if (mdv("tr").isNotEmpty()) add("Trakt", mdv("tr"), tone(Js.parseFloat(mdv("tr")) * 10), "", vts("tr"))
-        if (mdv("eb").isNotEmpty()) add("RogerEbert", mdv("eb"), tone(Js.parseFloat(mdv("eb")) * 25), "/4", "", "Reviews")
+        // MyAnimeList only exists for anime (MDBList returns it only for those). TMDb, Trakt and Roger Ebert are not shown.
         if (mdv("ma").isNotEmpty()) add("MyAnimeList", mdv("ma"), tone(Js.parseFloat(mdv("ma")) * 10), "", vts("ma"))
         return p
     }

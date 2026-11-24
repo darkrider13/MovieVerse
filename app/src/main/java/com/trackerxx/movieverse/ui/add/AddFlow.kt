@@ -431,13 +431,7 @@ class AddFlow(
                 m.ld = false
                 val ch = x.getOrNull(0) == true || x.getOrNull(1) == true
                 if (ch) {
-                    val sf = Enrich.snapF
-                    if (bf != null && sf != null) {
-                        val af = sf(m)
-                        val cf = Enrich.chgF[m.id] ?: java.util.concurrent.ConcurrentHashMap<String, Boolean>()
-                        for ((k, v) in af) if (v.toString() != bf[k].toString()) cf[k] = true
-                        Enrich.chgF[m.id] = cf
-                    }
+                    if (bf != null) Enrich.noteChg(m, bf, true)   // glowing tile only for non-quiet fields; no poster pulse from here
                     AppData.db.putMany(listOf(m))
                 }
                 if (editId == m.id && phase == "form") infoRev++
