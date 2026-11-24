@@ -38,6 +38,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -76,6 +82,26 @@ fun PersonDialog(flow: AddFlow) {
         PersonBody(pf)
     }
 }
+
+/**
+ * Soft fade at the top edge of a scrolling list: while the list is scrolled, the rows that slide up under the tabs melt away
+ * softly (up to [fade] high). At the very top nothing is faded; a few pixels of scroll fade in gradually.
+ */
+private fun Modifier.topFade(state: LazyListState, fade: Dp = 30.dp): Modifier =
+    this
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            val f = fade.toPx()
+            val off = if (state.firstVisibleItemIndex > 0) f else state.firstVisibleItemScrollOffset.toFloat().coerceIn(0f, f)
+            if (off > 0f) {
+                drawRect(
+                    Brush.verticalGradient(listOf(Color.Black.copy(alpha = 1f - off / f), Color.Black), startY = 0f, endY = f),
+                    size = Size(size.width, f),
+                    blendMode = BlendMode.DstIn
+                )
+            }
+        }
 
 @Composable
 private fun NoteP(text: String) {
@@ -168,7 +194,7 @@ private fun ColumnScope.PersonBody(pf: PersonFlow) {
         item {
             Column(Modifier.fillParentMaxWidth().fillMaxHeight()) {
                 val list = if (pf.top) d.top else d.latest
-                LazyColumn(Modifier.fillMaxSize(), state = sc.mv, contentPadding = PaddingValues(bottom = 20.dp)) {
+                LazyColumn(Modifier.fillMaxSize().topFade(sc.mv), state = sc.mv, contentPadding = PaddingValues(bottom = 20.dp)) {
                     if (d.upcoming.isNotEmpty()) {
                         item { Ph3("Upcoming movies") }
                         items(d.upcoming) { x -> CreditRow(x, 69.dp, false) { pf.pick(it) } }
@@ -271,7 +297,7 @@ private fun ColumnScope.AwardsPage(pf: PersonFlow) {
         is AwState.Rows -> {
             val st = pf.scroll.aw
             LazyColumn(
-                Modifier.fillMaxWidth().weight(1f), state = st,
+                Modifier.fillMaxWidth().weight(1f).topFade(st), state = st,
                 flingBehavior = rememberSnapFlingBehavior(st)
             ) {
                 items(a.rows) { r -> AwardRow(r) }
