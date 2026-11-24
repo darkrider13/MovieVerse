@@ -148,56 +148,23 @@ fun CastBlock(data: CastData, onPerson: (Long) -> Unit) {
 }
 
 /**
- * One row, four people visible. Works like the Library tabs: one swipe moves exactly ONE card, and after every swipe the row
- * settles so that every card sits exactly in its slot (a person is never left cut in half, not at the left, not at the right,
- * not at the end of the row). The small dot between the crew and the actors is not a row item: it is drawn in the 6dp gap in
- * front of the first actor, so every slot has the same width.
+ * One row, four people visible. Normal, smooth native scrolling: the row flings freely with the finger's speed and then the
+ * snap behaviour glides it to the nearest card start, so every card ends exactly in its slot (a person is never left cut in
+ * half, not at the left, not at the right, not at the end of the row). At the end of the row the last four cards fill the width
+ * exactly (card width = (row width - 3 gaps) / 4), so the end position is aligned too.
+ * The small dot between the crew and the actors is not a row item: it is drawn in the 6dp gap in front of the first actor,
+ * so every slot has the same width.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CastRow(crew: List<CastPerson>, cast: List<CastPerson>, cw: androidx.compose.ui.unit.Dp, onPerson: (Long) -> Unit) {
     val st = rememberLazyListState()
-    val dens = LocalDensity.current.density
-    val total = crew.size + cast.size
-    val totalNow by rememberUpdatedState(total)
-    /** the first visible card can be at most this one, so the last position always shows four whole cards */
-    fun maxFirst(): Int = (totalNow - 4).coerceAtLeast(0)
-    /** scroll position measured in cards (1.5 = the second card is half way) */
-    fun posNow(): Float {
-        val first = st.layoutInfo.visibleItemsInfo.firstOrNull() ?: return 0f
-        val step = (first.size + 6 * dens).coerceAtLeast(1f)
-        return st.firstVisibleItemIndex + st.firstVisibleItemScrollOffset / step
-    }
-    LaunchedEffect(st) {
-        var startPos = 0f
-        var wasBusy = false
-        snapshotFlow { st.isScrollInProgress }.collect { busy ->
-            if (busy) {
-                if (!wasBusy) startPos = posNow()
-                wasBusy = true
-            } else {
-                wasBusy = false
-                val pos = posNow()
-                val startItem = startPos.roundToInt()
-                var ti = pos.roundToInt()
-                // one swipe = one card (a short swipe too); a tiny move settles back
-                if (kotlin.math.abs(pos - startPos) > 0.12f) ti = startItem + (if (pos > startPos) 1 else -1)
-                else ti = startItem
-                ti = ti.coerceIn(0, maxFirst())
-                val aligned = st.firstVisibleItemIndex == ti && st.firstVisibleItemScrollOffset <= 1
-                if (!aligned) st.animateScrollToItem(ti)
-            }
-        }
-    }
     LazyRow(
         Modifier.fillMaxSize(), state = st,
         contentPadding = PaddingValues(top = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        // no free fling: the swipe is finished by the settle above, one card at a time
-        flingBehavior = remember {
-            object : FlingBehavior {
-                override suspend fun ScrollScope.performFling(initialVelocity: Float): Float = 0f
-            }
-        }
+        // native fling + snap to the card grid (no custom settle animation that can be interrupted and leave the row stuck)
+        flingBehavior = rememberSnapFlingBehavior(st)
     ) {
         items(crew) { p -> CastCard(p, cw, onPerson) }
         itemsIndexed(cast) { i, p ->
