@@ -70,7 +70,7 @@ class LibraryActions(
                 AppData.saveStatuses()
                 AppData.saveFolders()
                 AppData.rebuildSL()
-                lib.tab = AppData.statuses.firstOrNull()?.id ?: "upcoming"
+                lib.tab = "all"
                 lib.folder = null
                 AppData.render()
                 toast.show("Status deleted")

@@ -209,9 +209,9 @@ fun HomeScreen(splashGone: Boolean) {
     LaunchedEffect(folderEff, lib.folder) { if (lib.folder != folderEff) lib.folder = folderEff }
     val fctx = lib.tab + ":" + (folderEff ?: "")
     val ffEff = if (lib.ffor == fctx) lib.ff else FilterState()
-    // the "All" tab is gone: a tab id that no longer exists (or the old "all") falls back to the first pill
+    // a tab id that no longer exists (e.g. a deleted status) falls back to the "All" pill
     LaunchedEffect(rev, ready) {
-        if (ready && AppData.statuses.isNotEmpty() && AppData.statuses.none { it.id == lib.tab }) lib.openTab(AppData.statuses[0].id)
+        if (ready && lib.tab != "all" && AppData.statuses.none { it.id == lib.tab }) lib.openTab("all")
     }
     LaunchedEffect(fctx) { delay(2500); shownKey = fctx }   // safety: never stay on the loading screen
     LaunchedEffect(fctx) {
@@ -674,7 +674,7 @@ fun HomeScreen(splashGone: Boolean) {
 
     // ---- filter dialog ---------------------------------------------------------------------------------------------------
     fkey?.let { k ->
-        val pool = AppData.movies.toTypedArray().filter { it.status == lib.tab && (if (folderEff != null) it.folder == folderEff else true) }
+        val pool = AppData.movies.toTypedArray().filter { (lib.tab == "all" || it.status == lib.tab) && (if (folderEff != null) it.folder == folderEff else true) }
         FilterDialog(
             fkey = k, ff = ffEff, pool = pool,
             onChange = { nf2 -> lib.ff = nf2; lib.lim = 60 },

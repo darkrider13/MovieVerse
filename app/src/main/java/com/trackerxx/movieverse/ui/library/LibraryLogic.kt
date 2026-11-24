@@ -34,8 +34,8 @@ val SORTS = listOf(
 /** The Library page's own state: tab, folder, search text, filters, how many cards are loaded (lim). */
 @Stable
 class LibraryState {
-    // no "All" tab any more: the Library opens on the first status (Coming Soon); HomeScreen corrects it when that status does not exist
-    var tab by mutableStateOf("upcoming")
+    // the Library opens on the "All" tab (first pill, before every status) on a fresh app start
+    var tab by mutableStateOf("all")
     var folder by mutableStateOf<String?>(null)
     var country by mutableStateOf("all")
 
@@ -283,16 +283,19 @@ object LibraryLogic {
         val ordCtx: Lazy<List<String>>? = if (tab != "all" && !upAuto && !flat && !allw && (folder == null || ff.s == "new"))
             lazy(LazyThreadSafetyMode.NONE) { inTab.sortedWith(cmpF).map { it.id } } else null
         if (tab == "all") {
-            val wt = list.filter { it.status == "watching" }.sortedWith(cmp).take(2)
-            val rkMap = mapOf("watching" to 1.5, "upcoming" to 1.0, "plan" to 2.0, "favourite" to 3.0, "watched" to 4.0)
+            // order of the All tab: max 1 Watching, max 1 Plan to watch, all Coming Soon, the rest of Plan to watch,
+            // the rest of Watching, then Favourite / other statuses, and Watched at the very end
+            val wt1 = list.filter { it.status == "watching" }.sortedWith(cmp).firstOrNull()
+            val pl1 = list.filter { it.status == "plan" }.sortedWith(cmp).firstOrNull()
+            val rkMap = mapOf("upcoming" to 1.0, "plan" to 2.0, "watching" to 3.0, "favourite" to 3.5, "watched" to 9.0)
             fun rk(m: Movie): Double {
-                val wi = wt.indexOf(m)
-                if (wi >= 0) return (wi - 2).toDouble()
+                if (wt1 != null && m === wt1) return -3.0
+                if (pl1 != null && m === pl1) return -2.0
                 val r = rkMap[m.status]
                 if (r != null) return r
                 var k = 0
                 statuses.forEachIndexed { i, x -> if (x.id == m.status) k = i }
-                return (5 + k).toDouble()
+                return 4.0 + k * 0.01
             }
             list = list.sortedWith { a, b ->
                 val d = sign(rk(a) - rk(b))
@@ -323,10 +326,10 @@ object LibraryLogic {
         else "Your library is empty. Tap Add to Library, or browse Coming Soon."
 
         return LibView(
-            tabs = statuses.map { it.id to (SL[it.id] ?: "") },
+            tabs = listOf("all" to "All") + statuses.map { it.id to (SL[it.id] ?: "") },
             fo = fo,
             folder = folder,
-            allCount = movies.count { it.status == tab },
+            allCount = if (tab == "all") movies.size else movies.count { it.status == tab },
             folderCounts = counts,
             list = shown,
             total = total,
