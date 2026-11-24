@@ -151,6 +151,12 @@ class ImportFlow(
         var read = 0L
     }
 
+    /** the loading stays for at least 4 seconds from the start of the import, whatever comes next (popup, message) */
+    private suspend fun hold(r: Run) {
+        val left = 4000L - (System.currentTimeMillis() - r.t0)
+        if (left > 0) delay(left)
+    }
+
     /** importFile(f) */
     private suspend fun importFile(uri: Uri, p: Pending) {
         val r = Run(fileSize(uri).coerceAtLeast(1L))
@@ -170,10 +176,12 @@ class ImportFlow(
         } catch (e: CancellationException) {
             throw e
         } catch (e: NotBackup) {
+            hold(r)
             progress = null
             p.closeSettings()
             toast.show("Only an Excel (.xlsx) MovieVerse backup can be imported.")
         } catch (e: Exception) {
+            hold(r)
             try { AppData.render() } catch (x: Exception) { }
             progress = null
             p.closeSettings()
@@ -274,6 +282,7 @@ class ImportFlow(
     /** finish() */
     private suspend fun finish(r: Run, found: Boolean, p: Pending) {
         if (!found) {
+            hold(r)
             progress = null
             p.closeSettings()
             toast.show("Only an Excel (.xlsx) MovieVerse backup can be imported.")
@@ -322,9 +331,7 @@ class ImportFlow(
             }
         }
         AppData.render()
-        // the loading stays for at least 4 seconds, then the popup comes
-        val left = 4000L - (System.currentTimeMillis() - r.t0)
-        if (left > 0) delay(left)
+        hold(r)   // the loading stays for at least 4 seconds, then the popup comes
         progress = null
         p.closeSettings()
         if (!hasK) {

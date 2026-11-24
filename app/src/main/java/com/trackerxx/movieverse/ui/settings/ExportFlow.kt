@@ -129,8 +129,10 @@ class ExportFlow(
     }
 
     /** the Excel file is streamed (a movie at a time, 500 movies per caption update), so a big library never sits in memory */
-    private suspend fun write(out: OutputStream) = withContext(Dispatchers.IO) {
-        out.use { o -> XlsxBackup.write(o) { i -> bkPg(i) } }
+    private suspend fun write(out: OutputStream, quiet: Boolean = false) = withContext(Dispatchers.IO) {
+        // quiet = the Share button: no loading animation, so the progress caption is not updated
+        val cb: ((Int) -> Unit)? = if (quiet) null else { i -> bkPg(i) }
+        out.use { o -> XlsxBackup.write(o, cb) }
     }
 
     /** Android 9 and older need the storage permission for Documents (Capacitor asked for it too); a "no" just ends in the share fallback */
@@ -171,10 +173,10 @@ class ExportFlow(
 
     /** shareBk(): file in the cache folder -> Android share sheet */
     private suspend fun share(name: String) {
-        progOn()
+        // no loading animation here: the share options come up directly
         try {
             val f = File(ctx.cacheDir, name)
-            withContext(Dispatchers.IO) { write(f.outputStream()) }
+            write(f.outputStream(), true)
             progress = null
             val uri = FileProvider.getUriForFile(ctx, ctx.packageName + ".fileprovider", f)
             if (chooser(uri, name)) {
