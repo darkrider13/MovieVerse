@@ -22,8 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.unit.dp
 import com.trackerxx.movieverse.data.AppData
 import com.trackerxx.movieverse.ui.library.HomeScreen
 import com.trackerxx.movieverse.ui.settings.UpdateFlow
@@ -34,6 +32,7 @@ import com.trackerxx.movieverse.ui.components.ModalHost
 import com.trackerxx.movieverse.ui.components.ModalState
 import com.trackerxx.movieverse.ui.components.ToastBridge
 import com.trackerxx.movieverse.ui.components.ToastHost
+import com.trackerxx.movieverse.ui.components.coveredBlur
 import com.trackerxx.movieverse.ui.components.rememberToastState
 import com.trackerxx.movieverse.ui.theme.Mv
 import com.trackerxx.movieverse.ui.theme.MovieVerseTheme
@@ -49,11 +48,11 @@ fun MovieVerseApp() {
         val modal = remember { ModalState() }
         SideEffect { ToastBridge.state = toast }
         CompositionLocalProvider(LocalToast provides toast, LocalModal provides modal) {
-            // while any popup is open the whole page behind it is blurred (14dp, Android 12+; older phones only get the dim).
-            // The blur comes and goes INSTANTLY with the popup (no animation either way).
-            val blurR = if (toast.popups > 0) 14.dp else 0.dp
+            // while a popup is open above the library it is blurred (14dp, Android 12+; older phones only get the dim). Pages and
+            // lower popups blur themselves the same way (coveredBlur). The blur comes and goes INSTANTLY with the popup:
+            // it is only a layer property, so nothing is recomposed or measured again when it switches.
             Box(Modifier.fillMaxSize().background(c.bg)) {
-              Box(Modifier.fillMaxSize().then(if (blurR > 0.dp) Modifier.blur(blurR) else Modifier).background(c.bg)) {
+              Box(Modifier.fillMaxSize().coveredBlur(toast, null).background(c.bg)) {
                 // page area = the screen minus status bar / navigation bar (like the old non-overlay WebView)
                 Box(
                     Modifier
