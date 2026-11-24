@@ -53,6 +53,8 @@ class CastFlow(private val scope: CoroutineScope, private val toast: ToastState)
                 val d = Credits.buildCast(c)
                 if (d.crew.isEmpty() && d.cast.isEmpty()) return@async
                 data = d
+                // the crew and the first actors: their popups are prepared now, so a tap opens them instantly
+                Credits.prefetchPeople((d.crew + d.cast.take(10)).map { it.id }.filter { it != 0L }.distinct())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -183,28 +185,44 @@ class PersonFlow(private val scope: CoroutineScope, private val onPick: (Long) -
         scroll = PersonScroll()
         open = true
         val t = ++tok
+        // already loaded (prefetched while the movie page was open): everything is there in the same frame, no "Loading…"
+        val hit = Credits.cachedPerson(id)
+        if (hit != null) {
+            data = hit
+            loadAwards(hit, t)
+            return
+        }
         scope.launch {
             try {
                 val p = Credits.person(id)
                 if (t != tok) return@launch
                 data = p
-                scope.launch {
-                    try {
-                        val rows = Credits.awards(p.wikidataId, p.all, p.name)
-                        if (t != tok) return@launch
-                        aw = if (rows.isEmpty()) AwState.Note("No award data found.") else AwState.Rows(rows)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: AwardsFail) {
-                        if (t == tok) aw = AwState.Fail(e.message ?: "Could not load awards.")
-                    } catch (e: Exception) {
-                        if (t == tok) aw = AwState.Fail("Could not load awards.")
-                    }
-                }
+                loadAwards(p, t)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 if (t == tok) failed = true
+            }
+        }
+    }
+
+    private fun loadAwards(p: PersonData, t: Int) {
+        val cached = Credits.cachedAwards(p.wikidataId, p.name)
+        if (cached != null) {
+            aw = if (cached.isEmpty()) AwState.Note("No award data found.") else AwState.Rows(cached)
+            return
+        }
+        scope.launch {
+            try {
+                val rows = Credits.awards(p.wikidataId, p.all, p.name)
+                if (t != tok) return@launch
+                aw = if (rows.isEmpty()) AwState.Note("No award data found.") else AwState.Rows(rows)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: AwardsFail) {
+                if (t == tok) aw = AwState.Fail(e.message ?: "Could not load awards.")
+            } catch (e: Exception) {
+                if (t == tok) aw = AwState.Fail("Could not load awards.")
             }
         }
     }
