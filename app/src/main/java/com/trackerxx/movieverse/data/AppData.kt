@@ -18,7 +18,6 @@ object AppData {
         private set
     lateinit var apis: ApiKeys
         private set
-        private set
 
     /** the library (loaded from the database at start) */
     var movies: MutableList<Movie> = ArrayList()
