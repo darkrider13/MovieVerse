@@ -538,10 +538,13 @@ fun MvPage(
     edgeFade: Boolean = false,
     scrollable: Boolean = true,
     instantIn: Boolean = false,
+    resetKey: Any? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val c = Mv.c
-    val pageScroll = rememberScrollState()
+    // always starts at the very top: not saved/restored (no rememberSaveable) and reset whenever resetKey (the shown movie) changes
+    val pageScroll = remember(resetKey) { ScrollState(0) }
+    LaunchedEffect(resetKey) { pageScroll.scrollTo(0) }
     val currentBack by rememberUpdatedState(onBack)
     val toast = LocalToast.current
     var myDepth by remember { mutableIntStateOf(0) }
