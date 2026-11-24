@@ -84,6 +84,20 @@ fun PersonDialog(flow: AddFlow) {
 }
 
 /**
+ * Movies <-> Awards transition: the page that leaves melts away (fade + a little shrink) in the first half of the swipe and the
+ * new one grows in during the second half. At the middle both are invisible, so the two lists are never drawn over each other.
+ */
+private fun Modifier.pageSwap(state: LazyListState, page: Int): Modifier = graphicsLayer {
+    val w = (state.layoutInfo.viewportEndOffset - state.layoutInfo.viewportStartOffset).coerceAtLeast(1)
+    val p = ((state.firstVisibleItemIndex * w + state.firstVisibleItemScrollOffset) / w.toFloat()).coerceIn(0f, 1f)
+    val a = (if (page == 0) 1f - 2f * p else 2f * p - 1f).coerceIn(0f, 1f)
+    alpha = a
+    val k = 0.94f + 0.06f * a
+    scaleX = k
+    scaleY = k
+}
+
+/**
  * Soft fade at the top edge of a scrolling list: while the list is scrolled, the rows that slide up under the tabs melt away
  * softly (up to [fade] high). At the very top nothing is faded; a few pixels of scroll fade in gradually.
  */
@@ -192,7 +206,7 @@ private fun ColumnScope.PersonBody(pf: PersonFlow) {
         flingBehavior = rememberSnapFlingBehavior(sc.pages)
     ) {
         item {
-            Column(Modifier.fillParentMaxWidth().fillMaxHeight()) {
+            Column(Modifier.fillParentMaxWidth().fillMaxHeight().pageSwap(sc.pages, 0)) {
                 val list = if (pf.top) d.top else d.latest
                 LazyColumn(Modifier.fillMaxSize().topFade(sc.mv), state = sc.mv, contentPadding = PaddingValues(bottom = 20.dp)) {
                     if (d.upcoming.isNotEmpty()) {
@@ -211,7 +225,7 @@ private fun ColumnScope.PersonBody(pf: PersonFlow) {
             }
         }
         item {
-            Column(Modifier.fillParentMaxWidth().fillMaxHeight()) {
+            Column(Modifier.fillParentMaxWidth().fillMaxHeight().pageSwap(sc.pages, 1)) {
                 AwardsPage(pf)
             }
         }
