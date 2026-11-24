@@ -24,7 +24,7 @@ img{-webkit-user-drag:none;pointer-events:none}
 .enter{animation:mventer .28s cubic-bezier(.2,.7,.2,1)}
 /* Trending -> Library: the first 4 posters come in one after the other (soft fade, small rise and scale) */
 @keyframes mvstag{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
-.card.stg{animation:mvstag .42s cubic-bezier(.2,.7,.2,1) both;will-change:transform,opacity}
+.card.stg,.tcard.stg{animation:mvstag .42s cubic-bezier(.2,.7,.2,1) both;will-change:transform,opacity}
 .card.stp{opacity:0}
 .cap{position:absolute;left:0;right:0;bottom:0;padding:26px 9px 8px;background:linear-gradient(rgba(8,10,20,0),rgba(8,10,20,.92));color:#fff;display:flex;align-items:flex-end;gap:6px}
 .cap>div{flex:1;min-width:0}
@@ -205,6 +205,23 @@ function holdFirst(){
   var cs=grid.querySelectorAll('.card'),n=Math.min(4,cs.length);
   for(var i=0;i<cs.length;i++){cs[i].classList.remove('stg');cs[i].style.animationDelay='';if(i<n)cs[i].classList.add('stp');else cs[i].classList.remove('stp')}
 }
+/* Trending + Releases: same entrance as the Library, but for EVERY card that is on screen (not only 4), one after the other (70 ms apart) */
+function onScreen(el){
+  var r=el.getBoundingClientRect();
+  return r.width>0&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth;
+}
+function enterCards(list){
+  var v=[];
+  for(var i=0;i<list.length;i++){if(list[i]&&list[i].parentNode&&onScreen(list[i]))v.push(list[i])}
+  v.sort(function(a,b){var x=a.getBoundingClientRect(),y=b.getBoundingClientRect();return Math.abs(x.top-y.top)>4?x.top-y.top:x.left-y.left});
+  for(var i=0;i<v.length;i++){v[i].classList.remove('stg');v[i].style.animationDelay=''}
+  void document.body.offsetWidth;
+  for(var j=0;j<v.length;j++){v[j].style.animationDelay=(j*70)+'ms';v[j].classList.add('stg')}
+}
+function enterMode(m){
+  if(m==='trend')enterCards(rows.querySelectorAll('.tcard'));
+  else if(m==='up')enterCards(gridUp.querySelectorAll('.card'));
+}
 function setMode(m){
   if(cur.mode===m)return;
   cur.mode=m;window.scrollTo(0,0);
@@ -212,10 +229,15 @@ function setMode(m){
   if(m==='lib'&&grid.children.length){
     stagger();
     el.classList.remove('enter');
+    paint();
+  }else if((m==='trend'||m==='up')&&S[m]&&!S[m].msg){
+    el.classList.remove('enter');
+    paint();
+    enterMode(m);
   }else{
     el.classList.remove('enter');void el.offsetWidth;el.classList.add('enter');
+    paint();
   }
-  paint();
 }
 /* Library: the first posters (about two screens) are fetched and decoded RIGHT AWAY, also while the list is hidden (Trending open),
    so showing it later (or opening another pill) draws complete cards at once. The app is told when they are ready (max 1.5 s). */
@@ -229,7 +251,8 @@ function libReady(d,kc){
   requestAnimationFrame(function(){requestAnimationFrame(function(){fin();if(kc)setTimeout(stagger,70)})});
 }
 function show(d){
-  var m=d.mode;S[m]=d;
+  var m=d.mode,prev=S[m];S[m]=d;
+  var wasMsg=!prev||!!prev.msg,fresh=[];   /* Trending / Releases: cards that appear now (new ids) */
   if(!cur.mode)cur.mode=m;
   var vis=(m===cur.mode);
   var kc=false;
@@ -244,10 +267,13 @@ function show(d){
         if(tt.textContent!==r.title)tt.textContent=r.title;
         fail.style.display=r.failed?'block':'none';
         crow.style.display=r.failed?'none':'flex';
-        if(!r.failed){EG=(ri<2?6:0);sync(crow,r.items,function(o){return o.id},function(o){return trCard(o)},trSig);r.items.forEach(function(o){var c=crow._m.get(o.id);if(c)setTrRate(c,o)})}
+        if(!r.failed){EG=(ri<2?6:0);var ob=crow._m,nid=[];r.items.forEach(function(o){if(!ob||!ob.has(o.id))nid.push(o.id)});sync(crow,r.items,function(o){return o.id},function(o){return trCard(o)},trSig);nid.forEach(function(id){var c=crow._m.get(id);if(c)fresh.push(c)});r.items.forEach(function(o){var c=crow._m.get(o.id);if(c)setTrRate(c,o)})}
       });
     }else{
-      sync(m==='up'?gridUp:grid,d.cards,function(c){return c.id},function(c){return m==='up'?upCard(c):libCard(c)});
+      var gb=m==='up'?gridUp:grid,gm=gb._m,gn=[];
+      if(m==='up')d.cards.forEach(function(c){if(!gm||!gm.has(c.id))gn.push(c.id)});
+      sync(gb,d.cards,function(c){return c.id},function(c){return m==='up'?upCard(c):libCard(c)});
+      gn.forEach(function(id){var c=gb._m.get(id);if(c)fresh.push(c)});
     }
   }
   EG=0;
@@ -255,6 +281,10 @@ function show(d){
   if(m==='lib')libReady(d,kc);
   if(!vis&&m!=='trend')warm(m==='up'?gridUp:grid);   /* a list that is not on screen: its first posters are fetched later, when the phone is idle */
   if(vis)paint();
+  if(vis&&!d.msg&&(m==='trend'||m==='up')){
+    if(wasMsg)enterMode(m);            /* loading finished (or first list): every card on screen comes in one after the other */
+    else if(fresh.length)enterCards(fresh);   /* a new row / new cards that are already on screen */
+  }
 }
 
 /* ---- more cards near the end of the list ---- */
@@ -343,6 +373,7 @@ window.MV={
   mode:function(m,t){if(t>=0)$('#top').style.height=t+'px';setMode(m)},
   top:function(px){$('#top').style.height=px+'px';chk()},
   toTop:function(){window.scrollTo(0,0)},
+  enter:function(){if(cur.mode==='trend'||cur.mode==='up'){var d=S[cur.mode];if(d&&!d.msg)enterMode(cur.mode)}},
   theme:function(s){
     var t=JSON.parse(s),r=document.documentElement.style;
     ['bg','s2','line','mut','ink','acc','w','p','n'].forEach(function(k){if(t[k])r.setProperty('--'+k,t[k])});
