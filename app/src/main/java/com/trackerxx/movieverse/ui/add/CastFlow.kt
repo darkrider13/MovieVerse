@@ -171,6 +171,10 @@ class PersonFlow(private val scope: CoroutineScope, private val onPick: (Long) -
 
     private var tok = 0
 
+    /** true while the page comes back from a movie: it appears at once, without the enter animation */
+    var instantIn by mutableStateOf(false)
+        private set
+
     /** pRet: the dialog was closed because a movie was tapped; it opens again when that movie's form closes */
     private var ret = false
 
@@ -178,6 +182,7 @@ class PersonFlow(private val scope: CoroutineScope, private val onPick: (Long) -
     fun openPerson(id: Long) {
         pid = id
         ret = false
+        instantIn = false
         data = null
         failed = false
         top = false
@@ -249,6 +254,16 @@ class PersonFlow(private val scope: CoroutineScope, private val onPick: (Long) -
         ret = true
         open = false
         onPick(id)
+    }
+
+    /** a movie was opened from this person page and the person page has to come back when it closes */
+    val hasReturn: Boolean get() = ret
+
+    /** comes back NOW (the movie page is still underneath, so the home screen never shows between the two pages) */
+    fun returnNow() {
+        ret = false
+        instantIn = true
+        open = true
     }
 
     /** the movie form closed (dlg 'close' event): bring the person dialog back if it was left for a movie */

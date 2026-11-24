@@ -77,7 +77,8 @@ fun PersonDialog(flow: AddFlow) {
         title = "Person details",
         edgeFade = true,
         // the page itself stays still, the Movies / Awards lists scroll inside it
-        scrollable = false
+        scrollable = false,
+        instantIn = pf.instantIn
     ) {
         PersonBody(pf)
     }

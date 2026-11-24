@@ -220,11 +220,24 @@ class AddFlow(
     fun existing(id: Long): Movie? = AppData.movies.firstOrNull { it.tmdbId == id }
 
     fun close() {
+        // a person page that was left for a movie comes back FIRST and the movie page closes only after it is on screen
+        // (closing both in one frame showed the home screen for a moment between them)
+        if (person.hasReturn) {
+            person.returnNow()
+            scope.launch {
+                kotlinx.coroutines.delay(250)
+                finishClose()
+            }
+            return
+        }
+        finishClose()
+    }
+
+    private fun finishClose() {
         subs.close()
         open = false
         busy = false
         placeholder = false
-        // dlg 'close' event: a person dialog that was left for a movie comes back
         person.onFormClosed()
     }
 
