@@ -567,6 +567,7 @@ class AddFlow(
             mv = AppData.movies.firstOrNull { it.id == eid } ?: return true
             if (reAdd || mv.status != fstat || (mv.folder ?: "") != (fsel ?: "")) {
                 mv.remove("ord")
+                mv.remove("ordAll")
                 mv.added = System.currentTimeMillis()
             }
             mv.title = title
