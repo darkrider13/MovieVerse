@@ -67,8 +67,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
@@ -144,6 +147,17 @@ fun HomeScreen(splashGone: Boolean) {
         // the app starts on Trending: show what was cached at once, then refresh it from the network
         Trending.showCached()
         AppScope.launch { try { com.trackerxx.movieverse.util.Quiet.await(); Trending.load(true) } catch (e: CancellationException) { throw e } catch (e: Exception) { } }
+    }
+
+    // The Your Library header (tabs, search, filters) is composed in the background a moment after the app has loaded and is only
+    // hidden (zero height, not placed) while Trending / Releases is open. Tapping "Your Library" then only has to show it:
+    // nothing is built or measured for the first time in that frame, so the whole header appears at once.
+    var libHeaderWarm by remember { mutableStateOf(false) }
+    LaunchedEffect(loaded) {
+        if (!loaded) return@LaunchedEffect
+        delay(700)
+        while (grid.scrolling) delay(150)
+        libHeaderWarm = true
     }
 
     // ---- what the page shows -------------------------------------------------------------------------------------------
@@ -297,6 +311,16 @@ fun HomeScreen(splashGone: Boolean) {
 
     // where the tabs / search row sit on screen (a pull-down refresh must not start there): y in the window, height, y of the list box
     val barBox = remember { FloatArray(3) }
+    // A swipe that starts on the Kotlin header (welcome box / buttons) scrolls the WebView page too. It now flings like a normal
+    // list (before it stopped dead the moment the finger lifted, which felt like the page got stuck).
+    val headScroll = rememberScrollableState { d ->
+        val w = grid.web
+        if (w == null) 0f else {
+            val before = w.scrollY
+            w.scrollBy(0, (-d).roundToInt())
+            (before - w.scrollY).toFloat()
+        }
+    }
     Column(Modifier.fillMaxSize()) {
         TopNav(
             releasesLabel = if (view == "up") "Home" else "Releases",
@@ -340,7 +364,7 @@ fun HomeScreen(splashGone: Boolean) {
                         .fillMaxWidth()
                         .graphicsLayer { translationY = -grid.scrollY.toFloat() }
                         .onSizeChanged { grid.setTop(it.height / dens) }
-                        .pointerInput(Unit) { detectVerticalDragGestures { _, dy -> grid.web?.scrollBy(0, -dy.roundToInt()) } }
+                        .scrollable(headScroll, Orientation.Vertical)
                         .padding(start = 16.dp, end = 16.dp, top = 16.dp)
                 ) {
                     if (view == "library") {
@@ -357,43 +381,51 @@ fun HomeScreen(splashGone: Boolean) {
                             })
                         }
                     }
-                    if (view == "library" && home == "lib") {
+                    val libShown = view == "library" && home == "lib"
+                    if (libShown || libHeaderWarm) {
                         Column(
-                            Modifier
-                                .padding(bottom = 12.dp)
-                                .onGloballyPositioned { barBox[0] = it.positionInWindow().y; barBox[1] = it.size.height.toFloat() }
-                        ) {
-                            TabsRow(
-                                tabs = lv.tabs, selected = lib.tab,
-                                onSelect = { t ->
-                                    if (t == lib.tab && t != "all") actions.editStatus()
-                                    else lib.openTab(t)
-                                },
-                                onAddStatus = { actions.addStatus() },
-                                drag = tabDrag,
-                                onReorder = { ids -> actions.saveTabOrder(ids) }
-                            )
-                            Box(Modifier.padding(top = 10.dp)) {
-                                SearchRow(qBox, { qBox = it }, LibraryLogic.fmtK(lv.inTabCount))
+                            Modifier.layout { m, c ->
+                                val p = m.measure(c)
+                                layout(p.width, if (libShown) p.height else 0) { if (libShown) p.placeRelative(0, 0) }
                             }
-                        }
-                        if (lv.showFilters) {
-                            Column(Modifier.padding(bottom = if (lv.emptyText != null) 4.dp else 6.dp)) {
-                                FolderChips(
-                                    view = lv,
-                                    onAll = { lib.folder = null; lib.lim = 60 },
-                                    onFolder = { id ->
-                                        if (lib.folder == id) actions.editFolder(id)
-                                        else { lib.folder = id; lib.country = "all"; lib.lim = 60 }
+                        ) {
+                            Column(
+                                Modifier
+                                    .padding(bottom = 12.dp)
+                                    .onGloballyPositioned { barBox[0] = it.positionInWindow().y; barBox[1] = it.size.height.toFloat() }
+                            ) {
+                                TabsRow(
+                                    tabs = lv.tabs, selected = lib.tab,
+                                    onSelect = { t ->
+                                        if (t == lib.tab && t != "all") actions.editStatus()
+                                        else lib.openTab(t)
                                     },
-                                    onFolderLong = { id -> actions.editFolder(id) },
-                                    onNew = { actions.newFolder() }
+                                    onAddStatus = { actions.addStatus() },
+                                    drag = tabDrag,
+                                    onReorder = { ids -> actions.saveTabOrder(ids) }
                                 )
-                                FilterRow(
-                                    ff = ffEff,
-                                    onOpen = { k -> fkey = k },
-                                    onReset = { lib.ff = FilterState(); lib.lim = 60 }
-                                )
+                                Box(Modifier.padding(top = 10.dp)) {
+                                    SearchRow(qBox, { qBox = it }, LibraryLogic.fmtK(lv.inTabCount))
+                                }
+                            }
+                            if (lv.showFilters) {
+                                Column(Modifier.padding(bottom = if (lv.emptyText != null) 4.dp else 6.dp)) {
+                                    FolderChips(
+                                        view = lv,
+                                        onAll = { lib.folder = null; lib.lim = 60 },
+                                        onFolder = { id ->
+                                            if (lib.folder == id) actions.editFolder(id)
+                                            else { lib.folder = id; lib.country = "all"; lib.lim = 60 }
+                                        },
+                                        onFolderLong = { id -> actions.editFolder(id) },
+                                        onNew = { actions.newFolder() }
+                                    )
+                                    FilterRow(
+                                        ff = ffEff,
+                                        onOpen = { k -> fkey = k },
+                                        onReset = { lib.ff = FilterState(); lib.lim = 60 }
+                                    )
+                                }
                             }
                         }
                     }
