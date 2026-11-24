@@ -652,11 +652,18 @@ private fun PvHeader(flow: AddFlow, m: Movie, copyName: (String) -> Unit) {
         verticalAlignment = Alignment.Top
     ) {
         Box(Modifier.size(112.dp, posterH).clip(RoundedCornerShape(12.dp)).background(c.s2)) {
+            // the poster loads like every other part of the page: the same grey shimmer box until the picture is there
+            var posterLoading by remember(m.poster) { mutableStateOf(true) }
             if (!m.poster.isNullOrEmpty()) {
                 AsyncImage(
                     model = Tmdb.imgUrl(m.poster, "w342"), contentDescription = null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    onState = { st -> posterLoading = st is coil.compose.AsyncImagePainter.State.Loading || st is coil.compose.AsyncImagePainter.State.Empty }
                 )
+            }
+            // no poster known yet (details still arriving) or the picture is still loading
+            if ((m.poster.isNullOrEmpty() && flow.placeholder) || (!m.poster.isNullOrEmpty() && posterLoading)) {
+                ShimBox(Modifier.fillMaxSize(), RoundedCornerShape(12.dp))
             }
             if (flow.dup) {
                 // green bookmark in the poster's top-right corner; a tap shows the status for a moment
