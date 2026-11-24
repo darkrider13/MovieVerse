@@ -3,8 +3,6 @@ package com.trackerxx.movieverse.ui.add
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.calculateTargetValue
-import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.lazy.LazyListState
 import kotlin.math.abs
@@ -155,8 +153,8 @@ fun CastBlock(data: CastData, onPerson: (Long) -> Unit) {
 }
 
 /**
- * One row, exactly four people visible. The row scrolls card by card: whatever the speed of the finger, it always comes to rest
- * with a card exactly at the left edge, so nobody is ever left cut in half at the sides (left or right, also at the end of the row:
+ * One row, exactly four people visible. The row scrolls page by page (4 cards, see CardSnapFling): it always comes to rest with
+ * four whole cards in view, so nobody is ever left cut in half at the sides (left or right, also at the end of the row:
  * the card width is (row width - 3 gaps) / 4, so the last four cards fill the width exactly).
  * The small dot between the crew and the actors is not a row item: it is drawn in the 6dp gap in front of the first actor,
  * so every slot has the same width.
@@ -190,24 +188,36 @@ private fun CastRow(crew: List<CastPerson>, cast: List<CastPerson>, cw: androidx
 }
 
 /**
- * Card-by-card snapping for the cast row. It runs every time the finger lifts (also with zero speed, so a slow drag that stops
- * between two cards is pulled into place too): it works out where the fling would stop, rounds that to a whole card, keeps it
- * within one row (4 cards) of where the gesture started and inside the list (0 .. last card that still fills the row), then
- * glides there with a soft spring (no bounce). A new touch simply takes over, and its own release settles again, so the row
- * can never stay stuck half way.
+ * Page snapping for the cast row, the same rules as the Trending rows (CSS scroll-snap with "stop always"): every 4th card is a
+ * snap point, so one swipe moves exactly one page of four cards, never more, and the row always comes to rest with four whole
+ * cards in view (nobody cut in half at the sides). The last snap point is the position where the final four cards fill the row.
+ * It runs every time the finger lifts (also with zero speed): a flick goes to the next / previous snap point, a slow drag that
+ * stops between two points goes to the nearest one. Then it glides there with a soft spring (no bounce). A new touch simply takes
+ * over, and its own release settles again, so the row can never stay stuck half way.
  */
 private class CardSnapFling(
     private val st: LazyListState,
     private val slotPx: Float,
     private val lastStart: Int
 ) : FlingBehavior {
+    private val points: List<Int> = (0 until lastStart step 4).toList() + lastStart
+
     override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
         if (slotPx <= 0f) return initialVelocity
         val pos = st.firstVisibleItemIndex + st.firstVisibleItemScrollOffset / slotPx   // position in cards
-        val base = pos.roundToInt()
-        // initialVelocity > 0 = finger moves right = list goes back
-        val reach = exponentialDecay<Float>().calculateTargetValue(0f, -initialVelocity) / slotPx
-        val target = (pos + reach).roundToInt().coerceIn(base - 4, base + 4).coerceIn(0, lastStart)
+        val eps = 0.001f
+        val flick = abs(initialVelocity) > slotPx * 2f   // faster than two cards per second
+        val target: Int = if (!flick) {
+            points.minByOrNull { abs(it - pos) } ?: 0
+        } else if (initialVelocity < 0f) {
+            // finger moves left = forward: the next snap point after the one the gesture started from
+            val from = points.lastOrNull { it <= pos + eps } ?: 0
+            points.firstOrNull { it > from } ?: from
+        } else {
+            // finger moves right = back: the previous snap point before the one the gesture started from
+            val from = points.firstOrNull { it >= pos - eps } ?: lastStart
+            points.lastOrNull { it < from } ?: from
+        }
         val distance = (target - pos) * slotPx
         if (abs(distance) < 0.5f) return 0f
         var done = 0f
