@@ -369,6 +369,15 @@ fun HomeScreen(splashGone: Boolean) {
         libReady = true
     }
 
+    // app start: the splash / "Loading your library" cover is gone -> the cards of Trending that are on screen come in (once)
+    val coverGone = splashGone && loaded
+    LaunchedEffect(coverGone) {
+        if (coverGone) {
+            delay(80)
+            grid.enterNow()
+        }
+    }
+
     fun toTop() { grid.scrollTop() }
 
     /** selTrend(): back to Trending, top of the page */

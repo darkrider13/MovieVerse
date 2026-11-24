@@ -142,6 +142,11 @@ class GridHost {
         if (ready) send("MV.top($pTop)")
     }
 
+    /** the cover (splash / loading screen) is gone: the cards of Trending / Releases that are on screen come in now */
+    fun enterNow() {
+        if (ready) send("MV.enter()")
+    }
+
     fun scrollTop() {
         web?.scrollTo(0, 0)
         scrollY = 0
