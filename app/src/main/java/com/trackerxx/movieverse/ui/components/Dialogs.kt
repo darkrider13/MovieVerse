@@ -560,7 +560,8 @@ fun MvPage(
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.ime))) {
                 // top bar
                 Row(
-                    Modifier.fillMaxWidth().height(52.dp).then(if (edgeFade) Modifier else Modifier.background(c.nav)).padding(horizontal = 6.dp),
+                    // the bar has the same colour as the status bar above it (the red / blue glow starts below the bar)
+                    Modifier.fillMaxWidth().height(52.dp).background(c.nav).padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
