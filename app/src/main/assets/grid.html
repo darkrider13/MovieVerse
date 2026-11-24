@@ -40,7 +40,12 @@ img{-webkit-user-drag:none;pointer-events:none}
 
 /* ---- trending rows ---- */
 .tt{font-size:15px;font-weight:700;margin:16px 0 4px}
-.crow{display:flex;gap:10px;overflow-x:auto;padding:4px 0 8px;overscroll-behavior-x:contain;scrollbar-width:none}
+/* each Trending row fades up once when it first comes on screen (opacity + transform only, so it stays smooth) */
+.trow.fu{opacity:0;transform:translate3d(0,18px,0)}
+.trow.fu.in{opacity:1;transform:none;transition:opacity .45s cubic-bezier(.22,.61,.36,1),transform .45s cubic-bezier(.22,.61,.36,1);transition-delay:var(--fd,0ms)}
+.crow{display:flex;gap:10px;overflow-x:auto;padding:4px 0 8px;overscroll-behavior-x:contain;scrollbar-width:none;scroll-snap-type:x mandatory}
+/* a swipe moves exactly one page of three posters: every 3rd poster is a snap point, so no poster is ever cut off */
+.tcard:nth-child(3n+1){scroll-snap-align:start;scroll-snap-stop:always}
 .crow::-webkit-scrollbar{display:none}
 .tcard{flex:0 0 calc((100% - 20px)/3);min-width:0;cursor:pointer}
 .tcard>b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;line-height:1.25;font-weight:700;margin-top:5px}
@@ -72,6 +77,7 @@ img{-webkit-user-drag:none;pointer-events:none}
   <div id="top"></div>
   <div class="msg" id="msg"></div>
   <div class="grid" id="grid" style="display:none"></div>
+  <div class="grid" id="upgrid" style="display:none"></div>
   <div id="rows" style="display:none"></div>
   <div id="more"></div>
 </div>
@@ -79,11 +85,12 @@ img{-webkit-user-drag:none;pointer-events:none}
 (function(){
 'use strict';
 var $=function(s){return document.querySelector(s)};
-var grid=$('#grid'),rows=$('#rows'),msg=$('#msg'),more=$('#more');
+var grid=$('#grid'),gridUp=$('#upgrid'),rows=$('#rows'),msg=$('#msg'),more=$('#more');
 var cur={mode:null,order:false};
 function A(){return window.Android}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function img(p){return p?'<img src="'+esc(p)+'" alt="" decoding="async" loading="lazy" draggable="false">':''}
+var EG=0;
+function img(p){if(!p)return '';var l='lazy';if(EG>0){EG--;l='eager'}return '<img src="'+esc(p)+'" alt="" decoding="async" loading="'+l+'" draggable="false">'}
 function html2el(h){var d=document.createElement('div');d.innerHTML=h;return d.firstChild}
 
 /* keeps the DOM equal to the list: only new / changed items are touched, order is fixed with as few moves as possible */
@@ -130,7 +137,23 @@ function setTrRate(el,o){
   b.innerHTML='<span class="rate"><small>IMDb</small> <span class="r-'+(o.xc||'m')+'">'+esc(o.x)+'</span></span>';
 }
 function trSig(o){return o.id+'|'+o.p+'|'+o.t+'|'+o.d+'|'+(o.lib?1:0)+'|'+(o.r||0)}
+var fuIO=null,fuN=0;
+function fuWatch(el){
+  if(!('IntersectionObserver' in window)){el.classList.add('in');return}
+  if(!fuIO)fuIO=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(!e.isIntersecting)return;
+      var t=e.target;fuIO.unobserve(t);
+      t.style.setProperty('--fd',Math.min(fuN++,4)*70+'ms');
+      requestAnimationFrame(function(){t.classList.add('in');setTimeout(function(){fuN=Math.max(0,fuN-1)},400)});
+    });
+  },{threshold:0.04});
+  fuIO.observe(el);
+}
 function mkRow(r){
+  var el=mkRow0(r);el.classList.add('fu');fuWatch(el);return el;
+}
+function mkRow0(r){
   return html2el('<section class="trow" data-row="'+esc(r.id)+'"><div class="tt"></div><div class="crow"></div><div class="trfail">Could not load.<br><div class="btn" data-k="trretry">Retry</div></div></section>');
 }
 
@@ -145,14 +168,32 @@ function setMore(d){
   else if(d.more)more.innerHTML='<div class="btn mbtn" data-k="upmore">'+esc(d.more)+'</div>';
   else more.innerHTML='';
 }
-function show(d){
-  if(d.mode!==cur.mode){reset(grid);reset(rows);cur.mode=d.mode;window.scrollTo(0,0)}
-  cur.order=!!d.order;
+/* Every list (Library, Releases, Trending) keeps its own container and is NEVER torn down when you switch: switching only shows / hides
+   a container, so the posters are already there (no rebuild, no reload, no blink). The app also fills the Library in the background. */
+var S={lib:null,up:null,trend:null};
+function paint(){
+  var m=cur.mode,d=m&&S[m];
+  if(!d){grid.style.display=gridUp.style.display=rows.style.display='none';setMsg(null);more.innerHTML='';return}
   setMsg(d.msg||null);
   var hasList=!d.msg;
-  if(d.mode==='trend'){
-    grid.style.display='none';rows.style.display=hasList?'block':'none';
-    if(hasList){
+  grid.style.display=(m==='lib'&&hasList)?'grid':'none';
+  gridUp.style.display=(m==='up'&&hasList)?'grid':'none';
+  rows.style.display=(m==='trend'&&hasList)?'block':'none';
+  cur.order=!!d.order;
+  setMore(d);
+  chk();
+}
+function setMode(m){
+  if(cur.mode===m)return;
+  cur.mode=m;window.scrollTo(0,0);paint();
+}
+function show(d){
+  var m=d.mode;S[m]=d;
+  if(!cur.mode)cur.mode=m;
+  var vis=(m===cur.mode);
+  EG=vis?0:24;                 /* hidden list: its first posters load now, so they are ready when you switch */
+  if(!d.msg){
+    if(m==='trend'){
       sync(rows,d.rows,function(r){return r.id},function(r){return mkRow(r)},function(r){return r.id});
       d.rows.forEach(function(r){
         var el=rows._m.get(r.id);if(!el)return;
@@ -162,13 +203,12 @@ function show(d){
         crow.style.display=r.failed?'none':'flex';
         if(!r.failed){sync(crow,r.items,function(o){return o.id},function(o){return trCard(o)},trSig);r.items.forEach(function(o){var c=crow._m.get(o.id);if(c)setTrRate(c,o)})}
       });
+    }else{
+      sync(m==='up'?gridUp:grid,d.cards,function(c){return c.id},function(c){return m==='up'?upCard(c):libCard(c)});
     }
-  }else{
-    rows.style.display='none';grid.style.display=hasList?'grid':'none';
-    if(hasList)sync(grid,d.cards,function(c){return c.id},function(c){return d.mode==='up'?upCard(c):libCard(c)});
   }
-  setMore(d);
-  chk();
+  EG=0;
+  if(vis)paint();
 }
 
 /* ---- more cards near the end of the list ---- */
@@ -254,6 +294,7 @@ function tw(){document.documentElement.style.setProperty('--tw',Math.max(60,(inn
 addEventListener('resize',tw);tw();
 window.MV={
   set:function(s){if(D.on){D.pending=s;return}show(JSON.parse(s))},
+  mode:function(m){setMode(m)},
   top:function(px){$('#top').style.height=px+'px';chk()},
   toTop:function(){window.scrollTo(0,0)},
   theme:function(s){
