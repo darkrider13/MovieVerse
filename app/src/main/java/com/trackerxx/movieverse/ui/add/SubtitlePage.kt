@@ -55,7 +55,7 @@ fun SubtitlePage(flow: SubsFlow) {
 
         when (val u = flow.ui) {
             is SubsUi.Loading -> Note("Searching subtitles…")
-            is SubsUi.NoKey -> Note("Add your subtitle API key in Settings (the Subtitles tab) to find subtitles.")
+            is SubsUi.NoKey -> Note("Add your SubSource API key in Settings \u2192 API keys \u2192 Subtitles.")
             is SubsUi.Error -> Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Note(u.message)
                 MvButton("Retry", { flow.load() }, kind = BtnKind.Primary, size = BtnSize.Dialog)
@@ -67,7 +67,7 @@ fun SubtitlePage(flow: SubsFlow) {
                         when (flow.lang) {
                             "BN" -> "No Bangla subtitle found for this title."
                             "EN" -> "No English subtitle found for this title."
-                            else -> "No Bangla or English subtitle found for this title."
+                            else -> "No Bangla or English subtitle found on SubSource."
                         }
                     )
                 } else {

@@ -341,21 +341,13 @@ private fun MoviePage(flow: AddFlow) {
 
     MvPage(
         onBack = { flow.close() },
-        title = if (flow.isEdit) "Movie details" else "Add to Library",
-        bottomBar = if (busy) null else ({ PageActions(flow, m, focus) })
+        title = if (flow.isEdit) "Movie details" else "Add to Library"
     ) {
         // ---- poster, title (year), overview, Trailer + Subtitle buttons ---------------------------------------------------
         PvHeader(flow, m, copyName)
 
         // ---- title -----------------------------------------------------------------------------------------------------
-        DlgLabel("Title", top = 18.dp) {
-            if (flow.dup) {
-                MvText(
-                    "Already added · " + (AppData.SL[m.status] ?: m.status),
-                    size = 10.sp, weight = FontWeight.Bold, color = c.w, lineHeight = 1.6f
-                )
-            }
-        }
+        DlgLabel("Title", top = 18.dp)
         if (lock) StaticField(flow.ft, badge = m.str("cert")?.takeIf { it.isNotEmpty() })
         else MvTextField(flow.ft, { flow.ft = it }, Modifier.focusRequester(focus), placeholder = "Title", size = FieldSize.Dialog)
 
@@ -406,11 +398,15 @@ private fun MoviePage(flow: AddFlow) {
                     Modifier.fillMaxWidth().padding(top = 18.dp), size = 12.sp, color = c.mut, align = TextAlign.Center
                 )
             }
+            // Save / Delete: the very end of the content (scrolls with the page, no separate bar)
+            if (!busy) {
+                Box(Modifier.fillMaxWidth().padding(top = 22.dp)) { PageActions(flow, m, focus) }
+            }
         }
     }
 }
 
-/** the fixed bar at the bottom of the page: Save (and Delete for a movie that is in the library) */
+/** Save (and Delete for a movie that is in the library) at the end of the page content; was: the fixed bar at the bottom: Save (and Delete for a movie that is in the library) */
 @Composable
 private fun PageActions(flow: AddFlow, m: Movie, focus: FocusRequester) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -632,6 +628,35 @@ private fun PvHeader(flow: AddFlow, m: Movie, copyName: (String) -> Unit) {
                     modifier = Modifier.fillMaxSize()
                 )
             }
+            if (flow.dup) {
+                // green bookmark in the poster's top-right corner; a tap shows the status for a moment
+                var showSt by remember(m) { mutableStateOf(false) }
+                LaunchedEffect(showSt) {
+                    if (showSt) {
+                        kotlinx.coroutines.delay(2200)
+                        showSt = false
+                    }
+                }
+                Box(
+                    Modifier.align(Alignment.TopEnd).padding(end = 3.dp)
+                        .size(30.dp, 34.dp)
+                        .plainClickable { showSt = !showSt },
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    MvIcon(MvIcons.BookmarkGreen, 30.dp)
+                }
+                if (showSt) {
+                    Box(
+                        Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp, start = 6.dp, end = 6.dp)
+                            .clip(RoundedCornerShape(8.dp)).background(Color(0xCC000000)).padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        MvText(
+                            "Already added \u00B7 " + (AppData.SL[m.status] ?: m.status),
+                            size = 10.sp, weight = FontWeight.Bold, color = Color.White, lineHeight = 1.3f, maxLines = 2
+                        )
+                    }
+                }
+            }
         }
         BoxWithConstraints(Modifier.weight(1f)) {
             val wPx = with(dens) { maxWidth.roundToPx() }
@@ -700,7 +725,7 @@ private fun PvHeader(flow: AddFlow, m: Movie, copyName: (String) -> Unit) {
                     QuickOpt(
                         icon = MvIcons.Subtitle, red = false,
                         title = if (sp == 2) "Subtitle not found" else "Subtitle",
-                        sub = if (sp == 2) "Not available on SubDL" else "Bangla \u00B7 English",
+                        sub = if (sp == 2) "Not available on SubSource" else "Bangla \u00B7 English",
                         loading = sp == 0, na = sp == 2,
                         onClick = { flow.subs.openFor(m) }
                     )

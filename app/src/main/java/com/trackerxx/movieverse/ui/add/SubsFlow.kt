@@ -25,7 +25,7 @@ sealed class SubsUi {
 }
 
 /**
- * The Subtitles page of a movie: only Bangla + English, filter chips (All / Bangla / English), "Show more",
+ * The Subtitles page of a movie (from SubSource): only Bangla + English, filter chips (All / Bangla / English), "Show more",
  * Download = saved into the phone's Download folder.
  */
 @Stable
@@ -77,9 +77,7 @@ class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState)
         probe = 0
         scope.launch {
             val has = try {
-                val bn = async { Subs.search(m, "BN", 1) }
-                val en = async { Subs.search(m, "EN", 1) }
-                bn.await().items.isNotEmpty() || en.await().items.isNotEmpty()
+                Subs.probe(m)
             } catch (x: CancellationException) {
                 throw x
             } catch (x: Exception) {
