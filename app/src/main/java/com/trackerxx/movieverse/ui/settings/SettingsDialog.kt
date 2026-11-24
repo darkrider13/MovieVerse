@@ -127,7 +127,8 @@ fun SettingsDialog(
     MvDialog(
         onDismiss = onClose,
         padding = PaddingValues(16.dp),
-        onClose = onClose
+        onClose = onClose,
+        animateIn = false   // gear tap: popup + blur appear at once, no 260 ms fade
     ) {
         // #sdlg{font-size:13px}
         CompositionLocalProvider(LocalMvText provides MvTextDefaults(13.sp, FontWeight.Normal, c.ink)) {
