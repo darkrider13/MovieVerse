@@ -40,6 +40,10 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -555,6 +559,46 @@ fun HomeScreen(splashGone: Boolean) {
                         )
                     }
                 }
+
+                // Soft edge fade while scrolling: content melts into the background where the page meets the top bar (top) and
+                // the bottom of the screen (bottom), instead of being cut off hard. Draw only: it never takes touches.
+                // The top fade grows in with the scroll (nothing at rest), the bottom one fades away at the end of the page.
+                Box(
+                    Modifier.fillMaxSize().drawBehind {
+                        val edge = 40.dp.toPx()
+                        val y = grid.scrollY.coerceAtLeast(0)
+                        val bg = cNow.bg
+                        val top = (y / edge).coerceIn(0f, 1f)
+                        if (top > 0f) {
+                            drawRect(
+                                Brush.verticalGradient(
+                                    0f to bg.copy(alpha = top),
+                                    0.35f to bg.copy(alpha = top * 0.62f),
+                                    0.70f to bg.copy(alpha = top * 0.20f),
+                                    1f to bg.copy(alpha = 0f),
+                                    startY = 0f, endY = edge
+                                ),
+                                size = Size(size.width, edge)
+                            )
+                        }
+                        val w = grid.web
+                        val left = if (w == null) 0f else w.contentHeight * density - w.height - y
+                        val bot = (left / edge).coerceIn(0f, 1f)
+                        if (bot > 0f) {
+                            drawRect(
+                                Brush.verticalGradient(
+                                    0f to bg.copy(alpha = 0f),
+                                    0.30f to bg.copy(alpha = bot * 0.20f),
+                                    0.65f to bg.copy(alpha = bot * 0.62f),
+                                    1f to bg.copy(alpha = bot),
+                                    startY = size.height - edge, endY = size.height
+                                ),
+                                topLeft = Offset(0f, size.height - edge),
+                                size = Size(size.width, edge)
+                            )
+                        }
+                    }
+                )
 
                 // another pill / folder was opened: the old cards are covered for the few frames until the new card frames arrive.
                 // Plain cover, no spinner / text (a spinner flashing for a moment looked like flicker). The posters then fade in on their own.
