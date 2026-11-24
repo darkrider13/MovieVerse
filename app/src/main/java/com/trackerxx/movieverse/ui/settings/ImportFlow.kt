@@ -25,7 +25,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.trackerxx.movieverse.data.AppData
 import com.trackerxx.movieverse.data.Backup
-import com.trackerxx.movieverse.data.BackupScan
 import com.trackerxx.movieverse.data.Folder
 import com.trackerxx.movieverse.data.Ls
 import com.trackerxx.movieverse.data.Movie
@@ -51,10 +50,8 @@ import org.json.JSONObject
 import org.json.JSONTokener
 import java.io.BufferedInputStream
 import java.io.File
-import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
-import java.io.InputStreamReader
 import java.io.OutputStream
 
 /** the green dialog after an import ("Import successful", "Import stopped", "Import did not finish") */
@@ -62,8 +59,8 @@ class ImportOk(val title: String, val message: String)
 
 /**
  * Settings > Import (`#imp.onclick`, `importFile`, `mkScan`, `normM`, `normStatus`, `safetyCopy` of the web version).
- * The backup can be an Excel file (.xlsx, XlsxReader) or the old .json file (BackupScan); the kind is found by looking at the first bytes
- * of the file (an .xlsx is a zip: "PK"), not by its name. Both go through the same flush / finish below (same merge rules).
+ * Only an Excel backup (.xlsx, XlsxReader) can be imported; a .json file is rejected. The kind is found by looking at the first bytes
+ * of the file (an .xlsx is a zip: "PK"), not by its name.
  * The file is read in pieces and the movies are saved batch by batch, so memory stays small even for a very big backup.
  * Movies that are already in the library (same id) are skipped; nothing is ever removed.
  */
@@ -153,33 +150,20 @@ class ImportFlow(
         var read = 0L
     }
 
-    /** counts the bytes that were read (the web version's `off`) */
-    private class Counting(i: InputStream, val run: Run) : FilterInputStream(i) {
-        override fun read(): Int {
-            val r = super.read()
-            if (r >= 0) run.read++
-            return r
-        }
-
-        override fun read(b: ByteArray, off: Int, len: Int): Int {
-            val r = super.read(b, off, len)
-            if (r > 0) run.read += r.toLong()
-            return r
-        }
-    }
-
     /** importFile(f) */
     private suspend fun importFile(uri: Uri, p: Pending) {
         val r = Run(fileSize(uri).coerceAtLeast(1L))
         try {
             withContext(StateDispatcher) { for (m in AppData.movies.toTypedArray()) r.ids.add(m.id) }
             progress = ""                       // progOn('Importing backup')
-            safetyCopy()
-            progress = "0%"
             val input = ctx.contentResolver.openInputStream(uri) ?: throw IOException("Could not open the file")
             val found = input.use { raw ->
                 val bin = BufferedInputStream(raw, 1 shl 16)
-                if (isZip(bin)) importXlsx(bin, r) else importJson(bin, r)
+                // only an Excel (.xlsx) backup is accepted; a .json (or any other) file is rejected before anything is touched
+                if (!isZip(bin)) throw NotBackup()
+                safetyCopy()
+                progress = "0%"
+                importXlsx(bin, r)
             }
             finish(r, found, p)
         } catch (e: CancellationException) {
@@ -187,7 +171,7 @@ class ImportFlow(
         } catch (e: NotBackup) {
             progress = null
             p.closeSettings()
-            toast.show("That is not a valid MovieVerse backup.")
+            toast.show("Only an Excel (.xlsx) MovieVerse backup can be imported.")
         } catch (e: Exception) {
             try { AppData.render() } catch (x: Exception) { }
             progress = null
@@ -211,35 +195,6 @@ class ImportFlow(
         }
         b.reset()
         return n == 4 && h[0] == 0x50.toByte() && h[1] == 0x4B.toByte() && h[2] == 3.toByte() && h[3] == 4.toByte()
-    }
-
-    /** the old .json backup: read in pieces of 1M characters (mkScan). true = a movies array was found */
-    private suspend fun importJson(raw: InputStream, r: Run): Boolean {
-        val sc = BackupScan(
-            onMovie = { t ->
-                try { r.batch.add(JSONObject(t)) } catch (e: Exception) { r.bad++ }
-            },
-            onExtra = { k, t -> r.extra[k] = t }
-        )
-        val reader = InputStreamReader(Counting(raw, r), Charsets.UTF_8)
-        val buf = CharArray(1 shl 20)
-        withContext(Dispatchers.IO) {
-            while (true) {
-                val n = reader.read(buf)
-                if (n < 0) break
-                var t = String(buf, 0, n)
-                if (r.first) {
-                    r.first = false
-                    if (t.startsWith("﻿")) t = t.substring(1)
-                }
-                sc.feed(t)
-                flush(r)
-                val pct = Math.min(99L, Math.round(r.read.toDouble() / r.total * 100.0))
-                progress = pct.toString() + "%  ·  " + (r.add + r.skip) + " movies"
-                yield()
-            }
-        }
-        return sc.found()
     }
 
     /**
@@ -320,7 +275,7 @@ class ImportFlow(
         if (!found) {
             progress = null
             p.closeSettings()
-            toast.show("That is not a valid MovieVerse backup.")
+            toast.show("Only an Excel (.xlsx) MovieVerse backup can be imported.")
             return
         }
         fun parse(k: String): Any? = r.extra[k]?.let { try { JSONTokener(it).nextValue() } catch (e: Exception) { null } }
