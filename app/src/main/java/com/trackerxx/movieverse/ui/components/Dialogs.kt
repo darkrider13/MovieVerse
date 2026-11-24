@@ -394,6 +394,30 @@ fun MvApiLoadingDialog(
 }
 
 
+/**
+ * Soft fade at the top and bottom edge of a scrolling page (web: #dlg.tall .dsc mask).
+ * Top: grows with the scroll (0 at the very top, up to 36dp). Bottom: always 40dp. The mask is drawn outside the scroll,
+ * so it stays at the edges while the content moves under it.
+ */
+private fun Modifier.pageEdgeFade(scroll: ScrollState, topMax: Dp = 36.dp, bottom: Dp = 40.dp): Modifier =
+    this
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            val h = size.height
+            if (h <= 0f) return@drawWithContent
+            val ft = minOf(scroll.value.toFloat(), topMax.toPx()).coerceAtLeast(0f)
+            val fb = minOf(bottom.toPx(), h / 2f)
+            val a = (ft / h).coerceIn(0f, 1f)
+            val b = ((h - fb) / h).coerceIn(a, 1f)
+            val brush = if (ft < 0.5f) {
+                Brush.verticalGradient(0f to Color.Black, b to Color.Black, 1f to Color.Transparent)
+            } else {
+                Brush.verticalGradient(0f to Color.Transparent, a to Color.Black, b to Color.Black, 1f to Color.Transparent)
+            }
+            drawRect(brush, blendMode = BlendMode.DstIn)
+        }
+
 /** Window setup of a full page: no dim, system bar icons follow the theme. */
 @Composable
 private fun PageWindowSetup() {
@@ -419,9 +443,11 @@ fun MvPage(
     onBack: () -> Unit,
     title: String,
     bottomBar: (@Composable () -> Unit)? = null,
+    edgeFade: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val c = Mv.c
+    val pageScroll = rememberScrollState()
     val currentBack by rememberUpdatedState(onBack)
     val toast = LocalToast.current
     var myDepth by remember { mutableIntStateOf(0) }
@@ -463,8 +489,9 @@ fun MvPage(
                         Modifier
                             .widthIn(max = 640.dp)
                             .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                            .then(if (edgeFade) Modifier.pageEdgeFade(pageScroll) else Modifier)
+                            .verticalScroll(pageScroll)
+                            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (edgeFade) 56.dp else 24.dp),
                         content = content
                     )
                 }
