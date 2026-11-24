@@ -58,16 +58,22 @@ object Wiki {
     private val gate = Semaphore(4)
 
     /**
+     * Lookups the user is waiting for (the Awards page of a person) have their own lane. Before, they stood in the same queue as the
+     * background box office / refresh lookups of the whole library and could wait behind many of them.
+     */
+    private val gateFast = Semaphore(6)
+
+    /**
      * wkApi(q, base, ms): API call, throws "wiki <status>" on an HTTP error.
      * A 429 / 503 ("slow down") is waited out (Retry-After, at most 6 s) and tried again, twice at most.
      */
-    suspend fun api(q: List<Pair<String, String>>, base: String? = null, ms: Int = 9000): JSONObject {
+    suspend fun api(q: List<Pair<String, String>>, base: String? = null, ms: Int = 9000, fast: Boolean = false): JSONObject {
         val url = (base ?: WP) + "?" + q.joinToString("&") { it.first + "=" + Js.encodeURIComponent(it.second) } +
             "&format=json&formatversion=2&origin=*"
         val hdr = mapOf("Accept" to "application/json", "User-Agent" to UA)
         var attempt = 0
         while (true) {
-            val r = gate.withPermit { Http.get(url, hdr, ms, ms) }
+            val r = (if (fast) gateFast else gate).withPermit { Http.get(url, hdr, ms, ms) }
             if (r.ok) return Http.parseObject(r.body)
             if ((r.status == 429 || r.status == 503) && attempt < 2) {
                 attempt++
@@ -291,10 +297,18 @@ object Wiki {
         ss.add(asyncIo { search("$t $y film", t, y, tmdbId, imdbId) })
         if (loose) ss.add(asyncIo { search("$mt $y film", t, y, tmdbId, imdbId) })
 
-        val a = gs.awaitAll()
-        for (x in a) {
+        // the names are still tried in the same order (first good one wins), but the answer is given as soon as that one is ready:
+        // it no longer waits for the slower names / searches that cannot change the result any more
+        val a = ArrayList<WkChk>()
+        for (d in gs) {
+            val x = d.await()
+            a.add(x)
             val c = x.c
-            if (c != null && x.ok) return c
+            if (c != null && x.ok) {
+                for (o in gs) o.cancel()
+                for (o in ss) o.cancel()
+                return c
+            }
         }
         val b = ss.map {
             try {
