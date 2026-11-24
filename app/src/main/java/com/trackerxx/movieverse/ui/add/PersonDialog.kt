@@ -26,6 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -49,28 +51,27 @@ import com.trackerxx.movieverse.net.PCredit
 import com.trackerxx.movieverse.net.Tmdb
 import com.trackerxx.movieverse.ui.components.BtnKind
 import com.trackerxx.movieverse.ui.components.MvButton
-import com.trackerxx.movieverse.ui.components.MvDialog
+import com.trackerxx.movieverse.ui.components.MvPage
 import com.trackerxx.movieverse.ui.components.MvPill
 import com.trackerxx.movieverse.ui.components.plainClickable
 import com.trackerxx.movieverse.ui.theme.Mv
 import com.trackerxx.movieverse.ui.theme.MvText
 import com.trackerxx.movieverse.util.Js
 
-/** #pdlg : person dialog (shown above the movie form) */
+/**
+ * Person page: a full-screen page like the movie details (MvPage, same black / red-blue glow look). It opens above the movie page,
+ * the back arrow / back button closes it and the movie details are there again.
+ */
 @Composable
 fun PersonDialog(flow: AddFlow) {
     val pf = flow.person
     if (!pf.open) return
-    val c = Mv.c
-    MvDialog(
-        onDismiss = { pf.close() },
-        onClose = { pf.close() },
-        // #pdlg{background:#000}; .pdsc has 2px right padding instead of 4
-        padding = PaddingValues(start = 18.dp, top = 18.dp, end = 16.dp, bottom = 18.dp),
-        solidBackground = Color.Black,
-        scrollState = pf.scroll.body,
-        // fixed size: the popup always has the same height (90% of the screen), whatever page is shown or is still loading
-        fillHeight = true
+    MvPage(
+        onBack = { pf.close() },
+        title = "Person details",
+        edgeFade = true,
+        // the page itself stays still, the Movies / Awards lists scroll inside it
+        scrollable = false
     ) {
         PersonBody(pf)
     }
@@ -99,11 +100,12 @@ private fun Ph3(text: String) {
 }
 
 @Composable
-private fun PersonBody(pf: PersonFlow) {
+private fun ColumnScope.PersonBody(pf: PersonFlow) {
     val c = Mv.c
     val d = pf.data
     val sc = pf.scroll
     val copy = rememberCopyName()
+    val scope = rememberCoroutineScope()
     if (pf.failed) {
         RetryBox("Could not load details.") { pf.retry() }
         return
@@ -112,54 +114,74 @@ private fun PersonBody(pf: PersonFlow) {
         NoteP("Loading…")
         return
     }
-    // the popup has a fixed height; the Movies / Awards lists take ALL the room below the header, so nothing is left empty at the bottom
-    val avail = LocalDialogMaxH.current
-    var headPx by remember { mutableIntStateOf(0) }
-    val dens = LocalDensity.current
-    val pagerH = if (avail > 0.dp && headPx > 0) maxOf(398.dp, avail - with(dens) { headPx.toDp() } - 17.dp) else 398.dp
-    Column(Modifier.fillMaxWidth().onSizeChanged { headPx = it.height }) {
-    // ---- .phd ----
+    // ---- header: photo, name, facts, known credits ----
     Row(
-        Modifier.fillMaxWidth().padding(end = 34.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        Modifier.fillMaxWidth().padding(top = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        PersonPhoto(d.photo, d.female, 78.dp)
+        PersonPhoto(d.photo, d.female, 96.dp)
         Column(Modifier.weight(1f)) {
-            MvText(d.name, Modifier.plainClickable { copy(d.name) }, size = 17.sp, weight = FontWeight.Bold)
-            MvText(d.info, Modifier.padding(top = 4.dp), size = 12.sp, color = c.mut)
+            MvText(d.name, Modifier.plainClickable { copy(d.name) }, size = 20.sp, weight = FontWeight.Bold, lineHeight = 1.2f)
+            MvText(d.info, Modifier.padding(top = 4.dp), size = 12.5.sp, color = c.mut)
             if (d.knownCredits > 0) {
                 Box(
-                    Modifier.padding(top = 5.dp).offset(x = (-8).dp).clip(CircleShape).background(c.s2)
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                    Modifier.padding(top = 8.dp).clip(CircleShape).background(c.s2)
+                        .padding(horizontal = 10.dp, vertical = 3.dp)
                 ) {
                     MvText("Known Credits " + d.knownCredits, size = 11.sp, weight = FontWeight.Bold)
                 }
             }
         }
     }
-    if (d.bio.isNotEmpty()) MvText(d.bio, Modifier.padding(top = 8.dp), size = 12.sp, color = c.mut)
-    if (d.upcoming.isNotEmpty()) {
-        Ph3("Upcoming movies")
-        CreditList(d.upcoming, sc.up, 69.dp, false, Modifier.fillMaxWidth().height(69.dp * minOf(d.upcoming.size, 5))) { pf.pick(it) }
+    // ---- biography: four lines, tap More / Less ----
+    if (d.bio.isNotEmpty()) {
+        var open by remember(d) { mutableStateOf(false) }
+        MvText(
+            d.bio, Modifier.padding(top = 12.dp), size = 12.5.sp, color = c.mut,
+            maxLines = if (open) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis
+        )
+        if (d.bio.length > 220) {
+            MvText(
+                if (open) "Less" else "More", Modifier.plainClickable { open = !open }.padding(top = 4.dp, bottom = 2.dp),
+                size = 12.sp, weight = FontWeight.Bold
+            )
+        }
     }
+    // ---- tabs: Movies | Awards (they also follow the swipe of the pages below) ----
+    val second by remember(sc.pages) {
+        derivedStateOf {
+            val w = sc.pages.layoutInfo.viewportEndOffset - sc.pages.layoutInfo.viewportStartOffset
+            sc.pages.firstVisibleItemIndex > 0 || sc.pages.firstVisibleItemScrollOffset > w / 2
+        }
+    }
+    Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        MvPill("Movies", !second, { scope.launch { sc.pages.animateScrollToItem(0) } }, Modifier.weight(1f), padH = 0.dp, padV = 9.dp, weight = FontWeight.Bold)
+        MvPill("Awards", second, { scope.launch { sc.pages.animateScrollToItem(1) } }, Modifier.weight(1f), padH = 0.dp, padV = 9.dp, weight = FontWeight.Bold)
     }
 
-    // ---- #ppg : Movies | Awards ----
-    // fixed height (title row + five rows): swiping Movies <-> Awards, loading or a short list never changes the size of the popup
+    // ---- #ppg : Movies | Awards, takes all the room that is left ----
     LazyRow(
-        Modifier.fillMaxWidth().height(pagerH), state = sc.pages,
+        Modifier.fillMaxWidth().weight(1f).padding(top = 4.dp), state = sc.pages,
         flingBehavior = rememberSnapFlingBehavior(sc.pages)
     ) {
         item {
             Column(Modifier.fillParentMaxWidth().fillMaxHeight()) {
                 val list = if (pf.top) d.top else d.latest
-                MhRow(if (pf.top) "Top Rated (" + d.top.size + ")" else "Movies (" + d.all.size + ")") {
-                    MvPill("Latest", !pf.top, { pf.pickTop(false) }, fontSize = 11.sp, padH = 10.dp, padV = 3.dp)
-                    MvPill("Top Rated", pf.top, { pf.pickTop(true) }, fontSize = 11.sp, padH = 10.dp, padV = 3.dp)
+                LazyColumn(Modifier.fillMaxSize(), state = sc.mv, contentPadding = PaddingValues(bottom = 20.dp)) {
+                    if (d.upcoming.isNotEmpty()) {
+                        item { Ph3("Upcoming movies") }
+                        items(d.upcoming) { x -> CreditRow(x, 69.dp, false) { pf.pick(it) } }
+                    }
+                    item {
+                        MhRow(if (pf.top) "Top Rated (" + d.top.size + ")" else "Movies (" + d.all.size + ")") {
+                            MvPill("Latest", !pf.top, { pf.pickTop(false) }, fontSize = 11.sp, padH = 10.dp, padV = 3.dp)
+                            MvPill("Top Rated", pf.top, { pf.pickTop(true) }, fontSize = 11.sp, padH = 10.dp, padV = 3.dp)
+                        }
+                    }
+                    if (list.isEmpty()) item { NoteP("No credits found.") }
+                    else items(list) { x -> CreditRow(x, 69.dp, pf.top) { pf.pick(it) } }
                 }
-                if (list.isEmpty()) NoteP("No credits found.")
-                else CreditList(list, sc.mv, 69.dp, pf.top, Modifier.fillMaxWidth().weight(1f)) { pf.pick(it) }
             }
         }
         item {
@@ -167,22 +189,6 @@ private fun PersonBody(pf: PersonFlow) {
                 AwardsPage(pf)
             }
         }
-    }
-    // ---- .pdots ----
-    val second by remember(sc.pages) {
-        derivedStateOf {
-            val w = sc.pages.layoutInfo.viewportEndOffset - sc.pages.layoutInfo.viewportStartOffset
-            sc.pages.firstVisibleItemIndex > 0 || sc.pages.firstVisibleItemScrollOffset > w / 2
-        }
-    }
-    val on = Color.White
-    val off = Color(1f, 1f, 1f, 0.28f)
-    Row(
-        Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally)
-    ) {
-        Box(Modifier.size(7.dp).clip(CircleShape).background(if (!second) on else off))
-        Box(Modifier.size(7.dp).clip(CircleShape).background(if (second) on else off))
     }
 }
 
