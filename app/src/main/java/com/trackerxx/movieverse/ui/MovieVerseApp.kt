@@ -28,6 +28,8 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.unit.dp
 import com.trackerxx.movieverse.data.AppData
 import com.trackerxx.movieverse.ui.library.HomeScreen
+import com.trackerxx.movieverse.ui.settings.UpdateFlow
+import com.trackerxx.movieverse.update.AutoUpdate
 import com.trackerxx.movieverse.ui.components.LocalModal
 import com.trackerxx.movieverse.ui.components.LocalToast
 import com.trackerxx.movieverse.ui.components.ModalHost
@@ -84,6 +86,12 @@ fun MovieVerseApp() {
 
                 ModalHost(modal)
                 ToastHost(toast)
+
+                // new build on GitHub -> "Update available" popup (not while the logo splash is still on screen)
+                val offer = AutoUpdate.offer
+                if (offer != null && !showSplash) {
+                    UpdateFlow(onClose = { AutoUpdate.later(offer) }, initial = offer)
+                }
 
                 if (showSplash) {
                     SplashOverlay(onFinished = { showSplash = false })
