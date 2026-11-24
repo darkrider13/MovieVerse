@@ -121,7 +121,6 @@ fun SettingsDialog(
     val modal = LocalModal.current
     val scope = rememberCoroutineScope()
     val uri = LocalUriHandler.current
-    val dark = AppData.theme.dark
     var updateOpen by remember { mutableStateOf(false) }
     if (updateOpen) UpdateFlow(onClose = { updateOpen = false })
 
@@ -146,25 +145,6 @@ fun SettingsDialog(
                     size = FieldSize.Settings, placeholder = "Your name"
                 )
 
-                MvLabel("Appearance", size = 13.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MvButton(
-                        onClick = { AppData.theme.toggle() },
-                        size = BtnSize.Settings, spacing = 8.dp
-                    ) {
-                        MvIcon(if (dark) MvIcons.Moon else MvIcons.Sun, 16.dp)
-                        MvText(if (dark) "Dark mode" else "Light mode")
-                    }
-                    // Update: downloads the newest APK from GitHub and installs it over this app
-                    MvButton(
-                        onClick = { updateOpen = true },
-                        size = BtnSize.Settings, spacing = 8.dp
-                    ) {
-                        MvIcon(MvIcons.Download, 16.dp)
-                        MvText("Update")
-                    }
-                }
-
                 MvLabel("API keys", size = 13.sp)
                 // .atabs margin-top 6 (the label's own bottom margin 4 stays outside it)
                 Spacer(Modifier.height(6.dp))
@@ -183,16 +163,21 @@ fun SettingsDialog(
                     androidx.compose.runtime.key(st.cur) {
                         KeyList(
                             st, st.cur, cur,
-                            onDeleteApi = {
-                                scope.launch {
-                                    val r = modal.ask(
-                                        ModalSpec(
-                                            title = "Remove \"" + cur.name + "\"?",
-                                            text = "Its keys are removed too.",
-                                            ok = "Remove", danger = true
+                            onDelete = { j ->
+                                // the last key of an API you added yourself removes the whole API; otherwise the row is deleted
+                                if (cur.keys.size < 2 && !st.isBuiltIn(cur)) {
+                                    scope.launch {
+                                        val r = modal.ask(
+                                            ModalSpec(
+                                                title = "Remove \"" + cur.name + "\"?",
+                                                text = "Its key is removed too.",
+                                                ok = "Remove", danger = true
+                                            )
                                         )
-                                    )
-                                    if (r is ModalResult.Ok) st.removeApi(st.apis.indexOf(cur))
+                                        if (r is ModalResult.Ok) st.removeApi(st.apis.indexOf(cur))
+                                    }
+                                } else {
+                                    st.deleteKey(st.cur, j)
                                 }
                             }
                         )
@@ -230,7 +215,15 @@ fun SettingsDialog(
                 Spacer(Modifier.height(14.dp))
                 MvButton("Save", { commitAndNotify(st, onSaved) }, Modifier.fillMaxWidth(), kind = BtnKind.Primary, size = BtnSize.Settings)
 
-                Credit(uri::openUri, Modifier.padding(top = 10.dp).fillMaxWidth())
+                Row(Modifier.padding(top = 10.dp).fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+                    // small muted link on the empty left side of the credit: manual "check for updates"
+                    MvText(
+                        "Check for updates",
+                        Modifier.plainClickable { updateOpen = true }.padding(top = 8.dp, end = 12.dp, bottom = 2.dp),
+                        size = 9.sp, color = c.mut, lineHeight = 1.35f, letterSpacing = 0.2.sp
+                    )
+                    Credit(uri::openUri, Modifier.weight(1f))
+                }
             }
         }
     }
@@ -342,7 +335,7 @@ private fun ApiTabs(st: SettingsState) {
 /** .akl : rows of 40dp with 8dp gaps, at most 3 rows visible (138dp), scrolls and snaps to a row. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun KeyList(st: SettingsState, i: Int, a: EditApi, onDeleteApi: () -> Unit) {
+private fun KeyList(st: SettingsState, i: Int, a: EditApi, onDelete: (Int) -> Unit) {
     val snap = rememberSnapFlingBehavior(a.listState)
     LazyColumn(
         state = a.listState,
@@ -352,13 +345,13 @@ private fun KeyList(st: SettingsState, i: Int, a: EditApi, onDeleteApi: () -> Un
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(a.keys.size) { j ->
-            KeyRow(st, i, a, j, onDeleteApi)
+            KeyRow(st, i, a, j, onDelete)
         }
     }
 }
 
 @Composable
-private fun KeyRow(st: SettingsState, i: Int, a: EditApi, j: Int, onDeleteApi: () -> Unit) {
+private fun KeyRow(st: SettingsState, i: Int, a: EditApi, j: Int, onDelete: (Int) -> Unit) {
     val c = Mv.c
     val clip = LocalClipboardManager.current
     // the eye goes back to "hidden" whenever the list is drawn again (gen changes)
@@ -371,9 +364,6 @@ private fun KeyRow(st: SettingsState, i: Int, a: EditApi, j: Int, onDeleteApi: (
         }
     }
     val value = a.keys.getOrNull(j) ?: ""
-    // the delete-API button sits only on the first row and not for the built-in TMDB / XMDb / OMDb
-    val canDelete = j == 0 && a.id != "tmdb" && a.id != "xmdb" && a.id != "omdb" && a.id != "subs"
-
     Row(
         Modifier.fillMaxWidth().height(40.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -411,7 +401,7 @@ private fun KeyRow(st: SettingsState, i: Int, a: EditApi, j: Int, onDeleteApi: (
                 }
             }
         }
-        if (canDelete) {
+        run {
             val shape = RoundedCornerShape(10.dp)
             Box(
                 Modifier
@@ -420,7 +410,7 @@ private fun KeyRow(st: SettingsState, i: Int, a: EditApi, j: Int, onDeleteApi: (
                     .clip(shape)
                     .background(c.s2)
                     .border(1.dp, c.line, shape)
-                    .plainClickable(onClick = onDeleteApi),
+                    .plainClickable { onDelete(j) },
                 contentAlignment = Alignment.Center
             ) {
                 MvIcon(MvIcons.Trash2, 17.dp, tint = MvFixed.Del)

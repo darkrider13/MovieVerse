@@ -79,6 +79,20 @@ class SettingsState {
         return true
     }
 
+    /** the built-in APIs can never be removed, only their keys */
+    fun isBuiltIn(a: EditApi) = a.id == "tmdb" || a.id == "xmdb" || a.id == "omdb" || a.id == "subs"
+
+    /**
+     * the trash button of a key row: the row is deleted (a single row is only cleared). The caller asks "Remove API?"
+     * first when this is the last key of an API the person added; then it calls removeApi() instead.
+     */
+    fun deleteKey(i: Int, j: Int) {
+        val a = apis.getOrNull(i) ?: return
+        if (j in a.keys.indices) a.keys.removeAt(j)
+        if (a.keys.isEmpty()) a.keys.add("")
+        redrawList(a)
+    }
+
     /** the typed text of one key box */
     fun setKey(i: Int, j: Int, v: String) {
         val a = apis.getOrNull(i) ?: return
