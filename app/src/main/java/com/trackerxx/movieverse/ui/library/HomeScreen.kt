@@ -529,20 +529,10 @@ fun HomeScreen(splashGone: Boolean) {
                     }
                 }
 
-                // another pill / folder was opened: its own loading screen over the cards (the tabs stay usable)
+                // another pill / folder was opened: the old cards are covered for the few frames until the new card frames arrive.
+                // Plain cover, no spinner / text (a spinner flashing for a moment looked like flicker). The posters then fade in on their own.
                 if (libReady && view == "library" && home == "lib" && shownKey != fctx) {
-                    Box(
-                        Modifier.fillMaxSize().padding(top = hdrDp.dp).background(cNow.bg).pointerInput(Unit) { },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            MvSpinner(46.dp, 4.dp, cNow.line, cNow.acc)
-                            Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.Bottom) {
-                                MvText("Loading your library", weight = FontWeight.Bold)
-                                MvLoadingDots(weight = FontWeight.Bold)
-                            }
-                        }
-                    }
+                    Box(Modifier.fillMaxSize().padding(top = hdrDp.dp).background(cNow.bg).pointerInput(Unit) { })
                 }
 
                 // "Loading your library": nothing of the library is shown before everything is ready
