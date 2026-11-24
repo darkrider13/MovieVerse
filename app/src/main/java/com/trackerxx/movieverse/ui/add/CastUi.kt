@@ -26,11 +26,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -140,6 +142,12 @@ fun CastBlock(data: CastData, onPerson: (Long) -> Unit) {
     }
 }
 
+/**
+ * One row, four people visible. Like the Library tabs the row snaps card by card: after a swipe every card sits exactly in its slot,
+ * so no person is ever left cut in half. To keep every slot the same width the small dot between the crew and the actors is no
+ * longer a row item of its own: it is drawn in the 6dp gap in front of the first actor.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CastRow(crew: List<CastPerson>, cast: List<CastPerson>, cw: androidx.compose.ui.unit.Dp, onPerson: (Long) -> Unit) {
     val st = rememberLazyListState()
@@ -147,18 +155,20 @@ private fun CastRow(crew: List<CastPerson>, cast: List<CastPerson>, cw: androidx
         Modifier.fillMaxSize(), state = st,
         contentPadding = PaddingValues(top = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        flingBehavior = androidx.compose.foundation.gestures.ScrollableDefaults.flingBehavior()
+        flingBehavior = rememberSnapFlingBehavior(st)
     ) {
         items(crew) { p -> CastCard(p, cw, onPerson) }
-        if (crew.isNotEmpty() && cast.isNotEmpty()) {
-            item {
-                // the dot between the crew and the actors, level with the middle of the round photos (44dp)
-                Box(Modifier.width(6.dp).height(44.dp), contentAlignment = Alignment.Center) {
-                    Box(Modifier.size(4.dp).clip(CircleShape).background(Mv.c.mut))
+        itemsIndexed(cast) { i, p ->
+            if (i == 0 && crew.isNotEmpty()) {
+                Box {
+                    CastCard(p, cw, onPerson)
+                    // the dot between the crew and the actors: centre of the 6dp gap, level with the middle of the round photos (44dp)
+                    Box(Modifier.offset(x = (-5).dp, y = 20.dp).size(4.dp).clip(CircleShape).background(Mv.c.mut))
                 }
+            } else {
+                CastCard(p, cw, onPerson)
             }
         }
-        items(cast) { p -> CastCard(p, cw, onPerson) }
     }
 }
 
