@@ -430,7 +430,7 @@ fun TabsRow(
         }
         val shown: List<Pair<String, String>> = if (drag.active) {
             val by = tabs.associateBy { it.first }
-            listOf(tabs.first()) + drag.order.mapNotNull { by[it] }
+            drag.order.mapNotNull { by[it] }
         } else tabs
 
         LazyRow(
@@ -439,7 +439,7 @@ fun TabsRow(
                 .onSizeChanged { rowH = it.height }
                 .tabReorder(
                     drag, state,
-                    ids = { tabs.drop(1).map { it.first } },
+                    ids = { tabs.map { it.first } },
                     pillTop = { (rowH - pillH) / 2f },
                     pillHeight = { pillH },
                     haptic = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) },

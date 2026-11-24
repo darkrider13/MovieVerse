@@ -171,6 +171,10 @@ fun HomeScreen(splashGone: Boolean) {
     // Until then (only possible when it is opened very early) a "Loading your library" screen covers the page; it goes away in one piece.
     var libPayloadIn by remember { mutableStateOf(false) }
     var libReady by remember { mutableStateOf(false) }
+    // "tab:folder" whose cards are already on the page. Opening another pill / folder shows "Loading your library" over the cards
+    // until its own cards have arrived (no half-drawn list, no cards of the old pill).
+    var shownKey by remember { mutableStateOf<String?>(null) }
+    var hdrDp by remember { mutableStateOf(0f) }
 
     // ---- what the page shows -------------------------------------------------------------------------------------------
     val rev = AppData.rev
@@ -179,6 +183,11 @@ fun HomeScreen(splashGone: Boolean) {
     LaunchedEffect(folderEff, lib.folder) { if (lib.folder != folderEff) lib.folder = folderEff }
     val fctx = lib.tab + ":" + (folderEff ?: "")
     val ffEff = if (lib.ffor == fctx) lib.ff else FilterState()
+    // the "All" tab is gone: a tab id that no longer exists (or the old "all") falls back to the first pill
+    LaunchedEffect(rev, ready) {
+        if (ready && AppData.statuses.isNotEmpty() && AppData.statuses.none { it.id == lib.tab }) lib.openTab(AppData.statuses[0].id)
+    }
+    LaunchedEffect(fctx) { delay(2500); shownKey = fctx }   // safety: never stay on the loading screen
     LaunchedEffect(fctx) {
         if (lib.ffor != fctx) {
             lib.ff = FilterState()
@@ -341,6 +350,7 @@ fun HomeScreen(splashGone: Boolean) {
     val updN = Refresh.upd.size
     // (also while Trending is on screen: the Library is prepared in the background, so switching to it is instant)
     LaunchedEffect(lv, revApplied, updN) {
+        val key = fctx
         val sts = AppData.statuses.toList()
         val sl = AppData.SL
         val updSet = HashSet(Refresh.upd.keys)
@@ -348,6 +358,10 @@ fun HomeScreen(splashGone: Boolean) {
         val json = withContext(Dispatchers.Default) { GridJson.lib(lv, cards, sts, sl, cNow, updSet, chgCopy) }
         grid.setPayload("lib", json)
         libPayloadIn = true
+        withFrameNanos { }
+        withFrameNanos { }
+        delay(90)
+        shownKey = key
     }
     LaunchedEffect(libHeaderWarm, libPayloadIn) {
         if (libReady || !libHeaderWarm || !libPayloadIn) return@LaunchedEffect
@@ -436,6 +450,7 @@ fun HomeScreen(splashGone: Boolean) {
                         .onSizeChanged {
                             if (home == "trend" && view == "library") hdrPx[1] = it.height.toFloat()
                             grid.setTop(it.height / dens)
+                            hdrDp = it.height / dens
                         }
                         .scrollable(headScroll, Orientation.Vertical)
                         .padding(start = 16.dp, end = 16.dp, top = 16.dp)
@@ -509,6 +524,22 @@ fun HomeScreen(splashGone: Boolean) {
                             onSearchText = { usText = it; Releases.onQuery(it) },
                             onOpenFilter = { k -> ufkey = k }
                         )
+                    }
+                }
+
+                // another pill / folder was opened: its own loading screen over the cards (the tabs stay usable)
+                if (libReady && view == "library" && home == "lib" && shownKey != fctx) {
+                    Box(
+                        Modifier.fillMaxSize().padding(top = hdrDp.dp).background(cNow.bg).pointerInput(Unit) { },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            MvSpinner(46.dp, 4.dp, cNow.line, cNow.acc)
+                            Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.Bottom) {
+                                MvText("Loading your library", weight = FontWeight.Bold)
+                                MvLoadingDots(weight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
 
