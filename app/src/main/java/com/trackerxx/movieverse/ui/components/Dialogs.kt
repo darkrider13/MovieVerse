@@ -117,7 +117,7 @@ private fun DialogWindowSetup() {
 
 /**
  * Modal dialog, same look as the web <dialog>:
- * width min(94vw, 480px), max-height 90vh, radius 16, 1px glass border, black (dark) / white 72% (light) fill,
+ * width min(94vw, 480px), max-height 90vh, radius 16, 1px glass border, black fill,
  * soft shadow + 1px top highlight, content scrolls inside. Tap outside closes (if onDismiss != null).
  *
  * widthMax / widthFraction  -> width:min(94vw,480px)  e.g. #mdlg = 380dp / 0.90
@@ -418,18 +418,17 @@ private fun Modifier.pageEdgeFade(scroll: ScrollState, topMax: Dp = 36.dp, botto
             drawRect(brush, blendMode = BlendMode.DstIn)
         }
 
-/** Window setup of a full page: no dim, system bar icons follow the theme. */
+/** Window setup of a full page: no dim, light system bar icons. */
 @Composable
 private fun PageWindowSetup() {
     val view = LocalView.current
-    val dark = Mv.c.dark
     SideEffect {
         val window = (view.parent as? DialogWindowProvider)?.window ?: return@SideEffect
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         val ic = WindowCompat.getInsetsController(window, view)
-        ic.isAppearanceLightStatusBars = !dark
-        ic.isAppearanceLightNavigationBars = !dark
+        ic.isAppearanceLightStatusBars = false
+        ic.isAppearanceLightNavigationBars = false
     }
 }
 
