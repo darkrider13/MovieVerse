@@ -141,7 +141,7 @@ object LibraryLogic {
     /** scol(id): colour of a status */
     fun statusColor(id: String, statuses: List<Status>, w: Color, p: Color, n: Color): Color {
         when (id) {
-            "watched" -> return w
+            "watched" -> return Color(0xFF00C800)   // pure green tag (the shared green c.w stays for the other places)
             "plan" -> return p
             "watching" -> return n
             "upcoming" -> return Color(0xFF2F9FD6)
