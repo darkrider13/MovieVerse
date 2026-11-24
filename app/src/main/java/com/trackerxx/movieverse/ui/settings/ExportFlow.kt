@@ -99,9 +99,13 @@ class ExportFlow(
                 return@launch
             }
             progOn()
+            val t0 = System.currentTimeMillis()
             try {
                 askStorage()
                 saveToDocuments(name)
+                // the loading stays for at least 4 seconds, then the popup comes
+                val left = 4000L - (System.currentTimeMillis() - t0)
+                if (left > 0) delay(left)
                 progress = null
                 AppData.markExported()
                 ok = ExportOk("Saved to", "Documents/MovieVerse/$name")

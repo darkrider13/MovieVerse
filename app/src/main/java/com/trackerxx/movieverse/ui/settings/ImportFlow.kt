@@ -147,6 +147,7 @@ class ImportFlow(
         var first = true
         val ids = HashSet<String>()
         val base = System.currentTimeMillis()
+        val t0 = System.currentTimeMillis()
         var read = 0L
     }
 
@@ -321,6 +322,9 @@ class ImportFlow(
             }
         }
         AppData.render()
+        // the loading stays for at least 4 seconds, then the popup comes
+        val left = 4000L - (System.currentTimeMillis() - r.t0)
+        if (left > 0) delay(left)
         progress = null
         p.closeSettings()
         if (!hasK) {
