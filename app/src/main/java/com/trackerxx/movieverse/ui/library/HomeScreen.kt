@@ -354,7 +354,13 @@ fun HomeScreen(splashGone: Boolean) {
             if (view == "library" && home == "lib" && lvNow.total > lib.lim) lib.lim += 60
             if (view == "up") Releases.checkMore()
         }
-        grid.onReorder = { ids -> actions.saveOrder(ids, lvNow.ordCtx, lvNow.ordKey) }
+        grid.onReorder = { ids ->
+            actions.saveOrder(ids, lvNow.ordCtx, lvNow.ordKey)
+            // the list that was built BEFORE the drop must not be sent again (it has the old order: the cards would jump back and
+            // forth and every poster would blink). Forget it, so the very next list is built from the new order.
+            lvHold[0] = null
+            lvHold[1] = null
+        }
         grid.onRetryTrend = { scope.launch { try { Trending.load(true) } catch (e: CancellationException) { throw e } catch (e: Exception) { } } }
         grid.onRetryUp = { Releases.retry() }
         grid.onMoreTap = { Releases.loadMore() }
