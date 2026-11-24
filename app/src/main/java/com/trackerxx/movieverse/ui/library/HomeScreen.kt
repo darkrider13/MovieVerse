@@ -5,6 +5,11 @@ import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.background
+import androidx.compose.ui.text.font.FontWeight
+import com.trackerxx.movieverse.ui.components.MvSpinner
+import com.trackerxx.movieverse.ui.components.MvLoadingDots
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -161,6 +166,11 @@ fun HomeScreen(splashGone: Boolean) {
         withFrameNanos { }
         libHeaderWarm = true
     }
+
+    // Your Library is shown only when it is complete: header (tabs, search, count, filters) measured AND the cards delivered to the page.
+    // Until then (only possible when it is opened very early) a "Loading your library" screen covers the page; it goes away in one piece.
+    var libPayloadIn by remember { mutableStateOf(false) }
+    var libReady by remember { mutableStateOf(false) }
 
     // ---- what the page shows -------------------------------------------------------------------------------------------
     val rev = AppData.rev
@@ -337,6 +347,14 @@ fun HomeScreen(splashGone: Boolean) {
         val chgCopy = HashSet(Enrich.chgSet)
         val json = withContext(Dispatchers.Default) { GridJson.lib(lv, cards, sts, sl, cNow, updSet, chgCopy) }
         grid.setPayload("lib", json)
+        libPayloadIn = true
+    }
+    LaunchedEffect(libHeaderWarm, libPayloadIn) {
+        if (libReady || !libHeaderWarm || !libPayloadIn) return@LaunchedEffect
+        while (hdrPx[0] <= 0f) withFrameNanos { }
+        withFrameNanos { }
+        withFrameNanos { }
+        libReady = true
     }
 
     fun toTop() { grid.scrollTop() }
@@ -491,6 +509,22 @@ fun HomeScreen(splashGone: Boolean) {
                             onSearchText = { usText = it; Releases.onQuery(it) },
                             onOpenFilter = { k -> ufkey = k }
                         )
+                    }
+                }
+
+                // "Loading your library": nothing of the library is shown before everything is ready
+                if (view == "library" && home == "lib" && !libReady) {
+                    Box(
+                        Modifier.fillMaxSize().background(cNow.bg).pointerInput(Unit) { },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            MvSpinner(46.dp, 4.dp, cNow.line, cNow.acc)
+                            Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.Bottom) {
+                                MvText("Loading your library", weight = FontWeight.Bold)
+                                MvLoadingDots(weight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
             }
