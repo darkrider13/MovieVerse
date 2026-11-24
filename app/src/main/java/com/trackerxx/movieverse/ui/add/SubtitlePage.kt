@@ -20,6 +20,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,6 +45,7 @@ import com.trackerxx.movieverse.ui.components.BtnSize
 import com.trackerxx.movieverse.ui.components.MvButton
 import com.trackerxx.movieverse.ui.components.MvPage
 import com.trackerxx.movieverse.ui.components.MvPill
+import com.trackerxx.movieverse.ui.components.scrollEdgeFade
 import com.trackerxx.movieverse.ui.theme.Mv
 import com.trackerxx.movieverse.ui.theme.MvIcon
 import com.trackerxx.movieverse.ui.theme.MvIcons
@@ -50,16 +54,11 @@ import com.trackerxx.movieverse.ui.theme.MvText
 /** The Subtitles page of a movie: Bangla + English only, Download saves the file into the Download folder. */
 @Composable
 fun SubtitlePage(flow: SubsFlow) {
-    val c = Mv.c
     val m = flow.movie ?: return
     val head = if (m.title.isNotEmpty()) m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "") else "Subtitles"
 
-    MvPage(onBack = { flow.close() }, title = head) {
+    MvPage(onBack = { flow.close() }, title = head, scrollable = false) {
         MvText("Subtitles", Modifier.padding(top = 6.dp), size = 20.sp, weight = FontWeight.Bold)
-        MvText(
-            "Only Bangla and English. Tap the arrow for details, tap the red button to save the file in your Download folder.",
-            Modifier.padding(top = 4.dp), size = 12.sp, color = c.mut, lineHeight = 1.4f
-        )
 
         // language filter
         Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -67,8 +66,12 @@ fun SubtitlePage(flow: SubsFlow) {
             MvPill("Bangla", flow.lang == "BN", { flow.pickLang("BN") }, fontSize = 13.sp, padH = 14.dp, padV = 5.dp)
             MvPill("English", flow.lang == "EN", { flow.pickLang("EN") }, fontSize = 13.sp, padH = 14.dp, padV = 5.dp)
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(10.dp))
 
+        // only the subtitle cards scroll (header + language pills stay), with a soft fade at the top and bottom edge
+        val listScroll = rememberScrollState()
+        LaunchedEffect(flow.lang) { listScroll.scrollTo(0) }
+        Column(Modifier.weight(1f).fillMaxWidth().scrollEdgeFade(listScroll).verticalScroll(listScroll)) {
         when (val u = flow.ui) {
             is SubsUi.Loading -> Note("Searching subtitles…")
             is SubsUi.NoKey -> Note("Add your SubSource API key in Settings \u2192 API keys \u2192 Subtitles.")
@@ -100,6 +103,8 @@ fun SubtitlePage(flow: SubsFlow) {
                     }
                 }
             }
+        }
+        Spacer(Modifier.height(32.dp))
         }
     }
 }
