@@ -43,10 +43,12 @@ img{-webkit-user-drag:none;pointer-events:none}
 @keyframes ptrs{to{transform:rotate(360deg)}}
 @keyframes pulsep{0%,100%{transform:scale(1)}50%{transform:scale(.92)}}
 .card.chg:not(.upd) .poster{animation:pulsep 1.6s ease-in-out infinite;will-change:transform}
-.card.ph{opacity:.3}
+.card.ph{opacity:.3;transition:opacity .15s}
 .card.ph .poster{outline:2px solid #fff;outline-offset:-2px}
-.card.fly{position:fixed;z-index:200;margin:0;pointer-events:none;transform:scale(1.07) rotate(1.5deg);opacity:.97;transition:none}
-.card.fly .poster{box-shadow:0 16px 36px rgba(0,0,0,.6)}
+.card.fly{position:fixed;z-index:200;margin:0;pointer-events:none;transform:scale(1.07) rotate(1.5deg);opacity:.97;transition:none;animation:flyin .16s cubic-bezier(.2,.7,.2,1)}
+.card.fly .poster{box-shadow:0 16px 36px rgba(0,0,0,.6);animation:flysh .16s ease-out}
+@keyframes flyin{from{transform:scale(1) rotate(0deg)}to{transform:scale(1.07) rotate(1.5deg)}}
+@keyframes flysh{from{box-shadow:0 0 0 rgba(0,0,0,0)}to{box-shadow:0 16px 36px rgba(0,0,0,.6)}}
 
 /* ---- trending rows ---- */
 .tt{font-size:15px;font-weight:700;margin:16px 0 4px}
@@ -339,19 +341,43 @@ function dTick(){
   D.raf=requestAnimationFrame(dTick);
 }
 function dSwap(){
-  if(Date.now()-D.last<130)return;
+  if(Date.now()-D.last<170)return;
   var t=cardAt(D.x,D.y);if(!t||t===D.el)return;
   var items=Array.prototype.slice.call(grid.children),i=items.indexOf(D.el),j=items.indexOf(t);
   if(i<0||j<0)return;
-  if(i<j)grid.insertBefore(D.el,t.nextSibling);else grid.insertBefore(D.el,t);
+  dFlip(function(){if(i<j)grid.insertBefore(D.el,t.nextSibling);else grid.insertBefore(D.el,t)});
   D.last=Date.now();
+}
+/* the cards on screen glide to their new slot (transform only, so it stays light) */
+function dFlip(fn){
+  var cs=grid.children,n=cs.length,a=[],i,c,r,h=innerHeight;
+  for(i=0;i<n;i++){c=cs[i];r=c.getBoundingClientRect();if(r.bottom>-120&&r.top<h+120)a.push(c,r.left,r.top)}
+  fn();
+  var mv=[];
+  for(i=0;i<a.length;i+=3){c=a[i];r=c.getBoundingClientRect();var dx=a[i+1]-r.left,dy=a[i+2]-r.top;
+    if(Math.abs(dx)>1||Math.abs(dy)>1){c.style.transition='none';c.style.transform='translate('+dx+'px,'+dy+'px)';mv.push(c)}}
+  if(!mv.length)return;
+  void grid.offsetWidth;
+  for(i=0;i<mv.length;i++){c=mv[i];c.style.transition='transform .2s cubic-bezier(.2,.7,.2,1)';c.style.transform=''}
+  setTimeout(function(){for(var k=0;k<mv.length;k++)mv[k].style.transition=''},240);
 }
 function dEnd(){
   clearTimeout(D.tm);
   if(!D.on)return;
   D.on=false;cancelAnimationFrame(D.raf);
-  if(D.fly&&D.fly.parentNode)D.fly.parentNode.removeChild(D.fly);
-  D.fly=null;if(D.el)D.el.classList.remove('ph');
+  var f=D.fly,c=D.el;D.fly=null;
+  if(f&&f.parentNode&&c){
+    /* the lifted card glides into its slot and settles, then the real card shows again */
+    var r=c.getBoundingClientRect(),e='.2s cubic-bezier(.2,.7,.2,1)',po=f.querySelector('.poster');
+    f.style.animation='none';
+    f.style.transition='left '+e+',top '+e+',transform '+e+',opacity .2s ease-out';
+    f.style.left=r.left+'px';f.style.top=r.top+'px';f.style.transform='scale(1) rotate(0deg)';f.style.opacity='1';
+    if(po){po.style.animation='none';po.style.transition='box-shadow .2s ease-out';po.style.boxShadow='0 0 0 rgba(0,0,0,0)'}
+    setTimeout(function(){if(f.parentNode)f.parentNode.removeChild(f);c.classList.remove('ph')},210);
+  }else{
+    if(f&&f.parentNode)f.parentNode.removeChild(f);
+    if(c)c.classList.remove('ph');
+  }
   var ids=Array.prototype.map.call(grid.children,function(c){return c.getAttribute('data-id')});
   D.noClick=Date.now();D.el=null;
   if(A())A().reorder(JSON.stringify(ids));
