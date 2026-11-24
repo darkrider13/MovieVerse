@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -40,6 +41,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/** one open window above the library (every dialog / page is its own Android window): popup = a dialog, otherwise a full page */
+class WinLayer(val popup: Boolean)
+
 /** toast(text, ms): shows the text for ms (default 2600) and fades out. A new toast replaces the old one. */
 @Stable
 class ToastState(private val scope: CoroutineScope) {
@@ -52,8 +56,29 @@ class ToastState(private val scope: CoroutineScope) {
     /** number of open dialogs (each dialog is its own window; the toast is drawn in the top one) */
     var dialogs by mutableIntStateOf(0)
 
-    /** number of open POPUPS (not full pages): only these blur the page behind. A full page is opaque, so it never needs the blur. */
-    var popups by mutableIntStateOf(0)
+    /** the open windows above the library, bottom to top (the library itself is the window below all of them) */
+    private val layers = mutableStateListOf<WinLayer>()
+
+    fun addLayer(l: WinLayer) { layers.add(l) }
+
+    fun removeLayer(l: WinLayer) { layers.remove(l) }
+
+    /**
+     * Must the window [l] (null = the library) be blurred? Yes while a popup is open above it and nothing opaque is in between.
+     * A popup blurs EVERYTHING visible behind it, including a full page (movie details) and a popup under another popup, like the
+     * web version's dialog::backdrop. A full page above a window hides it completely, so that window needs no blur.
+     * Reads snapshot state: call it inside a graphicsLayer block, then the blur changes without any recomposition.
+     */
+    fun covered(l: WinLayer?): Boolean {
+        val i = if (l == null) -1 else layers.indexOf(l)
+        if (l != null && i < 0) return false
+        var popup = false
+        for (k in i + 1 until layers.size) {
+            if (!layers[k].popup) return false
+            popup = true
+        }
+        return popup
+    }
 
     fun show(message: String, ms: Long = 2600L) {
         job?.cancel()

@@ -63,6 +63,9 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -102,7 +105,24 @@ import com.trackerxx.movieverse.ui.theme.MvText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Window setup of a modal <dialog>: black 50% backdrop + 14px blur (blur works on Android 12+). */
+/** blur of the page behind a popup (Android 12+; older phones only get the dim) */
+private val COVER_BLUR = 14.dp
+
+/** the blur part of a graphicsLayer block: on while a popup is open above [layer] (see ToastState.covered) */
+fun GraphicsLayerScope.coverBlur(toast: ToastState, layer: WinLayer?) {
+    if (Build.VERSION.SDK_INT >= 31 && toast.covered(layer)) {
+        val r = COVER_BLUR.toPx()
+        renderEffect = BlurEffect(r, r, TileMode.Clamp)
+    }
+}
+
+/**
+ * Blurs this window's content while a popup is open above it. Only a layer property changes (the picture is not redrawn,
+ * nothing recomposes or is measured again), so the blur starts and ends in the same frame as the popup does.
+ */
+fun Modifier.coveredBlur(toast: ToastState, layer: WinLayer?): Modifier = graphicsLayer { coverBlur(toast, layer) }
+
+/** Window setup of a modal <dialog>: black 50% backdrop (the 14dp blur is on the windows BEHIND it, see coveredBlur). */
 @Composable
 private fun DialogWindowSetup() {
     val view = LocalView.current
@@ -114,7 +134,7 @@ private fun DialogWindowSetup() {
         window.setDimAmount(0.5f)
         // no platform fade in / out: the dim shows and goes away instantly together with the blur of the page behind
         window.setWindowAnimations(R.style.MvNoWindowAnim)
-        // the blur itself is done in MovieVerseApp (Modifier.blur on the page): FLAG_BLUR_BEHIND is ignored by many phones
+        // the blur itself is done by coveredBlur on every window behind (library, pages, lower popups): FLAG_BLUR_BEHIND is ignored by many phones
     }
 }
 
@@ -146,11 +166,13 @@ fun MvDialog(
     val currentDismiss by rememberUpdatedState(onDismiss)
     val toast = LocalToast.current
     var myDepth by remember { mutableIntStateOf(0) }
+    val layer = remember { WinLayer(popup = true) }
+    // opening: this effect comes before Dialog(), so the blur of everything behind is switched on right before the window is shown
     DisposableEffect(toast) {
         toast.dialogs = toast.dialogs + 1
-        toast.popups = toast.popups + 1
+        toast.addLayer(layer)
         myDepth = toast.dialogs
-        onDispose { toast.dialogs = toast.dialogs - 1; toast.popups = toast.popups - 1 }
+        onDispose { toast.dialogs = toast.dialogs - 1 }
     }
     // the popup rises smoothly (fade + 18dp up, 260 ms); closing has NO animation, the window is simply removed
     val enter = remember { Animatable(0f) }
@@ -185,6 +207,7 @@ fun MvDialog(
                         val v = enter.value
                         alpha = v
                         translationY = (1f - v) * rise
+                        coverBlur(toast, layer)   // another popup opened on top of this one
                     }
                     .width(boxW)
                     .then(if (fillHeight) Modifier.height(boxMaxH) else Modifier.heightIn(max = boxMaxH))
@@ -256,6 +279,9 @@ fun MvDialog(
             ToastHost(toast, inDialog = true, visibleHere = myDepth == toast.dialogs)
         }
     }
+    // closing: written AFTER Dialog() on purpose. When a popup leaves, effects are disposed in reverse order, so this one runs
+    // before the window is dismissed: the blur behind is switched off in the same pass in which the popup goes away.
+    DisposableEffect(toast) { onDispose { toast.removeLayer(layer) } }
 }
 
 /** .xb : 28x28 close button, 14px X, radius 8, no background. */
@@ -493,10 +519,12 @@ fun MvPage(
     val currentBack by rememberUpdatedState(onBack)
     val toast = LocalToast.current
     var myDepth by remember { mutableIntStateOf(0) }
+    val layer = remember { WinLayer(popup = false) }
     DisposableEffect(toast) {
         toast.dialogs = toast.dialogs + 1
+        toast.addLayer(layer)
         myDepth = toast.dialogs
-        onDispose { toast.dialogs = toast.dialogs - 1 }
+        onDispose { toast.dialogs = toast.dialogs - 1; toast.removeLayer(layer) }
     }
     Dialog(
         onDismissRequest = { currentBack() },
@@ -509,6 +537,8 @@ fun MvPage(
     ) {
         PageWindowSetup()
         Box(Modifier.fillMaxSize().background(c.bg)) {
+          // the page is blurred while a popup (trailer, person, question ...) is open on top of it
+          Box(Modifier.fillMaxSize().coveredBlur(toast, layer)) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.ime))) {
                 // top bar
                 Row(
@@ -548,6 +578,7 @@ fun MvPage(
             // status bar / navigation bar colours, like MovieVerseApp
             Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars).background(c.nav))
             Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars).background(c.bot))
+          }
             ToastHost(toast, inDialog = true, visibleHere = myDepth == toast.dialogs)
         }
     }
