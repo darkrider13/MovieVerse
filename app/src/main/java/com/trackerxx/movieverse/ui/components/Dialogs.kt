@@ -445,25 +445,22 @@ fun MvApiLoadingDialog(
 
 /**
  * Soft fade at the top and bottom edge of a scrolling page (web: #dlg.tall .dsc mask).
- * Top: grows with the scroll (0 at the very top, up to 36dp). Bottom: always 40dp. The mask is drawn outside the scroll,
+ * Top: always 24dp (also at rest). Bottom: always 40dp. The mask is drawn outside the scroll,
  * so it stays at the edges while the content moves under it.
  */
-private fun Modifier.pageEdgeFade(scroll: ScrollState, topMax: Dp = 36.dp, bottom: Dp = 40.dp): Modifier =
+private fun Modifier.pageEdgeFade(scroll: ScrollState, topMax: Dp = 24.dp, bottom: Dp = 40.dp): Modifier =
     this
         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithContent {
             drawContent()
             val h = size.height
             if (h <= 0f) return@drawWithContent
-            val ft = minOf(scroll.value.toFloat(), topMax.toPx()).coerceAtLeast(0f)
+            // the top fade is ALWAYS there (also at rest, not only while scrolling): content melts softly under the header
+            val ft = minOf(topMax.toPx(), h / 2f)
             val fb = minOf(bottom.toPx(), h / 2f)
             val a = (ft / h).coerceIn(0f, 1f)
             val b = ((h - fb) / h).coerceIn(a, 1f)
-            val brush = if (ft < 0.5f) {
-                Brush.verticalGradient(0f to Color.Black, b to Color.Black, 1f to Color.Transparent)
-            } else {
-                Brush.verticalGradient(0f to Color.Transparent, a to Color.Black, b to Color.Black, 1f to Color.Transparent)
-            }
+            val brush = Brush.verticalGradient(0f to Color.Transparent, a to Color.Black, b to Color.Black, 1f to Color.Transparent)
             drawRect(brush, blendMode = BlendMode.DstIn)
         }
 
@@ -496,14 +493,14 @@ fun Modifier.scrollEdgeFade(scroll: ScrollState, fade: Dp = 32.dp): Modifier =
 
 /** Window setup of a full page: no dim, light system bar icons. */
 @Composable
-private fun PageWindowSetup() {
+private fun PageWindowSetup(instantIn: Boolean = false) {
     val view = LocalView.current
     SideEffect {
         val window = (view.parent as? DialogWindowProvider)?.window ?: return@SideEffect
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         // going back closes the page instantly (no fade / blur while the library shows again)
-        window.setWindowAnimations(R.style.MvPageAnim)
+        window.setWindowAnimations(if (instantIn) R.style.MvNoWindowAnim else R.style.MvPageAnim)
         val ic = WindowCompat.getInsetsController(window, view)
         ic.isAppearanceLightStatusBars = false
         ic.isAppearanceLightNavigationBars = false
@@ -540,6 +537,7 @@ fun MvPage(
     bottomBar: (@Composable () -> Unit)? = null,
     edgeFade: Boolean = false,
     scrollable: Boolean = true,
+    instantIn: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val c = Mv.c
@@ -563,7 +561,7 @@ fun MvPage(
             decorFitsSystemWindows = false
         )
     ) {
-        PageWindowSetup()
+        PageWindowSetup(instantIn)
         Box(Modifier.fillMaxSize().background(c.bg).then(if (edgeFade && c.bg.red + c.bg.green + c.bg.blue < 0.6f) Modifier.detailGlow() else Modifier)) {
           // the page is blurred while a popup (trailer, person, question ...) is open on top of it
           Box(Modifier.fillMaxSize().coveredBlur(toast, layer)) {
@@ -602,7 +600,7 @@ fun MvPage(
                             .then(if (edgeFade) Modifier.pageEdgeFade(pageScroll) else Modifier)
                             // scrollable = false: the page itself stays still, the content decides what scrolls
                             .then(if (scrollable) Modifier.verticalScroll(pageScroll) else Modifier)
-                            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (!scrollable) 0.dp else if (edgeFade) 56.dp else 24.dp),
+                            .padding(start = 16.dp, end = 16.dp, top = if (edgeFade) 22.dp else 8.dp, bottom = if (!scrollable) 0.dp else if (edgeFade) 56.dp else 24.dp),
                         content = content
                     )
                 }
