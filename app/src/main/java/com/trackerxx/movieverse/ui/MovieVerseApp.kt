@@ -1,7 +1,5 @@
 package com.trackerxx.movieverse.ui
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -37,7 +35,6 @@ import com.trackerxx.movieverse.ui.components.ModalState
 import com.trackerxx.movieverse.ui.components.ToastBridge
 import com.trackerxx.movieverse.ui.components.ToastHost
 import com.trackerxx.movieverse.ui.components.rememberToastState
-import com.trackerxx.movieverse.ui.theme.EaseCss
 import com.trackerxx.movieverse.ui.theme.Mv
 import com.trackerxx.movieverse.ui.theme.MovieVerseTheme
 
@@ -52,8 +49,9 @@ fun MovieVerseApp() {
         val modal = remember { ModalState() }
         SideEffect { ToastBridge.state = toast }
         CompositionLocalProvider(LocalToast provides toast, LocalModal provides modal) {
-            // while any popup is open the whole page behind it is blurred (14dp, Android 12+; older phones only get the dim)
-            val blurR by animateDpAsState(if (toast.dialogs > 0) 14.dp else 0.dp, tween(200, easing = EaseCss), label = "bgblur")
+            // while any popup is open the whole page behind it is blurred (14dp, Android 12+; older phones only get the dim).
+            // The blur comes and goes INSTANTLY with the popup (no animation either way).
+            val blurR = if (toast.popups > 0) 14.dp else 0.dp
             Box(Modifier.fillMaxSize().background(c.bg)) {
               Box(Modifier.fillMaxSize().then(if (blurR > 0.dp) Modifier.blur(blurR) else Modifier).background(c.bg)) {
                 // page area = the screen minus status bar / navigation bar (like the old non-overlay WebView)
