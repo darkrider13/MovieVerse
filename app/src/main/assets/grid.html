@@ -6,14 +6,14 @@
 <style>
 :root{--bg:#000;--s2:rgba(255,255,255,.10);--line:rgba(255,255,255,.11);--mut:#a3a9c9;--ink:#f1f2fc;--acc:#ff1a1a;--w:#00b800;--p:#e8a33d;--n:#9a7bff;--tw:110px;color-scheme:dark}
 *,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{touch-action:pan-y;overscroll-behavior:none;margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overflow-x:hidden}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overflow-x:hidden}
 #root{padding:0 16px 2px}
 #top{height:0}
 img{-webkit-user-drag:none;pointer-events:none}
 
 /* ---- grid + cards (same look as the app's cards) ---- */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px}
-.card{display:block;width:100%;cursor:pointer;contain:layout paint style}
+.card{display:block;width:100%;cursor:pointer}
 .poster{position:relative;width:100%;aspect-ratio:2/3;border-radius:12px;overflow:hidden;background:var(--s2)}
 .poster img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
 .cap{position:absolute;left:0;right:0;bottom:0;padding:26px 9px 8px;background:linear-gradient(rgba(8,10,20,0),rgba(8,10,20,.92));color:#fff;display:flex;align-items:flex-end;gap:6px}
@@ -35,12 +35,12 @@ img{-webkit-user-drag:none;pointer-events:none}
 .card.chg:not(.upd) .poster{animation:pulsep 1.6s ease-in-out infinite;will-change:transform}
 .card.ph{opacity:.3}
 .card.ph .poster{outline:2px solid #fff;outline-offset:-2px}
-.card.fly{position:fixed;z-index:200;margin:0;pointer-events:none;transform:scale(1.07) rotate(1.5deg);opacity:.97;contain:none;transition:none}
+.card.fly{position:fixed;z-index:200;margin:0;pointer-events:none;transform:scale(1.07) rotate(1.5deg);opacity:.97;transition:none}
 .card.fly .poster{box-shadow:0 16px 36px rgba(0,0,0,.6)}
 
 /* ---- trending rows ---- */
 .tt{font-size:15px;font-weight:700;margin:16px 0 4px}
-.crow{touch-action:pan-x pan-y;display:flex;contain:layout style;gap:10px;overflow-x:auto;padding:4px 0 8px;overscroll-behavior-x:contain;scrollbar-width:none}
+.crow{display:flex;gap:10px;overflow-x:auto;padding:4px 0 8px;overscroll-behavior-x:contain;scrollbar-width:none}
 .crow::-webkit-scrollbar{display:none}
 .tcard{flex:0 0 calc((100% - 20px)/3);min-width:0;cursor:pointer}
 .tcard>b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;line-height:1.25;font-weight:700;margin-top:5px}
@@ -120,9 +120,18 @@ function trCard(o){
   return html2el('<div class="tcard" data-k="tr" data-id="'+esc(o.id)+'"><div class="poster">'+img(o.p)+
     (o.r?'<div class="rk"><span class="rkn'+(o.r>9?' two':'')+'">'+o.r+'</span></div>':'')+
     (o.lib?'<span class="tag tlib">In Library</span>':'')+
-    (o.x?'<div class="rbox"><span class="rate"><small>IMDb</small> <span class="r-'+(o.xc||'m')+'">'+esc(o.x)+'</span></span></div>':'')+
     '</div><b>'+esc(o.t)+'</b><small>'+esc(o.d)+'</small></div>');
 }
+/* IMDb rating of a trending card: only the little box is touched, never the poster */
+function setTrRate(el,o){
+  var sg=o.x?o.x+'|'+(o.xc||'m'):'';
+  if(el._x===sg)return;el._x=sg;
+  var p=el.firstChild,b=p.querySelector('.rbox');
+  if(!o.x){if(b)p.removeChild(b);return}
+  if(!b){b=document.createElement('div');b.className='rbox';p.appendChild(b)}
+  b.innerHTML='<span class="rate"><small>IMDb</small> <span class="r-'+(o.xc||'m')+'">'+esc(o.x)+'</span></span>';
+}
+function trSig(o){return o.id+'|'+o.p+'|'+o.t+'|'+o.d+'|'+(o.lib?1:0)+'|'+(o.r||0)}
 function mkRow(r){
   return html2el('<section class="trow" data-row="'+esc(r.id)+'"><div class="tt"></div><div class="crow"></div><div class="trfail">Could not load.<br><div class="btn" data-k="trretry">Retry</div></div></section>');
 }
@@ -153,7 +162,7 @@ function show(d){
         if(tt.textContent!==r.title)tt.textContent=r.title;
         fail.style.display=r.failed?'block':'none';
         crow.style.display=r.failed?'none':'flex';
-        if(!r.failed)sync(crow,r.items,function(o){return o.id},function(o){return trCard(o)});
+        if(!r.failed){sync(crow,r.items,function(o){return o.id},function(o){return trCard(o)},trSig);r.items.forEach(function(o){var c=crow._m.get(o.id);if(c)setTrRate(c,o)})}
       });
     }
   }else{
