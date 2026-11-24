@@ -160,14 +160,11 @@ private val gradCache = HashMap<Triple<Float, Color, Color>, Brush>()
 
 private val EaseInOutCss = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
 
-/** .nav : brand, Settings button (glows red while there is un-exported data), Releases / Home button (far right) */
+/** .nav : brand, Settings button (glows red while there is un-exported data) */
 @Composable
 fun TopNav(
-    libraryLabel: String,
-    librarySelected: Boolean,
     dirty: Boolean,
     onBrand: () -> Unit,
-    onLibrary: () -> Unit,
     onSettings: () -> Unit,
     onSettingsLong: () -> Unit = {}
 ) {
@@ -204,28 +201,9 @@ fun TopNav(
                     }
                 }
                 SettingsButton(dirty, onSettings, onSettingsLong)
-                NavTextButton(libraryLabel, onLibrary, librarySelected)
             }
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(c.line))
-    }
-}
-
-@Composable
-private fun NavTextButton(text: String, onClick: () -> Unit, selected: Boolean = false) {
-    val c = Mv.c
-    val shape = RoundedCornerShape(9.dp)
-    Box(
-        Modifier
-            .height(34.dp)
-            .clip(shape)
-            .background(if (selected) c.ink else c.s)
-            .border(1.dp, if (selected) c.ink else c.line, shape)
-            .plainClickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        MvText(text, size = 12.5.sp, color = if (selected) c.bg else Color.Unspecified, maxLines = 1, softWrap = false)
     }
 }
 
@@ -341,12 +319,51 @@ fun Hero(name: String, onAdd: () -> Unit) {
     )
 }
 
-/** .hsw : Trending / Your Library (Releases moved to the top bar, at the right end) */
+/**
+ * .hsw : Trending | Your Library | Releases. A tap picks a pill; press and hold, then slide the finger over the pills: the
+ * highlight follows the finger (a small tick on every pill) and the pill under the finger is picked when the finger lifts.
+ * selected: 0 = Trending, 1 = Your Library, 2 = Releases
+ */
 @Composable
-fun HomeSwitch(home: String, onTrending: () -> Unit, onLibrary: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        MvPill("Trending", home == "trend", onTrending, Modifier.weight(1f), padH = 0.dp, padV = 10.dp, weight = FontWeight.Bold)
-        MvPill("Your Library", home == "lib", onLibrary, Modifier.weight(1f), padH = 0.dp, padV = 10.dp, weight = FontWeight.Bold)
+fun HomeSwitch(selected: Int, onPick: (Int) -> Unit) {
+    val labels = listOf("Trending", "Your Library", "Releases")
+    val haptic = LocalHapticFeedback.current
+    var hover by remember { mutableIntStateOf(-1) }
+    val pickNow by rememberUpdatedState(onPick)
+    val on = if (hover >= 0) hover else selected
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    fun idx(x: Float): Int = ((x / size.width.toFloat()) * 3f).toInt().coerceIn(0, 2)
+                    var cur = idx(down.position.x)
+                    hover = cur
+                    var commit = false
+                    val slopY = 28.dp.toPx()
+                    while (true) {
+                        val ev = awaitPointerEvent()
+                        val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!ch.pressed) { commit = true; break }
+                        // a vertical move is a page scroll, not a pill switch
+                        if (kotlin.math.abs(ch.position.y - down.position.y) > slopY) break
+                        val n = idx(ch.position.x)
+                        if (n != cur) {
+                            cur = n; hover = n
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        }
+                        if (n != idx(down.position.x)) ch.consume()
+                    }
+                    hover = -1
+                    if (commit) pickNow(cur)
+                }
+            },
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        labels.forEachIndexed { i, t ->
+            MvPill(t, on == i, {}, Modifier.weight(1f), fontSize = 14.sp, padH = 0.dp, padV = 10.dp, weight = FontWeight.Bold)
+        }
     }
 }
 

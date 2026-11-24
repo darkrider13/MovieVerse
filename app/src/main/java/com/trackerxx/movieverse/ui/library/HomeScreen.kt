@@ -390,6 +390,17 @@ fun HomeScreen(splashGone: Boolean) {
         } else if (h == "lib") AppData.render()
     }
 
+    /** Trending (0) / Your Library (1) / Releases (2) switch. Leaving Releases goes back to the library page with the chosen home. */
+    fun pickSwitch(i: Int) {
+        if (i == 2) { if (view != "up") view = "up"; return }
+        val h = if (i == 1) "lib" else "trend"
+        if (view == "up") {
+            view = "library"
+            if (h != home) { home = h; Ls.setItem("library.home", h) }
+            toTop()
+        } else pickHome(h)
+    }
+
     /** apiBusy(keyLoad(), 900, 45000): "Fetching your API key" dialog (at least 0.9 s, at most 45 s); returns the error text or null */
     suspend fun runKeyBusy(): String? {
         keyBusy = true
@@ -416,11 +427,8 @@ fun HomeScreen(splashGone: Boolean) {
     }
     Column(Modifier.fillMaxSize()) {
         TopNav(
-            libraryLabel = if (view == "up") "Home" else "Releases",
-            librarySelected = view == "up",
             dirty = dirty,
             onBrand = { view = "library" },
-            onLibrary = { view = if (view == "up") "library" else "up" },
             onSettings = { settingsOpen = true }
         )
         // clipToBounds: the header (translated up while scrolling) must never draw over the top bar
@@ -465,10 +473,13 @@ fun HomeScreen(splashGone: Boolean) {
                         .scrollable(headScroll, Orientation.Vertical)
                         .padding(start = 16.dp, end = 16.dp, top = 16.dp)
                 ) {
-                    if (view == "library") {
+                    run {
                         Box(Modifier.padding(bottom = 14.dp)) { Hero(AppData.uname, onAdd = { add.openAdd(lib.tab, folderEff) }) }
-                        Box(Modifier.padding(bottom = if (home == "trend" && AppData.apis.key.isNotEmpty()) 0.dp else 12.dp)) {
-                            HomeSwitch(home, onTrending = { pickHome("trend") }, onLibrary = { pickHome("lib") })
+                        Box(Modifier.padding(bottom = if (view == "library" && home == "trend" && AppData.apis.key.isNotEmpty()) 0.dp else 12.dp)) {
+                            HomeSwitch(
+                                selected = if (view == "up") 2 else if (home == "lib") 1 else 0,
+                                onPick = { i -> pickSwitch(i) }
+                            )
                         }
                     }
                     val libShown = view == "library" && home == "lib"
