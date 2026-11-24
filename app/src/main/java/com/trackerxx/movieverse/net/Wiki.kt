@@ -1,5 +1,7 @@
 package com.trackerxx.movieverse.net
 
+import android.os.Build
+import com.trackerxx.movieverse.BuildConfig
 import com.trackerxx.movieverse.data.Movie
 import com.trackerxx.movieverse.util.Js
 import kotlinx.coroutines.CancellationException
@@ -8,6 +10,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.Jsoup
@@ -38,13 +43,39 @@ object Wiki {
     private val mem = ConcurrentHashMap<String, Deferred<WkCand?>>()
     private val vm = ConcurrentHashMap<String, Deferred<Boolean>>()
 
-    /** wkApi(q, base, ms): API call, throws "wiki <status>" on an HTTP error */
+    /**
+     * Wikimedia only gives the normal rate limit to clients that say who they are: "<name>/<version> (<contact url or email>)".
+     * The web version runs inside a browser (the browser's own User-Agent is accepted); a plain app request with no contact is
+     * throttled (HTTP 429) or blocked (403), which made the Awards page and the Wikipedia box office fail here but not there.
+     * Contact = the GitHub project of this app (filled in by GitHub Actions, same source as the updater).
+     */
+    private val UA: String by lazy {
+        val repo = BuildConfig.UPDATE_REPO.trim().ifEmpty { "darkrider13/MovieVerse-V2" }
+        "MovieVerse/" + BuildConfig.VERSION_NAME + " (https://github.com/" + repo + ") Android/" + Build.VERSION.RELEASE
+    }
+
+    /** at most 4 Wikipedia / Wikidata requests at the same time (a film lookup starts up to 7 at once; a library refresh many films) */
+    private val gate = Semaphore(4)
+
+    /**
+     * wkApi(q, base, ms): API call, throws "wiki <status>" on an HTTP error.
+     * A 429 / 503 ("slow down") is waited out (Retry-After, at most 6 s) and tried again, twice at most.
+     */
     suspend fun api(q: List<Pair<String, String>>, base: String? = null, ms: Int = 9000): JSONObject {
         val url = (base ?: WP) + "?" + q.joinToString("&") { it.first + "=" + Js.encodeURIComponent(it.second) } +
             "&format=json&formatversion=2&origin=*"
-        val r = Http.get(url, mapOf("Accept" to "application/json"), ms, ms)
-        if (!r.ok) throw NetException("wiki " + r.status)
-        return Http.parseObject(r.body)
+        val hdr = mapOf("Accept" to "application/json", "User-Agent" to UA)
+        var attempt = 0
+        while (true) {
+            val r = gate.withPermit { Http.get(url, hdr, ms, ms) }
+            if (r.ok) return Http.parseObject(r.body)
+            if ((r.status == 429 || r.status == 503) && attempt < 2) {
+                attempt++
+                delay((if (r.retryAfter > 0) r.retryAfter else 2 * attempt).coerceAtMost(6) * 1000L)
+                continue
+            }
+            throw NetException("wiki " + r.status)
+        }
     }
 
     private val NOT_ALNUM = Regex("[^a-z0-9]+")
