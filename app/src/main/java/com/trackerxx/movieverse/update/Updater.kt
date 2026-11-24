@@ -36,9 +36,9 @@ object Updater {
     }
 
     /** the newest published build, or null when the installed app is already that build */
-    suspend fun check(ctx: Context): Info? {
+    suspend fun check(ctx: Context, auto: Boolean = false): Info? {
         val r = Http.get(
-            "https://api.github.com/repos/$REPO/releases/tags/latest",
+            "https://api.github.com/repos/$REPO/releases/tags/latest?t=" + System.currentTimeMillis(),
             mapOf("Accept" to "application/vnd.github+json"), 20000, 20000
         )
         if (r.status == 404) throw IOException("No update has been published yet.")
@@ -57,7 +57,9 @@ object Updater {
         }
         if (url.isNullOrEmpty()) throw IOException("The release has no APK.")
         val vc = Regex("versionCode:\\s*(\\d+)").find(j.optString("body"))?.groupValues?.get(1)?.toLongOrNull() ?: 0L
-        // vc == 0: an older release without the number -> offer it anyway
+        // vc == 0: an older release without the number -> offered when the person taps Settings > Update,
+        // but never by the automatic popup (it would come back on every start)
+        if (vc == 0L && auto) return null
         if (vc != 0L && vc <= installedCode(ctx)) return null
         return Info(vc, url, size)
     }
