@@ -199,6 +199,10 @@ fun MvDialog(
         BoxWithConstraints(
             Modifier
                 .fillMaxSize()
+                // another popup opened on top of this one: the blur is on the WHOLE window area (not on the popup box itself).
+                // A blur on the box alone is cut at the box's bounds, so its shadow / rounded corners turned into a hard-edged
+                // grey rectangle behind the new popup; here the box and its shadow blur softly inside a bigger, transparent layer.
+                .graphicsLayer { coverBlur(toast, layer) }
                 .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.ime))
                 .then(
                     // a plain <dialog> does not close when the dark area around it is tapped
@@ -215,7 +219,6 @@ fun MvDialog(
                         val v = enter.value
                         alpha = v
                         translationY = (1f - v) * rise
-                        coverBlur(toast, layer)   // another popup opened on top of this one
                     }
                     .width(boxW)
                     .then(if (fillHeight) Modifier.height(boxMaxH) else Modifier.heightIn(max = boxMaxH))
@@ -610,7 +613,7 @@ fun MvPage(
                             .then(if (edgeFade) Modifier.pageEdgeFade(pageScroll) else Modifier)
                             // scrollable = false: the page itself stays still, the content decides what scrolls
                             .then(if (scrollable) Modifier.verticalScroll(pageScroll) else Modifier)
-                            .padding(start = 16.dp, end = 16.dp, top = if (edgeFade) 6.dp else 8.dp, bottom = if (!scrollable) 0.dp else if (edgeFade) 56.dp else 24.dp),
+                            .padding(start = 16.dp, end = 16.dp, top = if (edgeFade) 22.dp else 8.dp, bottom = if (!scrollable) 0.dp else if (edgeFade) 56.dp else 24.dp),
                         content = content
                     )
                 }
