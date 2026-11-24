@@ -7,6 +7,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.Jsoup
@@ -434,7 +435,7 @@ object Credits {
             listOf(
                 "action" to "parse", "page" to t, "prop" to "text", "redirects" to "1",
                 "disableeditsection" to "1", "disablelimitreport" to "1"
-            ), null, 30000
+            ), null, 30000, true
         )
         return if (p.optJSONObject("parse") != null) p else null
     }
@@ -458,28 +459,41 @@ object Credits {
             "List of awards and nominations received by $name",
             "List of awards and nominations of $name"
         )
+        // all page names and the search start at the same time (before: one after the other); the first usual name that exists wins,
+        // the search result is only used when none of them does. Same result as before, a lot sooner.
         var p: JSONObject? = null
-        for (t in titles) {
-            p = wkAwPage(t)
-            if (p != null) break
-        }
-        if (p == null) {
-            val j = Wiki.api(
-                listOf("action" to "query", "list" to "search", "srsearch" to "$name awards list", "srlimit" to "8", "srnamespace" to "0")
-            )
-            val hits = j.optJSONObject("query")?.optJSONArray("search") ?: JSONArray()
-            var title: String? = null
-            for (i in 0 until hits.length()) {
-                val ti = hits.optJSONObject(i)?.optString("title") ?: continue
-                if (LIST_TITLE.containsMatchIn(ti) && Wiki.norm(ti).contains(key)) {
-                    title = ti
-                    break
+        supervisorScope {
+            val tl = titles.map { t -> async { wkAwPage(t) } }
+            val sd = async {
+                val j = Wiki.api(
+                    listOf("action" to "query", "list" to "search", "srsearch" to "$name awards list", "srlimit" to "8", "srnamespace" to "0"),
+                    null, 9000, true
+                )
+                val hits = j.optJSONObject("query")?.optJSONArray("search") ?: JSONArray()
+                var title: String? = null
+                for (i in 0 until hits.length()) {
+                    val ti = hits.optJSONObject(i)?.optString("title") ?: continue
+                    if (LIST_TITLE.containsMatchIn(ti) && Wiki.norm(ti).contains(key)) {
+                        title = ti
+                        break
+                    }
                 }
+                if (title != null) wkAwPage(title) else null
             }
-            p = if (title != null) wkAwPage(title) else null
+            try {
+                for (d in tl) {
+                    p = d.await()
+                    if (p != null) break
+                }
+                if (p == null) p = sd.await()
+            } finally {
+                tl.forEach { it.cancel() }
+                sd.cancel()
+            }
+            Unit
         }
-        if (p == null) return null
-        val html = p.optJSONObject("parse")?.let { str(it, "text") } ?: ""
+        val pg = p ?: return null
+        val html = pg.optJSONObject("parse")?.let { str(it, "text") } ?: ""
         val doc = Jsoup.parse(html)
         val out = ArrayList<Aw>()
         var head = ""
@@ -565,7 +579,7 @@ object Credits {
     /** awardsWD(q, all): empty list = "No award data found."; throws when Wikidata fails */
     private suspend fun awardsWD(q: String, all: List<PCredit>): List<AwRow> {
         if (q.isEmpty()) return emptyList()
-        val w = Wiki.api(listOf("action" to "wbgetclaims", "entity" to q, "property" to "P166"), WDA)
+        val w = Wiki.api(listOf("action" to "wbgetclaims", "entity" to q, "property" to "P166"), WDA, 9000, true)
         val claims = w.optJSONObject("claims")?.optJSONArray("P166") ?: JSONArray()
         class It(val a: String, val y: String, val w: String)
 
@@ -589,7 +603,7 @@ object Credits {
         val ids = ArrayList<String>()
         for (x in sorted) for (i in listOf(x.a, x.w)) if (i.isNotEmpty() && !ids.contains(i)) ids.add(i)
         val r = Wiki.api(
-            listOf("action" to "wbgetentities", "ids" to ids.joinToString("|"), "props" to "labels", "languages" to "en"), WDA
+            listOf("action" to "wbgetentities", "ids" to ids.joinToString("|"), "props" to "labels", "languages" to "en"), WDA, 9000, true
         )
         val ents = r.optJSONObject("entities")
 

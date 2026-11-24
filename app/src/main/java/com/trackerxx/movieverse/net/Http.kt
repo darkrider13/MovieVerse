@@ -54,6 +54,7 @@ object Http {
         readMs: Int = 30000
     ): HttpResult = withContext(Dispatchers.IO) {
         val c = URL(url).openConnection() as HttpURLConnection
+        var ok = false
         try {
             c.requestMethod = "GET"
             c.connectTimeout = connectMs
@@ -66,9 +67,12 @@ object Http {
             val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
             // "Retry-After: <seconds>" of a 429 / 503 answer (0 = not given or not a number of seconds)
             val wait = c.getHeaderField("Retry-After")?.trim()?.toIntOrNull() ?: 0
+            ok = true
             HttpResult(code, text, wait)
         } finally {
-            c.disconnect()
+            // connection reuse: after a fully read answer the socket goes back to the keep-alive pool, so the next request to the same
+            // host (TMDB, Wikipedia ...) skips the DNS + TCP + TLS handshake. disconnect() would close it; only a failed request is closed.
+            if (!ok) c.disconnect()
         }
     }
 
