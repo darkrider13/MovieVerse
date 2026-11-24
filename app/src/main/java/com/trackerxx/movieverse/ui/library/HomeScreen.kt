@@ -155,7 +155,7 @@ fun HomeScreen(splashGone: Boolean) {
     var libHeaderWarm by remember { mutableStateOf(false) }
     LaunchedEffect(loaded) {
         if (!loaded) return@LaunchedEffect
-        delay(700)
+        delay(350)
         while (grid.scrolling) delay(150)
         libHeaderWarm = true
     }
@@ -195,7 +195,40 @@ fun HomeScreen(splashGone: Boolean) {
             if (!scrolling) revApplied = r
         }
     }
-    val lvFull = remember(revApplied, ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lvOn) {
+    // While Trending / Releases is open, Trending keeps bumping rev (ratings arrive). The old code then rebuilt the whole Library list
+    // (filter + sort + page payload) on the main thread in the very frame of the tap on "Your Library": that was the slow, piece by
+    // piece arrival of the tabs / search row. Now the list is prepared on a background thread (never while scrolling), so the tap
+    // finds it ready and only swaps it in.
+    var preTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(revApplied, ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lvOn) {
+        if (lvOn || !ready) return@LaunchedEffect
+        val inputs = listOf<Any?>(revApplied, ready, lib.tab, folderEff, ffEff, lib.q, lib.country)
+        if (lvHold[0] != null && lvHold[1] == inputs) return@LaunchedEffect
+        delay(250)
+        while (grid.scrolling) delay(150)
+        val mv = AppData.movies.toTypedArray().toList()
+        val fo = AppData.folders.toList()
+        val st = AppData.statuses.toList()
+        val sl = AppData.SL
+        val tab0 = lib.tab
+        val fol0 = folderEff
+        val ff0 = ffEff
+        val q0 = lib.q
+        val c0 = lib.country
+        val built = try {
+            withContext(Dispatchers.Default) { LibraryLogic.build(mv, fo, st, sl, true, tab0, fol0, ff0, q0, c0, Int.MAX_VALUE) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+        if (built != null) {
+            lvHold[0] = built
+            lvHold[1] = inputs
+            preTick++
+        }
+    }
+    val lvFull = remember(revApplied, ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lvOn, preTick) {
         val held = lvHold[0] as LibView?
         val inputs = listOf(revApplied, ready, lib.tab, folderEff, ffEff, lib.q, lib.country)
         // hidden: keep the last result. Coming back to Your Library: if nothing changed meanwhile, reuse it as it is
