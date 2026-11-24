@@ -5,6 +5,8 @@ import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +26,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import com.trackerxx.movieverse.ui.components.LocalDialogMaxH
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -104,6 +112,12 @@ private fun PersonBody(pf: PersonFlow) {
         NoteP("Loading…")
         return
     }
+    // the popup has a fixed height; the Movies / Awards lists take ALL the room below the header, so nothing is left empty at the bottom
+    val avail = LocalDialogMaxH.current
+    var headPx by remember { mutableIntStateOf(0) }
+    val dens = LocalDensity.current
+    val pagerH = if (avail > 0.dp && headPx > 0) maxOf(398.dp, avail - with(dens) { headPx.toDp() } - 17.dp) else 398.dp
+    Column(Modifier.fillMaxWidth().onSizeChanged { headPx = it.height }) {
     // ---- .phd ----
     Row(
         Modifier.fillMaxWidth().padding(end = 34.dp),
@@ -127,28 +141,29 @@ private fun PersonBody(pf: PersonFlow) {
     if (d.bio.isNotEmpty()) MvText(d.bio, Modifier.padding(top = 8.dp), size = 12.sp, color = c.mut)
     if (d.upcoming.isNotEmpty()) {
         Ph3("Upcoming movies")
-        CreditList(d.upcoming, sc.up, 69.dp, false) { pf.pick(it) }
+        CreditList(d.upcoming, sc.up, 69.dp, false, Modifier.fillMaxWidth().height(69.dp * minOf(d.upcoming.size, 5))) { pf.pick(it) }
+    }
     }
 
     // ---- #ppg : Movies | Awards ----
     // fixed height (title row + five rows): swiping Movies <-> Awards, loading or a short list never changes the size of the popup
     LazyRow(
-        Modifier.fillMaxWidth().height(398.dp), state = sc.pages,
+        Modifier.fillMaxWidth().height(pagerH), state = sc.pages,
         flingBehavior = rememberSnapFlingBehavior(sc.pages)
     ) {
         item {
-            Column(Modifier.fillParentMaxWidth()) {
+            Column(Modifier.fillParentMaxWidth().fillMaxHeight()) {
                 val list = if (pf.top) d.top else d.latest
                 MhRow(if (pf.top) "Top Rated (" + d.top.size + ")" else "Movies (" + d.all.size + ")") {
                     MvPill("Latest", !pf.top, { pf.pickTop(false) }, fontSize = 11.sp, padH = 10.dp, padV = 3.dp)
                     MvPill("Top Rated", pf.top, { pf.pickTop(true) }, fontSize = 11.sp, padH = 10.dp, padV = 3.dp)
                 }
                 if (list.isEmpty()) NoteP("No credits found.")
-                else CreditList(list, sc.mv, 69.dp, pf.top) { pf.pick(it) }
+                else CreditList(list, sc.mv, 69.dp, pf.top, Modifier.fillMaxWidth().weight(1f)) { pf.pick(it) }
             }
         }
         item {
-            Column(Modifier.fillParentMaxWidth()) {
+            Column(Modifier.fillParentMaxWidth().fillMaxHeight()) {
                 AwardsPage(pf)
             }
         }
@@ -186,9 +201,9 @@ private fun MhRow(title: String, right: @Composable () -> Unit = {}) {
 
 /** .snv : at most five rows high, rows snap to the top edge */
 @Composable
-private fun CreditList(list: List<PCredit>, state: LazyListState, rh: Dp, rt: Boolean, onTap: (Long) -> Unit) {
+private fun CreditList(list: List<PCredit>, state: LazyListState, rh: Dp, rt: Boolean, modifier: Modifier, onTap: (Long) -> Unit) {
     LazyColumn(
-        Modifier.fillMaxWidth().height(rh * minOf(list.size, 5)), state = state,
+        modifier, state = state,
         flingBehavior = rememberSnapFlingBehavior(state)
     ) {
         items(list) { x -> CreditRow(x, rh, rt, onTap) }
@@ -231,7 +246,7 @@ private fun CreditRow(x: PCredit, rh: Dp, rt: Boolean, onTap: (Long) -> Unit) {
 // ---- Awards page ------------------------------------------------------------------------------------------------------
 
 @Composable
-private fun AwardsPage(pf: PersonFlow) {
+private fun ColumnScope.AwardsPage(pf: PersonFlow) {
     val a = pf.aw
     var head = "Awards"
     if (a is AwState.Rows && a.rows.isNotEmpty()) {
@@ -250,7 +265,7 @@ private fun AwardsPage(pf: PersonFlow) {
         is AwState.Rows -> {
             val st = pf.scroll.aw
             LazyColumn(
-                Modifier.fillMaxWidth().height(70.dp * minOf(a.rows.size, 5)), state = st,
+                Modifier.fillMaxWidth().weight(1f), state = st,
                 flingBehavior = rememberSnapFlingBehavior(st)
             ) {
                 items(a.rows) { r -> AwardRow(r) }

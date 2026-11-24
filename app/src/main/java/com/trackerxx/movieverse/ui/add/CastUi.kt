@@ -134,16 +134,14 @@ fun CastBlock(data: CastData, onPerson: (Long) -> Unit) {
                 val dp = with(dens) { mx.toDp().value }
                 maxOf(76.0, Math.ceil(dp + 12.0)).toFloat().dp
             }
-            val ps = rememberPagerState { pages.size }
-            VerticalPager(
-                state = ps, modifier = Modifier.fillMaxWidth().height(h), userScrollEnabled = pages.size > 1
-            ) { i -> CastRow(pages[i], cw, onPerson) }
+            // ONE row: Director / Screenplay / Story people first, a small dot, then the actors
+            Box(Modifier.fillMaxWidth().height(h)) { CastRow(data.crew, data.cast, cw, onPerson) }
         }
     }
 }
 
 @Composable
-private fun CastRow(list: List<CastPerson>, cw: androidx.compose.ui.unit.Dp, onPerson: (Long) -> Unit) {
+private fun CastRow(crew: List<CastPerson>, cast: List<CastPerson>, cw: androidx.compose.ui.unit.Dp, onPerson: (Long) -> Unit) {
     val st = rememberLazyListState()
     LazyRow(
         Modifier.fillMaxSize(), state = st,
@@ -151,7 +149,16 @@ private fun CastRow(list: List<CastPerson>, cw: androidx.compose.ui.unit.Dp, onP
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         flingBehavior = androidx.compose.foundation.gestures.ScrollableDefaults.flingBehavior()
     ) {
-        items(list) { p -> CastCard(p, cw, onPerson) }
+        items(crew) { p -> CastCard(p, cw, onPerson) }
+        if (crew.isNotEmpty() && cast.isNotEmpty()) {
+            item {
+                // the dot between the crew and the actors, level with the middle of the round photos (44dp)
+                Box(Modifier.width(6.dp).height(44.dp), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(4.dp).clip(CircleShape).background(Mv.c.mut))
+                }
+            }
+        }
+        items(cast) { p -> CastCard(p, cw, onPerson) }
     }
 }
 
