@@ -211,6 +211,8 @@ fun HomeScreen(splashGone: Boolean) {
 
     // ---- the poster grids live in a WebView: what the page tells the app, and what the app sends to the page -----------------
     val gridMode = if (view == "up") "up" else if (home == "trend") "trend" else "lib"
+    // switching Trending <-> Your Library <-> Releases only shows the list that is already built in the page: instant, no reload
+    SideEffect { grid.setMode(gridMode) }
     SideEffect {
         grid.onTapLib = { id ->
             val m = AppData.movies.firstOrNull { it.id == id }
@@ -254,18 +256,18 @@ fun HomeScreen(splashGone: Boolean) {
         snapshotFlow { if (gridMode == "trend") GridJson.trend(libIds) else GridJson.up(libIds, wGreen, tagBg) }
             .distinctUntilChanged()
             .flowOn(Dispatchers.Default)
-            .collect { grid.setPayload(it) }
+            .collect { grid.setPayload(gridMode, it) }
     }
     // Your Library: the cards (already filtered and sorted above) go to the page
     val updN = Refresh.upd.size
-    LaunchedEffect(gridMode, lv, revApplied, updN) {
-        if (gridMode != "lib") return@LaunchedEffect
+    // (also while Trending is on screen: the Library is prepared in the background, so switching to it is instant)
+    LaunchedEffect(lv, revApplied, updN) {
         val sts = AppData.statuses.toList()
         val sl = AppData.SL
         val updSet = HashSet(Refresh.upd.keys)
         val chgCopy = HashSet(Enrich.chgSet)
         val json = withContext(Dispatchers.Default) { GridJson.lib(lv, cards, sts, sl, cNow, updSet, chgCopy) }
-        grid.setPayload(json)
+        grid.setPayload("lib", json)
     }
 
     fun toTop() { grid.scrollTop() }

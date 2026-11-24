@@ -49,7 +49,8 @@ class GridHost {
     var scrolling by mutableStateOf(false)
 
     private var ready = false
-    private var pPayload: String? = null
+    private val pPayload = HashMap<String, String>()      // newest data of each list (lib / trend / up)
+    private var pMode: String? = null
     private var pTheme: String? = null
     private var pTop: Int = 0
     private val main = Handler(Looper.getMainLooper())
@@ -73,7 +74,15 @@ class GridHost {
         ready = true
         pTheme?.let { send("MV.theme(" + JSONObject.quote(it) + ")") }
         send("MV.top($pTop)")
-        pPayload?.let { send("MV.set(" + JSONObject.quote(it) + ")") }
+        pMode?.let { send("MV.mode(" + JSONObject.quote(it) + ")") }
+        for ((_, j) in pPayload) send("MV.set(" + JSONObject.quote(j) + ")")
+    }
+
+    /** which list is on screen: the page just shows / hides its containers, so the switch is instant (nothing is rebuilt) */
+    fun setMode(m: String) {
+        if (pMode == m) return
+        pMode = m
+        if (ready) send("MV.mode(" + JSONObject.quote(m) + ")")
     }
 
     fun detach() {
@@ -81,8 +90,8 @@ class GridHost {
         web = null
     }
 
-    /** newest page data that arrived while the finger was scrolling: it is sent a moment after the scrolling stops */
-    private var held: String? = null
+    /** newest page data (per list) that arrived while the finger was scrolling: it is sent a moment after the scrolling stops */
+    private val held = HashMap<String, String>()
 
     fun scrollState(on: Boolean) {
         scrolling = on
@@ -91,17 +100,18 @@ class GridHost {
 
     private fun flushHeld() {
         if (scrolling) return
-        val j = held ?: return
-        held = null
-        if (ready) send("MV.set(" + JSONObject.quote(j) + ")")
+        if (held.isEmpty()) return
+        val all = held.values.toList()
+        held.clear()
+        if (ready) for (j in all) send("MV.set(" + JSONObject.quote(j) + ")")
     }
 
-    fun setPayload(json: String) {
-        pPayload = json
+    fun setPayload(mode: String, json: String) {
+        pPayload[mode] = json
         if (!ready) return
         // ratings / lists that arrive from the internet must never rebuild the page in the middle of a scroll
-        if (scrolling) { held = json; return }
-        held = null
+        if (scrolling) { held[mode] = json; return }
+        held.remove(mode)
         send("MV.set(" + JSONObject.quote(json) + ")")
     }
 
