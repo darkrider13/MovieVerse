@@ -64,10 +64,10 @@ private fun mb(b: Long): String =
  * (percentage, MB done / total, speed) in the app's own dialog style, and finally opens the Android installer.
  */
 @Composable
-fun UpdateFlow(onClose: () -> Unit) {
+fun UpdateFlow(onClose: () -> Unit, initial: Updater.Info? = null) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    var st by remember { mutableStateOf<UpState>(UpState.Checking) }
+    var st by remember { mutableStateOf<UpState>(if (initial != null) UpState.Available(initial) else UpState.Checking) }
     var job by remember { mutableStateOf<Job?>(null) }
     var done by remember { mutableStateOf(0L) }
     var total by remember { mutableStateOf(0L) }
@@ -113,7 +113,7 @@ fun UpdateFlow(onClose: () -> Unit) {
         }
     }
 
-    LaunchedEffect(Unit) { check() }
+    LaunchedEffect(Unit) { if (initial == null) check() }
 
     when (val s = st) {
         UpState.Checking -> MvApiLoadingDialog(
@@ -131,6 +131,12 @@ fun UpdateFlow(onClose: () -> Unit) {
         is UpState.Available -> MvDialog(onDismiss = onClose, widthMax = 340.dp, widthFraction = 0.86f) {
             UpdateBadge()
             MvText("Update available", Modifier.fillMaxWidth(), size = 18.sp, weight = FontWeight.Bold, align = TextAlign.Center)
+            if (s.info.versionCode != 0L) {
+                MvNote(
+                    "Build " + Updater.installedCode(ctx) + "  \u2192  Build " + s.info.versionCode,
+                    Modifier.fillMaxWidth().padding(top = 8.dp), align = TextAlign.Center
+                )
+            }
             MvNote(
                 if (s.info.size > 0) "A new version of MovieVerse is ready (" + mb(s.info.size) + ")."
                 else "A new version of MovieVerse is ready.",
