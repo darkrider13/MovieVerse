@@ -18,6 +18,10 @@ object AutoUpdate {
     var offer by mutableStateOf<Updater.Info?>(null)
         private set
 
+    /** why the last automatic check failed (null = it worked); shown nowhere, handy when debugging */
+    var lastError: String? = null
+        private set
+
     private var skip = 0L      // build number the person already answered "Later" to
     private var busy = false
     private var last = 0L
@@ -30,11 +34,14 @@ object AutoUpdate {
         last = now
         try {
             val info = Updater.check(ctx, auto = true)
+            lastError = null
             if (info != null && info.versionCode != skip) offer = info
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             // silent: no internet / GitHub busy -> try again at the next check
+            lastError = e.message
+            last = 0L
         } finally {
             busy = false
         }

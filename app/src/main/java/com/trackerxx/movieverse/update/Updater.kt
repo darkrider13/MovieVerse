@@ -6,7 +6,9 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
+import com.trackerxx.movieverse.BuildConfig
 import com.trackerxx.movieverse.net.Http
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -35,13 +37,36 @@ object Updater {
         return if (Build.VERSION.SDK_INT >= 28) p.longVersionCode else @Suppress("DEPRECATION") p.versionCode.toLong()
     }
 
-    /** the newest published build, or null when the installed app is already that build */
-    suspend fun check(ctx: Context, auto: Boolean = false): Info? {
+    /** the repo the build was made in (filled in by GitHub Actions); the constant above is only the fallback */
+    private fun repo(): String = BuildConfig.UPDATE_REPO.trim().ifEmpty { REPO }
+
+    /**
+     * Way 1 (preferred): the small version.json the workflow attaches to the release. It is a plain download, so it is not
+     * counted by the GitHub API limit (60 requests / hour / IP, which phones on mobile data often share and use up).
+     */
+    private suspend fun fromFile(repo: String): Info? {
+        return try {
+            val base = "https://github.com/$repo/releases/download/latest/"
+            val r = Http.get(base + "version.json", mapOf("Cache-Control" to "no-cache"), 20000, 20000)
+            if (!r.ok) return null
+            val j = JSONObject(r.body)
+            val vc = j.optLong("versionCode", 0L)
+            if (vc <= 0L) null else Info(vc, base + "MovieVerse.apk", j.optLong("size", 0L))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /** Way 2: the GitHub API (older releases without version.json) */
+    private suspend fun fromApi(repo: String): Info {
         val r = Http.get(
-            "https://api.github.com/repos/$REPO/releases/tags/latest?t=" + System.currentTimeMillis(),
+            "https://api.github.com/repos/$repo/releases/tags/latest?t=" + System.currentTimeMillis(),
             mapOf("Accept" to "application/vnd.github+json"), 20000, 20000
         )
-        if (r.status == 404) throw IOException("No update has been published yet.")
+        if (r.status == 404) throw IOException("No release found at github.com/$repo (404). If the repo is private or renamed, updates cannot be found.")
+        if (r.status == 403 || r.status == 429) throw IOException("GitHub is limiting requests from this network (" + r.status + "). Try again later.")
         if (!r.ok) throw IOException("GitHub answered " + r.status + ".")
         val j = JSONObject(r.body)
         val assets = j.optJSONArray("assets") ?: throw IOException("The release has no APK.")
@@ -57,11 +82,19 @@ object Updater {
         }
         if (url.isNullOrEmpty()) throw IOException("The release has no APK.")
         val vc = Regex("versionCode:\\s*(\\d+)").find(j.optString("body"))?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+        return Info(vc, url, size)
+    }
+
+    /** the newest published build, or null when the installed app is already that build */
+    suspend fun check(ctx: Context, auto: Boolean = false): Info? {
+        val repo = repo()
+        val info = fromFile(repo) ?: fromApi(repo)
+        val vc = info.versionCode
         // vc == 0: an older release without the number -> offered when the person taps Settings > Update,
         // but never by the automatic popup (it would come back on every start)
         if (vc == 0L && auto) return null
         if (vc != 0L && vc <= installedCode(ctx)) return null
-        return Info(vc, url, size)
+        return info
     }
 
     /** downloads the APK into the app cache; onProgress(done, total) (total = 0 when unknown). Cancel = cancel the coroutine. */
