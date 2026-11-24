@@ -166,7 +166,7 @@ fun MvDialog(
     fillHeight: Boolean = false,
     dismissOnOutside: Boolean = false,
     scrollState: ScrollState? = null,
-    animateIn: Boolean = true,
+    animateIn: Boolean = false,   // every popup (filter, question, update, settings ...) is fully there in its first frame, together with the dim and the blur
     content: @Composable ColumnScope.() -> Unit
 ) {
     val c = Mv.c
@@ -181,8 +181,9 @@ fun MvDialog(
         myDepth = toast.dialogs
         onDispose { toast.dialogs = toast.dialogs - 1 }
     }
-    // the popup rises smoothly (fade + 18dp up, 260 ms); closing has NO animation, the window is simply removed
-    // animateIn = false (Settings): the popup is fully there in its very first frame, together with the dim and the blur behind it
+    // Default: NO enter animation. The popup, the dim and the blur of the page behind it all appear in the same frame (the old 260 ms
+    // fade made the page blur first while the popup was still invisible); closing has NO animation either, the window is simply removed.
+    // animateIn = true brings the old rise (fade + 18dp up, 260 ms) back for one popup if ever wanted
     val enter = remember { Animatable(if (animateIn) 0f else 1f) }
     LaunchedEffect(Unit) { if (animateIn) enter.animateTo(1f, tween(260, easing = EaseCss)) }
     val rise = with(LocalDensity.current) { 18.dp.toPx() }
