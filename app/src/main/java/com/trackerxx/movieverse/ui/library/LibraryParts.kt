@@ -387,7 +387,10 @@ fun TabsRow(
             if (idx >= 0) {
                 val info = state.layoutInfo
                 val it = info.visibleItemsInfo.firstOrNull { x -> x.index == idx }
-                val fully = it != null && it.offset >= 0 && it.offset + it.size <= info.viewportEndOffset - info.viewportStartOffset + 1
+                // A tab that is on screen stays exactly where it is when it is tapped. The old check (1px) failed on the right-hand
+                // slot because the three tab widths are rounded to whole pixels, so tapping it threw the tab into the middle.
+                val tol = (6 * dens).toInt()
+                val fully = it != null && it.offset >= -tol && it.offset + it.size <= info.viewportEndOffset - info.viewportStartOffset + tol
                 if (!fully) state.scrollToItem((idx - 1).coerceIn(0, maxFirst()))
             }
         }
