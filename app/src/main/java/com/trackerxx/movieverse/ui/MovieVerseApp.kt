@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import com.trackerxx.movieverse.data.AppData
 import com.trackerxx.movieverse.ui.library.HomeScreen
 import com.trackerxx.movieverse.ui.settings.UpdateFlow
@@ -33,6 +34,8 @@ import com.trackerxx.movieverse.ui.components.ModalState
 import com.trackerxx.movieverse.ui.components.ToastBridge
 import com.trackerxx.movieverse.ui.components.ToastHost
 import com.trackerxx.movieverse.ui.components.coveredBlur
+import com.trackerxx.movieverse.ui.components.detailGlow
+import com.trackerxx.movieverse.ui.components.isDarkBg
 import com.trackerxx.movieverse.ui.components.rememberToastState
 import com.trackerxx.movieverse.ui.theme.Mv
 import com.trackerxx.movieverse.ui.theme.MovieVerseTheme
@@ -52,7 +55,9 @@ fun MovieVerseApp() {
             // lower popups blur themselves the same way (coveredBlur). The blur comes and goes INSTANTLY with the popup:
             // it is only a layer property, so nothing is recomposed or measured again when it switches.
             Box(Modifier.fillMaxSize().background(c.bg)) {
-              Box(Modifier.fillMaxSize().coveredBlur(toast, null).background(c.bg)) {
+              // the whole app uses the movie details background (black + red / blue glow); light themes stay plain
+              val glow = isDarkBg(c.bg)
+              Box(Modifier.fillMaxSize().coveredBlur(toast, null).background(c.bg).then(if (glow) Modifier.detailGlow() else Modifier)) {
                 // page area = the screen minus status bar / navigation bar (like the old non-overlay WebView)
                 Box(
                     Modifier
@@ -68,7 +73,7 @@ fun MovieVerseApp() {
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
                         .windowInsetsTopHeight(WindowInsets.statusBars)
-                        .background(c.nav)
+                        .background(if (glow) Color.Transparent else c.nav)
                 )
                 Box(
                     Modifier
