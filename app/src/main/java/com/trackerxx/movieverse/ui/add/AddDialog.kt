@@ -343,6 +343,7 @@ private fun MoviePage(flow: AddFlow) {
         onBack = { flow.close() },
         title = "Movie details",
         edgeFade = true,
+        tightTop = true,
         resetKey = m
     ) {
         // ---- poster, title (year), overview, Trailer + Subtitle buttons ---------------------------------------------------
