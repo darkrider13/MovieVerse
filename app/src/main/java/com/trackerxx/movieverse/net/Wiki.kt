@@ -50,7 +50,7 @@ object Wiki {
      * Contact = the GitHub project of this app (filled in by GitHub Actions, same source as the updater).
      */
     private val UA: String by lazy {
-        val repo = BuildConfig.UPDATE_REPO.trim().ifEmpty { "darkrider13/MovieVerse-V2" }
+        val repo = BuildConfig.UPDATE_REPO.trim().ifEmpty { "darkrider13/MovieVerse" }
         "MovieVerse/" + BuildConfig.VERSION_NAME + " (https://github.com/" + repo + ") Android/" + Build.VERSION.RELEASE
     }
 
