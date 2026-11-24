@@ -1,20 +1,36 @@
 package com.trackerxx.movieverse.ui.add
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,7 +57,7 @@ fun SubtitlePage(flow: SubsFlow) {
     MvPage(onBack = { flow.close() }, title = head) {
         MvText("Subtitles", Modifier.padding(top = 6.dp), size = 20.sp, weight = FontWeight.Bold)
         MvText(
-            "Only Bangla and English. Tap Download and the file is saved in your Download folder.",
+            "Only Bangla and English. Tap the arrow for details, tap the red button to save the file in your Download folder.",
             Modifier.padding(top = 4.dp), size = 12.sp, color = c.mut, lineHeight = 1.4f
         )
 
@@ -71,8 +87,8 @@ fun SubtitlePage(flow: SubsFlow) {
                         }
                     )
                 } else {
-                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        list.forEach { s -> SubRow(flow, s) }
+                    Column(Modifier.fillMaxWidth()) {
+                        list.forEachIndexed { i, s -> SubRow(flow, s, i == 0) }
                     }
                 }
                 if (flow.canMore()) {
@@ -96,43 +112,130 @@ private fun Note(text: String) {
     )
 }
 
+private val VoteUp = Color(0xFF22C55E)
+private val VoteDown = Color(0xFFEF4444)
+
+/** one subtitle: name + uploader, a details arrow and a red download button; the details open under it */
 @Composable
-private fun SubRow(flow: SubsFlow, s: SubItem) {
+private fun SubRow(flow: SubsFlow, s: SubItem, first: Boolean) {
     val c = Mv.c
-    val shape = RoundedCornerShape(12.dp)
+    val btn = RoundedCornerShape(10.dp)
     val busy = flow.busy.contains(s.id)
-    val saved = flow.done.contains(s.id)
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(c.s2)
-            .border(1.dp, c.line, shape)
-            .padding(start = 12.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            MvText(s.release, size = 13.sp, weight = FontWeight.Bold, lineHeight = 1.3f, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                val bs = RoundedCornerShape(6.dp)
-                Box(Modifier.clip(bs).background(c.s).border(1.dp, c.line, bs).padding(horizontal = 7.dp, vertical = 2.dp)) {
-                    MvText(s.langName, size = 11.sp, weight = FontWeight.Bold, color = if (s.code == "BN") c.w else c.mut, lineHeight = 1.2f, maxLines = 1)
+    val saved = flow.done.contains(s.id) && !busy
+    val open = flow.openId == s.id
+    val who = flow.authors[s.id]?.takeIf { it.isNotEmpty() } ?: s.author
+    val noRipple = remember { MutableInteractionSource() }
+    val parts = ArrayList<String>()
+    if (flow.lang == "all") parts.add(s.langName)
+    if (s.season > 0) parts.add("S" + s.season + (if (s.episode > 0) " E" + s.episode else ""))
+    if (s.hi) parts.add("HI")
+    if (who.isNotEmpty()) parts.add("By " + who)
+    val subLine = parts.joinToString(" \u00B7 ")
+
+    Column(Modifier.fillMaxWidth()) {
+        if (!first) Box(Modifier.fillMaxWidth().height(1.dp).background(c.line.copy(alpha = .55f)))
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Column(
+                Modifier.weight(1f).clickable(interactionSource = noRipple, indication = null) { flow.toggleDetails(s.id) },
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                MvText(s.release, size = 13.sp, color = c.mut, lineHeight = 1.3f, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (subLine.isNotEmpty()) {
+                    MvText(subLine, size = 11.5.sp, color = c.ink.copy(alpha = .75f), lineHeight = 1.2f, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                val extra = buildString {
-                    if (s.season > 0) append("S" + s.season + (if (s.episode > 0) " E" + s.episode else ""))
-                    if (s.hi) append(if (isEmpty()) "HI" else " · HI")
-                    if (s.author.isNotEmpty()) append(if (isEmpty()) s.author else " · " + s.author)
-                }
-                if (extra.isNotEmpty()) MvText(extra, Modifier.weight(1f, fill = false), size = 11.sp, color = c.mut, lineHeight = 1.2f, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            // details arrow
+            Box(
+                Modifier.size(36.dp).clip(btn).background(if (open) c.line else c.s2).border(1.dp, c.line, btn)
+                    .clickable { flow.toggleDetails(s.id) },
+                contentAlignment = Alignment.Center
+            ) {
+                MvIcon(MvIcons.Chevron, 17.dp, Modifier.rotate(if (open) -90f else 90f), tint = if (open) c.ink else c.mut)
+            }
+            // download
+            Box(
+                Modifier.size(36.dp).clip(btn).background(if (saved) c.s2 else c.acc)
+                    .border(1.dp, if (saved) c.line else Color.Transparent, btn)
+                    .clickable(enabled = !busy) { flow.download(s) },
+                contentAlignment = Alignment.Center
+            ) {
+                if (saved) MvIcon(MvIcons.CheckGreen, 17.dp) else DownloadIcon(busy, c.onAcc)
             }
         }
-        MvButton(
-            { flow.download(s) }, kind = if (saved) BtnKind.Normal else BtnKind.Primary, size = BtnSize.Dialog,
-            icon = false, enabled = !busy
-        ) {
-            if (saved && !busy) MvIcon(MvIcons.CheckGreen, 14.dp) else MvIcon(MvIcons.Download, 14.dp)
-            MvText(if (busy) "Saving…" else if (saved) "Saved" else "Download")
+        if (open) Details(flow, s)
+    }
+}
+
+/** the download arrow; while the file is being saved it pulses */
+@Composable
+private fun DownloadIcon(busy: Boolean, tint: Color) {
+    if (busy) {
+        val tr = rememberInfiniteTransition(label = "sub-dl")
+        val a by tr.animateFloat(0.25f, 1f, infiniteRepeatable(tween(650), RepeatMode.Reverse), label = "sub-dl-a")
+        MvIcon(MvIcons.Download, 18.dp, Modifier.alpha(a), tint = tint)
+    } else {
+        MvIcon(MvIcons.Download, 18.dp, tint = tint)
+    }
+}
+
+/** what SubSource tells about the subtitle. One tap closes it, a double tap opens the subtitle's page on SubSource. */
+@Composable
+private fun Details(flow: SubsFlow, s: SubItem) {
+    val c = Mv.c
+    Column(
+        Modifier.fillMaxWidth().padding(bottom = 12.dp).pointerInput(s.id) {
+            detectTapGestures(onTap = { flow.closeDetails() }, onDoubleTap = { flow.openPage(s) })
+        },
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (s.desc.isNotEmpty()) {
+            MvText(s.desc, size = 13.sp, color = c.ink.copy(alpha = .85f), lineHeight = 1.5f)
         }
+        if (s.date.isNotEmpty() || s.relType.isNotEmpty()) {
+            InfoBox {
+                if (s.date.isNotEmpty()) InfoCell("Uploaded", s.date)
+                if (s.relType.isNotEmpty()) InfoCell("Release type", s.relType)
+            }
+        }
+        InfoBox {
+            InfoCell("Rated", s.score + "/10")
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (s.good >= 0) Vote(true, s.good)
+                if (s.bad >= 0) Vote(false, s.bad)
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoBox(content: @Composable RowScope.() -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        Modifier.fillMaxWidth().clip(shape).background(Mv.c.s2).padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        content = content
+    )
+}
+
+@Composable
+private fun InfoCell(label: String, value: String) {
+    val c = Mv.c
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        MvText(label, size = 13.sp, weight = FontWeight.Bold, color = c.mut, lineHeight = 1.2f, maxLines = 1)
+        MvText(value, size = 13.sp, color = c.ink, lineHeight = 1.2f, maxLines = 1)
+    }
+}
+
+@Composable
+private fun Vote(up: Boolean, n: Int) {
+    val col = if (up) VoteUp else VoteDown
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        MvIcon(MvIcons.Chevron, 14.dp, Modifier.rotate(if (up) -90f else 90f), tint = col)
+        MvText(n.toString(), size = 13.sp, weight = FontWeight.ExtraBold, color = col, lineHeight = 1.2f, maxLines = 1)
     }
 }

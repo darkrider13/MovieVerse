@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.trackerxx.movieverse.data.Movie
@@ -16,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 sealed class SubsUi {
@@ -52,6 +54,56 @@ class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState)
 
     val busy = mutableStateListOf<String>()
     val done = mutableStateListOf<String>()
+
+    /** the subtitle whose details are open (only one at a time) */
+    var openId by mutableStateOf<String?>(null)
+        private set
+
+    /** subtitle id -> uploader found later in the subtitle's own details ("" = none found) */
+    val authors = mutableStateMapOf<String, String>()
+
+    fun toggleDetails(id: String) {
+        openId = if (openId == id) null else id
+    }
+
+    fun closeDetails() {
+        openId = null
+    }
+
+    /** a double tap on the details opens the subtitle's own page on SubSource */
+    fun openPage(s: SubItem) {
+        val m = movie ?: return
+        val c = ctx ?: return
+        try {
+            val i = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(Subs.pageUrl(m, s)))
+            i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            c.startActivity(i)
+        } catch (x: Exception) {
+            toast.show("Could not open SubSource")
+        }
+    }
+
+    /** subtitles whose list entry has no uploader name: ask SubSource for each one's details, one after the other */
+    private fun fillAuthors(my: Int) {
+        scope.launch {
+            for (s in items.toList()) {
+                if (my != tok) return@launch
+                if (s.author.isNotEmpty() || authors.containsKey(s.id)) continue
+                val found = try {
+                    Subs.authorOf(s)
+                } catch (x: CancellationException) {
+                    throw x
+                } catch (x: Exception) {
+                    val msg = x.message ?: ""
+                    if (msg.contains("Too many") || msg.contains("not accepted") || msg == "NOKEY") return@launch
+                    ""
+                }
+                if (my != tok) return@launch
+                authors[s.id] = found
+                delay(250)
+            }
+        }
+    }
 
     /** set by the page (application context + storage permission for Android 9 and older) */
     var ctx: Context? = null
@@ -97,6 +149,7 @@ class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState)
 
     fun close() {
         open = false
+        openId = null
         tok++
         job?.cancel()
     }
@@ -112,6 +165,8 @@ class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState)
         items.clear()
         busy.clear()
         done.clear()
+        authors.clear()
+        openId = null
         pageBn = 0; pageEn = 0; moreBn = false; moreEn = false
         if (!Subs.hasKey()) {
             ui = SubsUi.NoKey
@@ -132,6 +187,7 @@ class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState)
                 pageBn = 1; pageEn = 1
                 moreBn = b.more; moreEn = e.more
                 ui = SubsUi.Ready
+                fillAuthors(my)
             } catch (x: CancellationException) {
                 throw x
             } catch (x: Exception) {
