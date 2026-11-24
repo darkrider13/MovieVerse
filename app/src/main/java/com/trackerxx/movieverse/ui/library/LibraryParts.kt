@@ -48,6 +48,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -362,13 +364,47 @@ fun TabsRow(
         val state = rememberLazyListState()
         var rowH by remember { mutableIntStateOf(0) }
         var pillH by remember { mutableIntStateOf(0) }
+        // The tabs sit in pages of three (All, Watching, Watched | next three ...). Item count = tabs + the "+" button.
+        val totalNow by rememberUpdatedState(tabs.size + 1)
+        /** first item of the page `page`; the last page is pulled back so it is always full (never a half tab) */
+        fun pageStart(page: Int): Int = (page * 3).coerceAtMost((totalNow - 3).coerceAtLeast(0))
+        fun lastPage(): Int = ((totalNow + 2) / 3 - 1).coerceAtLeast(0)
+        /** scroll position measured in items (e.g. 1.5 = the second tab is half way) */
+        fun posNow(): Float {
+            val first = state.layoutInfo.visibleItemsInfo.firstOrNull() ?: return 0f
+            val step = (first.size + 6 * dens).coerceAtLeast(1f)
+            return state.firstVisibleItemIndex + state.firstVisibleItemScrollOffset / step
+        }
         LaunchedEffect(selected, tabs.size) {
             val idx = tabs.indexOfFirst { it.first == selected }
             if (idx >= 0) {
                 val info = state.layoutInfo
                 val it = info.visibleItemsInfo.firstOrNull { x -> x.index == idx }
                 val fully = it != null && it.offset >= 0 && it.offset + it.size <= info.viewportEndOffset - info.viewportStartOffset + 1
-                if (!fully) state.scrollToItem(idx)
+                if (!fully) state.scrollToItem(pageStart(idx / 3))
+            }
+        }
+        // after a swipe (or after a tab was dropped) the row settles on the nearest page: no tab is ever left cut in half
+        LaunchedEffect(state) {
+            var startPos = 0f
+            var wasBusy = false
+            snapshotFlow { state.isScrollInProgress || drag.active }.collect { busy ->
+                if (busy) {
+                    if (!wasBusy) startPos = posNow()
+                    wasBusy = true
+                } else {
+                    wasBusy = false
+                    if (totalNow <= 3) return@collect
+                    val pos = posNow()
+                    val startPage = (startPos / 3f).roundToInt().coerceIn(0, lastPage())
+                    var page = (pos / 3f).roundToInt().coerceIn(0, lastPage())
+                    // a short swipe still turns the page
+                    val moved = pos / 3f - startPage
+                    if (page == startPage && abs(moved) > 0.12f) page = (startPage + (if (moved > 0f) 1 else -1)).coerceIn(0, lastPage())
+                    val ti = pageStart(page)
+                    val aligned = state.firstVisibleItemIndex == ti && state.firstVisibleItemScrollOffset <= 1
+                    if (!aligned) state.animateScrollToItem(ti)
+                }
             }
         }
         // while a tab is dragged near the left / right edge the row scrolls (tick() in the web version)
