@@ -28,6 +28,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -111,6 +113,7 @@ import com.trackerxx.movieverse.ui.components.MvButton
 import com.trackerxx.movieverse.ui.components.MvLoadingDots
 import com.trackerxx.movieverse.ui.components.MvPill
 import com.trackerxx.movieverse.ui.components.MvSmallSpinner
+import com.trackerxx.movieverse.ui.components.isDarkBg
 import com.trackerxx.movieverse.ui.components.plainClickable
 import com.trackerxx.movieverse.ui.theme.EaseCss
 import com.trackerxx.movieverse.ui.theme.Mv
@@ -170,7 +173,26 @@ fun TopNav(
 ) {
     val c = Mv.c
     val tgSp = (LocalConfiguration.current.screenWidthDp * 0.026f).coerceIn(8.5f, 11f)
-    Column(Modifier.fillMaxWidth().background(c.nav)) {
+    // dark theme = the movie details look: no solid bar and no divider line. The very top (status bar + bar) is black and fades
+    // softly into the red / blue glow of the page background (same gradient as the details page). Light themes keep the plain bar.
+    val glow = isDarkBg(c.bg)
+    val sbPx = WindowInsets.statusBars.getTop(LocalDensity.current).toFloat()
+    val fadePx = with(LocalDensity.current) { 44.dp.toPx() }
+    Column(
+        Modifier.fillMaxWidth().then(
+            if (glow) Modifier.drawBehind {
+                val top = -sbPx
+                val h = size.height + sbPx + fadePx
+                drawRect(
+                    Brush.verticalGradient(
+                        0f to c.nav, 0.5f to c.nav.copy(alpha = 0.72f), 1f to Color.Transparent,
+                        startY = top, endY = top + h
+                    ),
+                    topLeft = Offset(0f, top), size = Size(size.width, h)
+                )
+            } else Modifier.background(c.nav)
+        )
+    ) {
         Box(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
             contentAlignment = Alignment.Center
@@ -203,7 +225,7 @@ fun TopNav(
                 SettingsButton(dirty, onSettings, onSettingsLong)
             }
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(c.line))
+        if (!glow) Box(Modifier.fillMaxWidth().height(1.dp).background(c.line))
     }
 }
 
