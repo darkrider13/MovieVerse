@@ -59,6 +59,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
@@ -507,23 +508,29 @@ private fun PageWindowSetup(instantIn: Boolean = false) {
     }
 }
 
-/** Movie details background: black with a soft red glow in the top-left corner and a deep blue glow on the right (drawn once, no animation). */
-private fun Modifier.detailGlow(): Modifier = drawBehind {
-    val w = size.width
-    val h = size.height
+/** the glow background is only for dark themes (a light theme keeps its plain colour) */
+fun isDarkBg(bg: Color): Boolean = bg.red + bg.green + bg.blue < 0.6f
+
+/** the red glow (top-left) and the deep blue glow (right) of the app background, drawn into a w x h area at the current origin */
+fun DrawScope.drawGlow(w: Float, h: Float) {
     drawRect(
         Brush.radialGradient(
             0f to Color(0x66C00018), 0.45f to Color(0x33800010), 1f to Color.Transparent,
             center = Offset(w * 0.02f, h * 0.06f), radius = w * 1.0f
-        )
+        ),
+        size = Size(w, h)
     )
     drawRect(
         Brush.radialGradient(
             0f to Color(0x4D2B4BFF), 0.5f to Color(0x261A2FA0), 1f to Color.Transparent,
             center = Offset(w * 1.0f, h * 0.38f), radius = w * 0.9f
-        )
+        ),
+        size = Size(w, h)
     )
 }
+
+/** App background (the movie details look): black with a soft red glow in the top-left corner and a deep blue glow on the right (drawn once, no animation). */
+fun Modifier.detailGlow(): Modifier = drawBehind { drawGlow(size.width, size.height) }
 
 /**
  * A full-screen page (movie details, subtitles). It is its own window above the library, so the popups that open
@@ -565,7 +572,7 @@ fun MvPage(
         )
     ) {
         PageWindowSetup(instantIn)
-        Box(Modifier.fillMaxSize().background(c.bg).then(if (edgeFade && c.bg.red + c.bg.green + c.bg.blue < 0.6f) Modifier.detailGlow() else Modifier)) {
+        Box(Modifier.fillMaxSize().background(c.bg).then(if (isDarkBg(c.bg)) Modifier.detailGlow() else Modifier)) {
           // the page is blurred while a popup (trailer, person, question ...) is open on top of it
           Box(Modifier.fillMaxSize().coveredBlur(toast, layer)) {
             // movie details: the very top is black (same as the status bar) and fades softly into the red / blue glow: one background, no bar
