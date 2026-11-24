@@ -66,6 +66,8 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -104,6 +106,9 @@ import com.trackerxx.movieverse.ui.theme.MvNote
 import com.trackerxx.movieverse.ui.theme.MvText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+/** height the content of a fillHeight dialog can use (0.dp = the dialog is as high as its content) */
+val LocalDialogMaxH = staticCompositionLocalOf { 0.dp }
 
 /** blur of the page behind a popup (Android 12+; older phones only get the dim) */
 private val COVER_BLUR = 14.dp
@@ -263,7 +268,10 @@ fun MvDialog(
                         }
                         .verticalScroll(scroll)
                         .padding(4.dp),
-                    content = content
+                    content = {
+                        val inner = boxMaxH - 2.dp - outer.calculateTopPadding() - outer.calculateBottomPadding() - 8.dp
+                        CompositionLocalProvider(LocalDialogMaxH provides (if (fillHeight) inner else 0.dp)) { content() }
+                    }
                 )
                 if (onClose != null) {
                     MvCloseButton(
@@ -557,11 +565,20 @@ fun MvPage(
         Box(Modifier.fillMaxSize().background(c.bg).then(if (edgeFade && c.bg.red + c.bg.green + c.bg.blue < 0.6f) Modifier.detailGlow() else Modifier)) {
           // the page is blurred while a popup (trailer, person, question ...) is open on top of it
           Box(Modifier.fillMaxSize().coveredBlur(toast, layer)) {
+            // movie details: the very top is black (same as the status bar) and fades softly into the red / blue glow: one background, no bar
+            if (edgeFade) {
+                val sbH = with(LocalDensity.current) { WindowInsets.statusBars.getTop(this).toDp() }
+                Box(
+                    Modifier.fillMaxWidth().height(sbH + 52.dp + 44.dp).background(
+                        Brush.verticalGradient(0f to c.nav, 0.5f to c.nav.copy(alpha = 0.72f), 1f to Color.Transparent)
+                    )
+                )
+            }
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.ime))) {
                 // top bar
                 Row(
-                    // the bar has the same colour as the status bar above it (the red / blue glow starts below the bar)
-                    Modifier.fillMaxWidth().height(52.dp).background(c.nav).padding(horizontal = 6.dp),
+                    // edgeFade (movie details): no separate bar, the soft black fade below it is the top; other pages: a bar in the status bar colour
+                    Modifier.fillMaxWidth().height(52.dp).then(if (edgeFade) Modifier else Modifier.background(c.nav)).padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
@@ -573,7 +590,7 @@ fun MvPage(
                         size = 16.sp, weight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
                 }
-                Box(Modifier.fillMaxWidth().height(1.dp).background(c.line))
+                if (!edgeFade) Box(Modifier.fillMaxWidth().height(1.dp).background(c.line))
                 // content
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                     Column(
@@ -595,7 +612,7 @@ fun MvPage(
                 }
             }
             // status bar / navigation bar colours, like MovieVerseApp
-            Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars).background(c.nav))
+            Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars).background(if (edgeFade) Color.Transparent else c.nav))
             Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars).background(c.bot))
           }
             ToastHost(toast, inDialog = true, visibleHere = myDepth == toast.dialogs)
