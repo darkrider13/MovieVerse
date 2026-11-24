@@ -76,13 +76,14 @@ object AppData {
             null
         }
         if (st == null) {
+            // a new library starts with three pills: Coming Soon, Plan to watch, Watched (everything else the person adds himself)
             st = arrayListOf(
-                Status.create("watching", "Watching"),
-                Status.create("plan", "Plan to watch"),
-                Status.create("watched", "Watched"),
                 Status.create("upcoming", "Coming Soon"),
-                Status.create("favourite", "Favourite")
+                Status.create("plan", "Plan to watch"),
+                Status.create("watched", "Watched")
             )
+            Ls.setItem("library.st5", "1")
+            Ls.setItem("library.ord3", "1")
         }
         statuses = st
         uname = Ls.getItem("library.name") ?: ""
@@ -107,6 +108,15 @@ object AppData {
             }
             if (ch) saveStatuses()
             Ls.setItem("library.csn", "1")
+        }
+        // one-time upgrade 3: the pills start with Coming Soon, Plan to watch, Watched (the "All" tab is gone). Other pills keep
+        // their order after them; nothing is deleted.
+        if (Ls.getItem("library.ord3").isNullOrEmpty()) {
+            val first = listOf("upcoming", "plan", "watched").mapNotNull { id -> statuses.firstOrNull { it.id == id } }
+            val rest = statuses.filter { s -> first.none { it.id == s.id } }
+            statuses = (first + rest).toMutableList()
+            saveStatuses()
+            Ls.setItem("library.ord3", "1")
         }
         rebuildSL()
 
