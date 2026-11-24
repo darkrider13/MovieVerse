@@ -178,7 +178,8 @@ fun TopNav(
     onBrand: () -> Unit,
     onSettings: () -> Unit,
     onSettingsLong: () -> Unit = {},
-    onUpdate: () -> Unit = {}
+    onUpdate: () -> Unit = {},
+    updateSpinning: Boolean = false
 ) {
     val c = Mv.c
     val tgSp = (LocalConfiguration.current.screenWidthDp * 0.026f).coerceIn(8.5f, 11f)
@@ -232,7 +233,7 @@ fun TopNav(
                     }
                 }
                 // "check for updates": same size and look as the gear, right next to it on its left
-                UpdateButton(onUpdate)
+                UpdateButton(onUpdate, updateSpinning)
                 SettingsButton(dirty, onSettings, onSettingsLong)
             }
         }
@@ -240,11 +241,30 @@ fun TopNav(
     }
 }
 
-/** 34x34 "check for updates" button (two round arrows), the twin of the gear button */
+/**
+ * 34x34 "check for updates" button (two round arrows), the twin of the gear button.
+ * spinning = the check is running: the arrows turn exactly three times (1.5 s, soft start and soft stop). If the network is slow they keep
+ * turning smoothly until the answer is there, then glide to a stop upright (never frozen at a tilted angle).
+ */
 @Composable
-private fun UpdateButton(onClick: () -> Unit) {
+private fun UpdateButton(onClick: () -> Unit, spinning: Boolean) {
     val c = Mv.c
     val shape = RoundedCornerShape(9.dp)
+    val rot = remember { Animatable(0f) }
+    LaunchedEffect(spinning) {
+        if (spinning) {
+            rot.snapTo(0f)
+            rot.animateTo(1080f, tween(1500, easing = CubicBezierEasing(0.45f, 0f, 0.2f, 1f)))
+            while (true) {
+                rot.snapTo(0f)
+                rot.animateTo(360f, tween(800, easing = androidx.compose.animation.core.LinearEasing))
+            }
+        } else {
+            val r = rot.value % 360f
+            if (r > 0.5f) rot.animateTo(rot.value + (360f - r), tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+            rot.snapTo(0f)
+        }
+    }
     Box(
         Modifier
             .size(34.dp)
@@ -254,7 +274,7 @@ private fun UpdateButton(onClick: () -> Unit) {
             .pointerInput(onClick) { detectTapGestures(onTap = { onClick() }) },
         contentAlignment = Alignment.Center
     ) {
-        MvIcon(MvIcons.Sync, 18.dp, tint = c.ink)
+        MvIcon(MvIcons.Sync, 18.dp, Modifier.graphicsLayer { rotationZ = rot.value }, tint = c.ink)
     }
 }
 

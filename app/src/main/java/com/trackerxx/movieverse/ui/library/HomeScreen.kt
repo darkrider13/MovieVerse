@@ -137,6 +137,8 @@ fun HomeScreen(splashGone: Boolean) {
     var home by remember { mutableStateOf("trend") }      // var home='trend' : the app starts on Trending
     var view by remember { mutableStateOf("library") }    // library | up (Releases)
     var settingsOpen by remember { mutableStateOf(false) } // #sdlg (Settings dialog)
+    var updateSpin by remember { mutableStateOf(false) }   // the update button is turning while the check runs
+    var updateRes by remember { mutableStateOf<com.trackerxx.movieverse.ui.settings.UpdateCheck?>(null) }
     var updateOpen by remember { mutableStateOf(false) }   // "Checking for updates" (the button left of the gear)
     val export = rememberExportFlow()                      // Settings > Export
     val imp = rememberImportFlow()                         // Settings > Import
@@ -463,7 +465,28 @@ fun HomeScreen(splashGone: Boolean) {
             dirty = dirty,
             onBrand = { view = "library" },
             onSettings = { settingsOpen = true },
-            onUpdate = { updateOpen = true }
+            updateSpinning = updateSpin,
+            onUpdate = {
+                // tap: the arrows turn three times while the check runs, then the answer comes (update found / already the newest / failed)
+                if (!updateSpin && !updateOpen) {
+                    updateSpin = true
+                    scope.launch {
+                        val t0 = System.currentTimeMillis()
+                        val r = try {
+                            com.trackerxx.movieverse.ui.settings.UpdateCheck(com.trackerxx.movieverse.update.Updater.check(ctx), null)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            com.trackerxx.movieverse.ui.settings.UpdateCheck(null, e.message ?: "Could not check for updates.")
+                        }
+                        val wait = 1650L - (System.currentTimeMillis() - t0)   // three turns (1.5 s) + a short pause
+                        if (wait > 0) delay(wait)
+                        updateSpin = false
+                        updateRes = r
+                        updateOpen = true
+                    }
+                }
+            }
         )
         // clipToBounds: the header (translated up while scrolling) must never draw over the top bar
         Box(Modifier.weight(1f).fillMaxWidth().clipToBounds(), contentAlignment = Alignment.TopCenter) {
@@ -663,7 +686,7 @@ fun HomeScreen(splashGone: Boolean) {
 
     AddDialog(add)
 
-    if (updateOpen) com.trackerxx.movieverse.ui.settings.UpdateFlow(onClose = { updateOpen = false })
+    if (updateOpen) com.trackerxx.movieverse.ui.settings.UpdateFlow(onClose = { updateOpen = false; updateRes = null }, pre = updateRes)
 
     // ---- Settings (#sdlg) ----------------------------------------------------------------------------------------------
     if (settingsOpen) {
