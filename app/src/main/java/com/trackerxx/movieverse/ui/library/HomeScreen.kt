@@ -11,6 +11,10 @@ import androidx.compose.ui.text.font.FontWeight
 import com.trackerxx.movieverse.ui.components.MvSpinner
 import com.trackerxx.movieverse.ui.components.MvLoadingDots
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -55,7 +59,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -610,19 +613,19 @@ fun HomeScreen(splashGone: Boolean) {
                 // another pill / folder was opened: the old cards are covered for the few frames until the new card frames arrive.
                 // Plain cover, no spinner / text (a spinner flashing for a moment looked like flicker). The posters then fade in on their own.
                 if (libReady && view == "library" && home == "lib" && shownKey != fctx) {
-                    // The glow of this cover must sit EXACTLY where the glow of the app background sits (the app background is drawn over the
-                    // whole window, this cover only over the page area below the header). Before, the cover drew its own glow with other
-                    // coordinates, so the colours flashed for a few frames at every pill change. Now it draws the window glow shifted by the
-                    // cover's own position in the window, so cover and background are pixel-identical and the switch is invisible.
-                    var coverPos by remember { mutableStateOf(Offset.Zero) }
-                    val winSize = LocalWindowInfo.current.containerSize
                     Box(
-                        Modifier.fillMaxSize().padding(top = hdrDp.dp)
-                            .onGloballyPositioned { coverPos = it.positionInWindow() }
-                            .background(cNow.bg)
+                        Modifier.fillMaxSize().padding(top = hdrDp.dp).background(cNow.bg)
                             .drawBehind {
                                 if (isDarkBg(cNow.bg)) {
-                                    translate(-coverPos.x, -coverPos.y) { drawGlow(winSize.width.toFloat(), winSize.height.toFloat()) }
+                                    // the app background glow covers the WHOLE screen; this page is inset by the system bars, so the cover
+                                    // must draw the glow with the same origin and size, otherwise it shifts for a moment (= blink)
+                                    val t = hdrDp.dp.toPx()
+                                    val ins = WindowInsets.systemBars.union(WindowInsets.ime)
+                                    val il = ins.getLeft(this, layoutDirection).toFloat()
+                                    val ir = ins.getRight(this, layoutDirection).toFloat()
+                                    val it0 = ins.getTop(this).toFloat()
+                                    val ib = ins.getBottom(this).toFloat()
+                                    translate(-il, -(t + it0)) { drawGlow(size.width + il + ir, size.height + t + it0 + ib) }
                                 }
                             }
                             .pointerInput(Unit) { }
@@ -632,7 +635,16 @@ fun HomeScreen(splashGone: Boolean) {
                 // "Loading your library": nothing of the library is shown before everything is ready
                 if (view == "library" && home == "lib" && !libReady) {
                     Box(
-                        Modifier.fillMaxSize().background(cNow.bg).then(if (isDarkBg(cNow.bg)) Modifier.detailGlow() else Modifier).pointerInput(Unit) { },
+                        Modifier.fillMaxSize().background(cNow.bg).drawBehind {
+                            if (isDarkBg(cNow.bg)) {
+                                val ins = WindowInsets.systemBars.union(WindowInsets.ime)
+                                val il = ins.getLeft(this, layoutDirection).toFloat()
+                                val ir = ins.getRight(this, layoutDirection).toFloat()
+                                val it0 = ins.getTop(this).toFloat()
+                                val ib = ins.getBottom(this).toFloat()
+                                translate(-il, -it0) { drawGlow(size.width + il + ir, size.height + it0 + ib) }
+                            }
+                        }.pointerInput(Unit) { },
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
