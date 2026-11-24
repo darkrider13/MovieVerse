@@ -25,6 +25,7 @@ img{-webkit-user-drag:none;pointer-events:none}
 /* Trending -> Library: the first 4 posters come in one after the other (soft fade, small rise and scale) */
 @keyframes mvstag{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
 .card.stg{animation:mvstag .42s cubic-bezier(.2,.7,.2,1) both;will-change:transform,opacity}
+.card.stp{opacity:0}
 .cap{position:absolute;left:0;right:0;bottom:0;padding:26px 9px 8px;background:linear-gradient(rgba(8,10,20,0),rgba(8,10,20,.92));color:#fff;display:flex;align-items:flex-end;gap:6px}
 .cap>div{flex:1;min-width:0}
 .cap b{display:block;line-height:1.2;font-size:14px;font-weight:700}
@@ -168,6 +169,7 @@ function setMore(d){
 /* Every list (Library, Releases, Trending) keeps its own container and is NEVER torn down when you switch: switching only shows / hides
    a container, so the posters are already there (no rebuild, no reload, no blink). The app also fills the Library in the background. */
 var S={lib:null,up:null,trend:null};
+var LK=null;   /* key (tab:folder) of the last Library payload */
 function paint(){
   var m=cur.mode,d=m&&S[m];
   if(!d){grid.style.display=gridUp.style.display=rows.style.display='none';setMsg(null);more.innerHTML='';return}
@@ -191,16 +193,24 @@ function warm(box){
   };
   if(window.requestIdleCallback)requestIdleCallback(run,{timeout:6000});else setTimeout(run,3000);
 }
+/* the first 4 posters of the Library enter one by one (soft fade, small rise and scale) */
+function stagger(){
+  var cs=grid.querySelectorAll('.card'),n=Math.min(4,cs.length);
+  for(var i=0;i<cs.length;i++){cs[i].classList.remove('stg');cs[i].classList.remove('stp');cs[i].style.animationDelay=''}
+  void grid.offsetWidth;
+  for(var j=0;j<n;j++){cs[j].style.animationDelay=(j*70)+'ms';cs[j].classList.add('stg')}
+}
+/* a tab / folder was opened: the first 4 posters wait invisible until the app has taken its cover away, then they come in */
+function holdFirst(){
+  var cs=grid.querySelectorAll('.card'),n=Math.min(4,cs.length);
+  for(var i=0;i<cs.length;i++){cs[i].classList.remove('stg');cs[i].style.animationDelay='';if(i<n)cs[i].classList.add('stp');else cs[i].classList.remove('stp')}
+}
 function setMode(m){
   if(cur.mode===m)return;
   cur.mode=m;window.scrollTo(0,0);
   var el=m==='lib'?grid:m==='up'?gridUp:rows;
   if(m==='lib'&&grid.children.length){
-    /* Library: the first 4 posters enter one by one (staggered) instead of the whole list at once */
-    var cs=grid.querySelectorAll('.card'),n=Math.min(4,cs.length);
-    for(var i=0;i<cs.length;i++){cs[i].classList.remove('stg');cs[i].style.animationDelay=''}
-    void grid.offsetWidth;
-    for(var j=0;j<n;j++){cs[j].style.animationDelay=(j*70)+'ms';cs[j].classList.add('stg')}
+    stagger();
     el.classList.remove('enter');
   }else{
     el.classList.remove('enter');void el.offsetWidth;el.classList.add('enter');
@@ -209,19 +219,21 @@ function setMode(m){
 }
 /* Library: the first posters (about two screens) are fetched and decoded RIGHT AWAY, also while the list is hidden (Trending open),
    so showing it later (or opening another pill) draws complete cards at once. The app is told when they are ready (max 1.5 s). */
-function libReady(d){
+function libReady(d,kc){
   var done=false,fin=function(){if(done)return;done=true;if(A())A().libShown(String(d.key||''))};
   if(!d.msg){
     /* posters of about two screens start loading right away (also while the list is hidden), but nobody waits for them */
     var im=grid.querySelectorAll('img');
     for(var i=0;i<im.length&&i<12;i++)im[i].loading='eager';
   }
-  requestAnimationFrame(function(){requestAnimationFrame(fin)});
+  requestAnimationFrame(function(){requestAnimationFrame(function(){fin();if(kc)setTimeout(stagger,70)})});
 }
 function show(d){
   var m=d.mode;S[m]=d;
   if(!cur.mode)cur.mode=m;
   var vis=(m===cur.mode);
+  var kc=false;
+  if(m==='lib'){kc=vis&&!d.msg&&LK!==null&&String(d.key||'')!==LK;LK=String(d.key||'')}
   EG=0;
   if(!d.msg){
     if(m==='trend'){
@@ -239,7 +251,8 @@ function show(d){
     }
   }
   EG=0;
-  if(m==='lib')libReady(d);
+  if(kc)holdFirst();
+  if(m==='lib')libReady(d,kc);
   if(!vis&&m!=='trend')warm(m==='up'?gridUp:grid);   /* a list that is not on screen: its first posters are fetched later, when the phone is idle */
   if(vis)paint();
 }
