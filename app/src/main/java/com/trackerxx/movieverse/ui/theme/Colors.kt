@@ -6,10 +6,9 @@ import androidx.compose.ui.graphics.Color
 
 private fun rgba(r: Int, g: Int, b: Int, a: Float) = Color(r / 255f, g / 255f, b / 255f, a)
 
-/** Same names as the CSS variables of the web version (:root and :root[data-theme=light]). */
+/** Same names as the CSS variables of the web version (:root; the app is dark only). */
 @Immutable
 class MvColors(
-    val dark: Boolean,
     val bg: Color,        // --bg
     val bot: Color,       // --bot  (bottom bar / toast)
     val nav: Color,       // --nav  (top bar)
@@ -30,7 +29,6 @@ class MvColors(
 )
 
 val DarkColors = MvColors(
-    dark = true,
     bg = Color(0xFF000000), bot = Color(0xFF000000), nav = Color(0xFF000000),
     s = rgba(255, 255, 255, .07f), s2 = rgba(255, 255, 255, .10f),
     ink = Color(0xFFF1F2FC), mut = Color(0xFFA3A9C9), line = rgba(255, 255, 255, .11f),
@@ -40,18 +38,7 @@ val DarkColors = MvColors(
     cg = Color(0xFF00B800), cy = Color(0xFFF2C230), cr = Color(0xFFFF6B6B)
 )
 
-val LightColors = MvColors(
-    dark = false,
-    bg = Color(0xFFECEEFB), bot = Color(0xFFE0E3F5), nav = Color(0xFFECEEFB),
-    s = rgba(255, 255, 255, .55f), s2 = rgba(255, 255, 255, .70f),
-    ink = Color(0xFF161830), mut = Color(0xFF575D82), line = rgba(20, 24, 70, .14f),
-    acc = Color(0xFFE00000), onAcc = Color(0xFFFFFFFF),
-    w = Color(0xFF009A00), p = Color(0xFFA96600), n = Color(0xFF6A46D9),
-    dialogBg = rgba(255, 255, 255, .72f),
-    cg = Color(0xFF009A00), cy = Color(0xFFD9A400), cr = Color(0xFFE24B4B)
-)
-
-/** Colors that are the same in both themes. */
+/** Fixed colors (not part of the palette). */
 object MvFixed {
     val Del = Color(0xFFE24B4B)                 // .btn.del
     val RedBtn = Color(0xFFFF0000)              // .btn.red

@@ -53,11 +53,6 @@ object MvIcons {
     val Trash = MvIconData(listOf(s("M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6")), 2f, true)
     val Trash2 = MvIconData(listOf(s("M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6")), 2f, true)
     val Filter = MvIconData(listOf(s("M3 4h18l-7 8v6l-4 2v-8z")), 2f, true)
-    val Sun = MvIconData(
-        listOf(s(circ(12f, 12f, 4f)), s("M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4")),
-        2f, false
-    )
-    val Moon = MvIconData(listOf(s("M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z")), 2f, true)
     val Copy = MvIconData(
         listOf(s(rrect(9f, 9f, 12f, 12f, 2f)), s("M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1")), 2f, true
     )
