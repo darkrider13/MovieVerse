@@ -617,7 +617,7 @@ fun MvPage(
                             .then(if (edgeFade) Modifier.pageEdgeFade(pageScroll, topFollowsScroll = tightTop) else Modifier)
                             // scrollable = false: the page itself stays still, the content decides what scrolls
                             .then(if (scrollable) Modifier.verticalScroll(pageScroll) else Modifier)
-                            .padding(start = 16.dp, end = 16.dp, top = if (edgeFade && tightTop) 6.dp else if (edgeFade) 22.dp else 8.dp, bottom = if (!scrollable) 0.dp else if (edgeFade) 56.dp else 24.dp),
+                            .padding(start = 16.dp, end = 16.dp, top = if (edgeFade && tightTop) 2.dp else if (edgeFade) 22.dp else 8.dp, bottom = if (!scrollable) 0.dp else if (edgeFade) 56.dp else 24.dp),
                         content = content
                     )
                 }
