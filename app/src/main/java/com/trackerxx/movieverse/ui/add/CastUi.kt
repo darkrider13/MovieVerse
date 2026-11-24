@@ -57,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
@@ -79,7 +80,11 @@ import com.trackerxx.movieverse.ui.theme.MvIcon
 import com.trackerxx.movieverse.ui.theme.MvIcons
 import com.trackerxx.movieverse.ui.theme.MvText
 import com.trackerxx.movieverse.ui.theme.mvTextStyle
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.collectLatest
 
 /** copyName(t): copies a name / title to the clipboard with a short tap of vibration (no message) */
 @Composable
@@ -165,9 +170,31 @@ private fun CastRow(crew: List<CastPerson>, cast: List<CastPerson>, cw: androidx
     val dens = LocalDensity.current
     val slotPx = with(dens) { (cw + 6.dp).toPx() }
     val total = crew.size + cast.size
-    val fling = remember(st, slotPx, total) { CardSnapFling(st, slotPx, (total - 4).coerceAtLeast(0)) }
+    val lastStart = (total - 4).coerceAtLeast(0)
+    val fling = remember(st, slotPx, lastStart) { CardSnapFling(st, slotPx, lastStart) }
+    // Safety net: whenever the row stands still (whatever way it got there: fling, slow drag, new data, rotation) and it is not exactly
+    // on a snap point, it glides to the nearest one. So a half card at the left or right edge can never stay.
+    LaunchedEffect(st, slotPx, lastStart) {
+        val pts = (0 until lastStart step 4).toList() + lastStart
+        snapshotFlow { st.isScrollInProgress }.collectLatest { busy ->
+            if (busy || slotPx <= 0f) return@collectLatest
+            delay(60)   // a fling may start right after the finger lifts; a new emission cancels this wait
+            if (st.isScrollInProgress) return@collectLatest
+            val pos = st.firstVisibleItemIndex + st.firstVisibleItemScrollOffset / slotPx
+            val t = pts.minByOrNull { abs(it - pos) } ?: 0
+            if (abs(t - pos) > 0.02f) {
+                try {
+                    st.animateScrollToItem(t)
+                } catch (e: CancellationException) {
+                    // a touch took over: only a real cancellation of this effect may stop here, otherwise the next release settles again
+                    currentCoroutineContext().ensureActive()
+                }
+            }
+        }
+    }
     LazyRow(
-        Modifier.fillMaxSize(), state = st,
+        // clipToBounds: while it moves, a card never draws outside the row (not over the label, not up to the screen edge)
+        Modifier.fillMaxSize().clipToBounds(), state = st,
         contentPadding = PaddingValues(top = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         flingBehavior = fling
