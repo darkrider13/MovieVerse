@@ -34,7 +34,18 @@ class SubItem(
     val author: String,
     val season: Int,
     val episode: Int,
-    val hi: Boolean
+    val hi: Boolean,
+    /** the uploader's own text about the subtitle (SubSource: commentary / description) */
+    val desc: String = "",
+    /** upload date as dd/mm/yyyy ("" when SubSource sends none) */
+    val date: String = "",
+    /** release type, e.g. BluRay or Web ("" when SubSource sends none) */
+    val relType: String = "",
+    /** SubSource rating out of 10 ("-" when nobody rated it) */
+    val score: String = "-",
+    /** up / down votes (-1 = SubSource did not send the number) */
+    val good: Int = -1,
+    val bad: Int = -1
 ) {
     val langName: String get() = if (code == "BN") "Bangla" else "English"
 }
@@ -152,6 +163,212 @@ object Subs {
             if (v is JSONObject) find(v, re, depth + 1)?.let { return it }
         }
         return null
+    }
+
+    // ---- details of one subtitle (the box that opens under it) --------------------------------------------------------
+
+    /** same as find(), but the key is searched anywhere in its name (regex), like the web version's ssFind */
+    private fun findRe(o: JSONObject?, re: Regex, depth: Int = 0): String? {
+        if (o == null || depth > 2) return null
+        val i1 = o.keys()
+        while (i1.hasNext()) {
+            val k = i1.next()
+            if (re.containsMatchIn(k)) {
+                val v = o.opt(k)
+                if (v != null && v != JSONObject.NULL && v !is JSONObject && v !is JSONArray) return v.toString()
+            }
+        }
+        val i2 = o.keys()
+        while (i2.hasNext()) {
+            val v = o.opt(i2.next())
+            if (v is JSONObject) findRe(v, re, depth + 1)?.let { return it }
+        }
+        return null
+    }
+
+    private fun numRe(o: JSONObject?, re: Regex): Double? {
+        val v = findRe(o, re)?.trim() ?: return null
+        if (v.isEmpty()) return null
+        val d = v.toDoubleOrNull() ?: return null
+        return if (d.isNaN()) null else d
+    }
+
+    private fun joinArr(a: JSONArray): String = (0 until a.length()).joinToString(", ") { i ->
+        val e = a.opt(i)
+        if (e == null || e == JSONObject.NULL) "" else e.toString()
+    }
+
+    /** first non-empty plain value among these keys (a list becomes "a, b") */
+    private fun firstOf(r: JSONObject, keys: Array<String>): String {
+        for (k in keys) {
+            val raw = r.opt(k)
+            val v: Any? = if (raw is JSONArray) joinArr(raw) else raw
+            if (v != null && v != JSONObject.NULL && v !is JSONObject && v.toString().isNotEmpty()) return v.toString()
+        }
+        return ""
+    }
+
+    private val ISO = Regex("^(\\d{4})-(\\d{2})-(\\d{2})(?:[T ](\\d{2}):(\\d{2})(?::(\\d{2}))?(?:\\.\\d+)?)?\\s*(Z|[+-]\\d{2}(?::?\\d{2})?)?$")
+
+    /** "2026-11-14T10:20:30.000Z" -> "14/11/2026" in the phone's time zone; anything that is not a date stays as it is */
+    private fun dateText(raw: String): String {
+        val m = ISO.find(raw.trim()) ?: return raw
+        val g = m.groupValues
+        val hasTime = g[4].isNotEmpty()
+        val z = g[7]
+        val zone = when {
+            z.isEmpty() -> if (hasTime) java.util.TimeZone.getDefault() else java.util.TimeZone.getTimeZone("UTC")
+            z == "Z" -> java.util.TimeZone.getTimeZone("UTC")
+            else -> {
+                val d = z.substring(1).replace(":", "")
+                java.util.TimeZone.getTimeZone("GMT" + z.substring(0, 1) + d.substring(0, 2) + ":" + (if (d.length >= 4) d.substring(2, 4) else "00"))
+            }
+        }
+        val cal = java.util.Calendar.getInstance(zone)
+        cal.clear()
+        cal.set(
+            g[1].toInt(), g[2].toInt() - 1, g[3].toInt(),
+            if (hasTime) g[4].toInt() else 0, if (hasTime) g[5].toInt() else 0, if (g[6].isNotEmpty()) g[6].toInt() else 0
+        )
+        val loc = java.util.Calendar.getInstance()
+        loc.timeInMillis = cal.timeInMillis
+        return String.format(
+            java.util.Locale.US, "%02d/%02d/%d",
+            loc.get(java.util.Calendar.DAY_OF_MONTH), loc.get(java.util.Calendar.MONTH) + 1, loc.get(java.util.Calendar.YEAR)
+        )
+    }
+
+    private class Det(val desc: String, val date: String, val relType: String, val score: String, val good: Int, val bad: Int)
+
+    private val RE_BAD = Regex("bad", RegexOption.IGNORE_CASE)
+    private val RE_RATEOBJ = Regex("rat|vote|score", RegexOption.IGNORE_CASE)
+    private val RE_SCORE = Regex("^(rating|rate|score|average|avg|average_?rating|avg_?rating|mean|value)$", RegexOption.IGNORE_CASE)
+    private val RE_TOTAL = Regex("^(total|count|users|votes|total_?votes|rating_?count|rating_?users|rated_?by|raters?|voters?|ratings?_?total)$", RegexOption.IGNORE_CASE)
+    private val RE_GOOD = Regex("^(good|up|upvotes?|positive|likes?)$", RegexOption.IGNORE_CASE)
+    private val RE_DOWN = Regex("^(bad|down|downvotes?|negative|dislikes?)$", RegexOption.IGNORE_CASE)
+
+    /** what SubSource tells about one subtitle: description, upload date, release type, rating (out of 10) with up / down votes */
+    private fun det(r: JSONObject): Det {
+        val desc = clean(firstOf(r, arrayOf("commentary", "description", "comment", "caption", "notes", "note")))
+        val dt = firstOf(r, arrayOf("createdAt", "created_at", "uploadedAt", "uploaded_at", "date", "created"))
+        val date = if (dt.isEmpty()) "" else dateText(dt)
+
+        var rel = ""
+        val rt = findRe(r, Regex("^release_?type$", RegexOption.IGNORE_CASE))
+        if (!rt.isNullOrEmpty() && !Regex("^n/?a$", RegexOption.IGNORE_CASE).matches(rt)) {
+            val q = rt.replace(Regex("[_-]+"), " ")
+            rel = if (Regex("^blu\\s?ray$", RegexOption.IGNORE_CASE).matches(q)) "BluRay" else q.take(1).uppercase() + q.drop(1).lowercase()
+        }
+
+        // rating: the object that holds it (rating / votes / score ...) or the subtitle itself
+        var holder: JSONObject? = null
+        val ks = r.keys()
+        while (ks.hasNext()) {
+            val k = ks.next()
+            val v = r.opt(k)
+            if (RE_RATEOBJ.containsMatchIn(k) && v is JSONObject) { holder = v; break }
+        }
+        val src: JSONObject = holder ?: r
+        var sc = numRe(src, RE_SCORE)
+        var tot = numRe(src, RE_TOTAL)
+        val good = numRe(src, RE_GOOD)
+        val badN: Double? = findRe(r, RE_BAD)?.trim()?.toDoubleOrNull()?.takeIf { !it.isNaN() }
+        val bd = badN ?: numRe(src, RE_DOWN)
+        if (tot == null && (good != null || bd != null)) tot = (good ?: 0.0) + (bd ?: 0.0)
+        if (sc == null && tot != null && tot > 0 && good != null) sc = Math.round(good / tot * 100) / 10.0
+        val score = if (sc == null) "-" else {
+            val r1 = Math.round(sc * 10) / 10.0
+            if (r1 == Math.floor(r1)) r1.toLong().toString() else r1.toString()
+        }
+        val bn = badN?.toInt()
+        val gd: Int? = if (good != null) good.toInt() else if (tot != null) Math.max(0, (tot - (bn ?: 0)).toInt()) else null
+        return Det(desc, date, rel, score, gd ?: -1, bn ?: -1)
+    }
+
+    // ---- who made the subtitle -----------------------------------------------------------------------------------------
+
+    private val COM_BY = Regex("commentary\\s*by\\s*[:\\-\u2013]?\\s*([^\\r\\n<]+)", RegexOption.IGNORE_CASE)
+    private val COM_KEYS = arrayOf("commentary", "description", "comment", "comments", "caption", "notes", "note")
+
+    private fun comChk(v: Any?): String {
+        val s: String = when (v) {
+            is JSONArray -> (0 until v.length()).joinToString("\n") { i ->
+                val e = v.opt(i)
+                if (e == null || e == JSONObject.NULL) "" else e.toString()
+            }
+            is String -> v
+            else -> return ""
+        }
+        val q = COM_BY.find(s.replace(Regex("<[^>]*>"), "\n")) ?: return ""
+        return q.groupValues[1].replace(Regex("[*_]+"), "").replace(Regex("\\s+"), " ").trim().replace(Regex("[.,;:\\-]+$"), "").trim()
+    }
+
+    private fun comDeep(o: JSONObject?, d: Int): String {
+        if (o == null || d > 2) return ""
+        val i1 = o.keys()
+        while (i1.hasNext()) {
+            val v = o.opt(i1.next())
+            if (v is String) { val z = comChk(v); if (z.isNotEmpty()) return z }
+        }
+        val i2 = o.keys()
+        while (i2.hasNext()) {
+            val v = o.opt(i2.next())
+            if (v is JSONObject) { val z = comDeep(v, d + 1); if (z.isNotEmpty()) return z }
+        }
+        return ""
+    }
+
+    /** "A Commentary By: Name" inside the description: the name after "By:" */
+    private fun comBy(r: JSONObject): String {
+        for (k in COM_KEYS) { val v = comChk(r.opt(k)); if (v.isNotEmpty()) return v }
+        return comDeep(r, 0)
+    }
+
+    private val PV_BY = Regex(
+        "(?:\u0985\u09A8\u09C1\u09AC\u09BE\u09A6\u0995|\u0985\u09A8\u09C1\u09AC\u09BE\u09A6\u09C7|translated\\s*by|translation\\s*by|subtitles?\\s*by|subs\\s*by|synced?\\s*by|created\\s*by|uploaded\\s*by)\\s*[:\u0983\\-\u2013]?\\s*([^\\r\\n\\d][^\\r\\n]*)",
+        RegexOption.IGNORE_CASE
+    )
+    private val NM_BY = Regex("(?:^|[\\s._\\-\\[(])by[\\s._\\-:]+([^\\[\\]()]+?)\\s*[)\\]]?$", RegexOption.IGNORE_CASE)
+
+    /** the uploader: the uploader / author field if SubSource sends one, then "Commentary By", the preview text, then the "by Name" part of the release name */
+    private fun whoMade(x: JSONObject, nm: String): String {
+        val a = owner(x)
+        if (a.isNotEmpty()) return a
+        val b = comBy(x)
+        if (b.isNotEmpty()) return b
+        val pv0 = x.opt("preview")
+        if (pv0 is String) {
+            val pv = pv0.replace(Regex("<[^>]*>"), " ").replace(Regex("\\{[^}]*\\}"), " ")
+            if (pv.isNotEmpty()) {
+                val q = PV_BY.find(pv)
+                if (q != null) {
+                    val c = q.groupValues[1].replace(Regex("\\s+"), " ").trim().replace(Regex("[.,;:\\-]+$"), "").trim()
+                    if (c.isNotEmpty() && c.length <= 60) return c
+                }
+            }
+        }
+        val m = NM_BY.find(nm.replace(Regex("\\.(srt|zip|ass|ssa|vtt)$", RegexOption.IGNORE_CASE), ""))
+        return if (m != null) m.groupValues[1].replace(Regex("[._]+"), " ").replace(Regex("\\s+"), " ").trim() else ""
+    }
+
+    /** the list did not carry the uploader: ask SubSource for that one subtitle's own details ("" = none found) */
+    suspend fun authorOf(s: SubItem): String {
+        val j = getJson("/subtitles/" + URLEncoder.encode(s.id, "UTF-8")) ?: return ""
+        var o: Any? = if (j is JSONObject) {
+            val d = j.opt("data")
+            if (d is JSONObject) d else (j.optJSONObject("subtitle") ?: j)
+        } else j
+        if (o is JSONArray) o = if (o.length() > 0) o.opt(0) else null
+        val x = o as? JSONObject ?: return ""
+        return clean(whoMade(x, s.release))
+    }
+
+    /** the subtitle's own page on SubSource (opened by a double tap on its details) */
+    fun pageUrl(m: Movie, s: SubItem): String {
+        val t = java.text.Normalizer.normalize(m.title.lowercase(), java.text.Normalizer.Form.NFKD)
+            .replace(Regex("[\\u0300-\\u036f]"), "").replace(Regex("[^a-z0-9]+"), "-").trim('-')
+        val slug = t + (if (m.year.isNotEmpty()) "-" + m.year else "")
+        return "https://subsource.net/subtitle/" + slug + "/" + (LANGS[s.code] ?: "english") + "/" + URLEncoder.encode(s.id, "UTF-8")
     }
 
     private fun imdbDigits(o: JSONObject): String {
@@ -337,7 +554,8 @@ object Subs {
             var nm = clean(txt(x, "releaseInfo", "release_info", "release", "name", "title"))
             if (nm.isEmpty()) nm = "Subtitle"
             val hi = x.optBoolean("hearingImpaired", x.optBoolean("hi", false))
-            out.add(SubItem(id, nm, code, clean(owner(x)), e.season, 0, hi))
+            val d = det(x)
+            out.add(SubItem(id, nm, code, clean(whoMade(x, nm)), e.season, 0, hi, d.desc, d.date, d.relType, d.score, d.good, d.bad))
         }
         return out
     }
