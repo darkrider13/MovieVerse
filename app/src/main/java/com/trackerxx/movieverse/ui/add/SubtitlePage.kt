@@ -194,7 +194,7 @@ private fun SeasonFolder(flow: SubsFlow, season: Int, subs: List<SubItem>, open:
     }
     Column(
         Modifier.fillMaxWidth().clip(card)
-            .background(if (open) c.s2.copy(alpha = .55f) else c.s2.copy(alpha = .3f))
+            .background(if (open) Color.White.copy(alpha = .06f) else Color.White.copy(alpha = .04f))
             .border(1.dp, if (open) c.acc.copy(alpha = .45f) else c.line, card)
     ) {
         Row(
@@ -227,7 +227,7 @@ private fun SeasonFolder(flow: SubsFlow, season: Int, subs: List<SubItem>, open:
             exit = shrinkVertically(tween(200, easing = FastOutSlowInEasing)) + fadeOut(tween(150))
         ) {
             Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 4.dp)) {
-                Box(Modifier.fillMaxWidth().height(1.dp).background(c.line.copy(alpha = .55f)))
+                Box(Modifier.fillMaxWidth().height(1.dp).background(c.line))
                 // episodes in order: Episode 1, 2, 3 ... (an episode nobody uploaded is simply skipped);
                 // season packs / names without an episode number come first as "Full season"
                 val eps = subs.groupBy { episodeOf(it) }.toList().sortedBy { it.first }
@@ -289,7 +289,7 @@ private fun SubRow(flow: SubsFlow, s: SubItem, first: Boolean, n: Int, inFolder:
     val subLine = parts.joinToString(" \u00B7 ")
 
     Column(Modifier.fillMaxWidth()) {
-        if (!first) Box(Modifier.fillMaxWidth().height(1.dp).background(c.line.copy(alpha = .55f)))
+        if (!first) Box(Modifier.fillMaxWidth().height(1.dp).background(if (inFolder) c.line else c.line.copy(alpha = .55f)))
         Row(
             Modifier.fillMaxWidth().padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
