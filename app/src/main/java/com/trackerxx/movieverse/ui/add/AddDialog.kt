@@ -685,8 +685,8 @@ private fun PvHeader(flow: AddFlow, m: Movie, copyName: (String) -> Unit) {
                     contentAlignment = Alignment.TopEnd
                 ) {
                     // the icon's own empty margin (5/24 of its width at the right, 3/28 at the top) is moved out, so the green ribbon hangs from the
-                    // poster's top edge. It is pulled 13dp in from the right edge: the poster's rounded corner (12dp) no longer cuts it, the whole shape shows
-                    MvIcon(MvIcons.BookmarkGreen, 30.dp, Modifier.offset(x = (9.64 - 13).dp, y = (-3.21).dp))
+                    // poster's top edge. It is pulled 8dp in from the right edge and 1dp down: the poster's rounded corner (12dp) no longer cuts it, the whole shape shows
+                    MvIcon(MvIcons.BookmarkGreen, 30.dp, Modifier.offset(x = (9.64 - 8).dp, y = (-2.21).dp))
                 }
                 if (showSt) {
                     Box(
