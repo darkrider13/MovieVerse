@@ -40,9 +40,6 @@ img{-webkit-user-drag:none;pointer-events:none}
 
 /* ---- trending rows ---- */
 .tt{font-size:15px;font-weight:700;margin:16px 0 4px}
-/* each Trending row fades up once when it first comes on screen (opacity + transform only, so it stays smooth) */
-.trow.fu{opacity:0;transform:translate3d(0,14px,0)}
-.trow.fu.in{opacity:1;transform:none;transition:opacity .35s cubic-bezier(.22,.61,.36,1),transform .35s cubic-bezier(.22,.61,.36,1);transition-delay:var(--fd,0ms)}
 .crow{display:flex;gap:10px;overflow-x:auto;padding:4px 0 8px;overscroll-behavior-x:contain;scrollbar-width:none;scroll-snap-type:x mandatory}
 /* a swipe moves exactly one page of three posters: every 3rd poster is a snap point, so no poster is ever cut off */
 .tcard:nth-child(3n+1){scroll-snap-align:start;scroll-snap-stop:always}
@@ -137,26 +134,7 @@ function setTrRate(el,o){
   b.innerHTML='<span class="rate"><small>IMDb</small> <span class="r-'+(o.xc||'m')+'">'+esc(o.x)+'</span></span>';
 }
 function trSig(o){return o.id+'|'+o.p+'|'+o.t+'|'+o.d+'|'+(o.lib?1:0)+'|'+(o.r||0)}
-var fuIO=null,fuN=0;
-function fuWatch(el){
-  if(!('IntersectionObserver' in window)){el.classList.add('in');return}
-  if(!fuIO)fuIO=new IntersectionObserver(function(es){
-    es.forEach(function(e){
-      if(!e.isIntersecting)return;
-      var t=e.target;fuIO.unobserve(t);
-      t.style.setProperty('--fd',Math.min(fuN++,4)*70+'ms');
-      requestAnimationFrame(function(){
-        t.classList.add('in');
-        /* after the animation the row is a normal element again (no extra compositing layer to keep while scrolling) */
-        setTimeout(function(){fuN=Math.max(0,fuN-1);t.classList.remove('fu','in');t.style.removeProperty('--fd')},500+Math.min(fuN,4)*70);
-      });
-    });
-  },{threshold:0.04});
-  fuIO.observe(el);
-}
-function mkRow(r){
-  var el=mkRow0(r);el.classList.add('fu');fuWatch(el);return el;
-}
+function mkRow(r){return mkRow0(r)}
 function mkRow0(r){
   return html2el('<section class="trow" data-row="'+esc(r.id)+'"><div class="tt"></div><div class="crow"></div><div class="trfail">Could not load.<br><div class="btn" data-k="trretry">Retry</div></div></section>');
 }
@@ -210,13 +188,13 @@ function show(d){
   if(!d.msg){
     if(m==='trend'){
       sync(rows,d.rows,function(r){return r.id},function(r){return mkRow(r)},function(r){return r.id});
-      d.rows.forEach(function(r){
+      d.rows.forEach(function(r,ri){
         var el=rows._m.get(r.id);if(!el)return;
         var tt=el.firstChild,crow=tt.nextSibling,fail=crow.nextSibling;
         if(tt.textContent!==r.title)tt.textContent=r.title;
         fail.style.display=r.failed?'block':'none';
         crow.style.display=r.failed?'none':'flex';
-        if(!r.failed){EG=6;sync(crow,r.items,function(o){return o.id},function(o){return trCard(o)},trSig);r.items.forEach(function(o){var c=crow._m.get(o.id);if(c)setTrRate(c,o)})}
+        if(!r.failed){EG=(ri<2?6:0);sync(crow,r.items,function(o){return o.id},function(o){return trCard(o)},trSig);r.items.forEach(function(o){var c=crow._m.get(o.id);if(c)setTrRate(c,o)})}
       });
     }else{
       sync(m==='up'?gridUp:grid,d.cards,function(c){return c.id},function(c){return m==='up'?upCard(c):libCard(c)});
