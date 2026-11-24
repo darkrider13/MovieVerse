@@ -29,7 +29,7 @@ sealed class SubsUi {
 
 /**
  * The Subtitles page of a movie (from SubSource): only Bangla + English, filter chips (All / Bangla / English), "Show more",
- * Download = saved into the phone's Download folder.
+ * Download = saved into the phone's Movies folder.
  */
 @Stable
 class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState) {
@@ -109,6 +109,8 @@ class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState)
     var ctx: Context? = null
     var launchPerm: ((String) -> Unit)? = null
     var permDone: CompletableDeferred<Boolean>? = null
+    var launchTree: (() -> Unit)? = null
+    var treeDone: CompletableDeferred<android.net.Uri?>? = null
 
     private var pageBn = 0
     private var pageEn = 0
@@ -236,7 +238,7 @@ class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState)
 
     fun canMore(): Boolean = (moreBn && lang != "EN") || (moreEn && lang != "BN")
 
-    /** Android 9 and older need the storage permission for the Download folder */
+    /** Android 9 and older need the storage permission for the Movies folder */
     private suspend fun askStorage(c: Context) {
         if (android.os.Build.VERSION.SDK_INT <= 28 &&
             androidx.core.content.ContextCompat.checkSelfPermission(c, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -249,6 +251,29 @@ class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState)
         }
     }
 
+    /**
+     * Android 10+: the Movies folder is allowed once (the picker opens inside Movies, one tap on "Use this folder"),
+     * the permission is kept, so later downloads go straight into Movies.
+     */
+    private suspend fun moviesTree(c: Context): android.net.Uri? {
+        if (android.os.Build.VERSION.SDK_INT < 29) return null
+        val sp = c.getSharedPreferences("mv_subs", Context.MODE_PRIVATE)
+        val saved = sp.getString("movies_tree", null)?.let { android.net.Uri.parse(it) }
+        if (saved != null && c.contentResolver.persistedUriPermissions.any { it.uri == saved && it.isWritePermission }) return saved
+        val d = CompletableDeferred<android.net.Uri?>()
+        treeDone = d
+        launchTree?.invoke()
+        val u = d.await() ?: throw java.io.IOException("Select the Movies folder to save subtitles")
+        val id = android.provider.DocumentsContract.getTreeDocumentId(u)
+        if (!id.endsWith(":Movies")) throw java.io.IOException("Please select the Movies folder")
+        c.contentResolver.takePersistableUriPermission(
+            u,
+            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+        sp.edit().putString("movies_tree", u.toString()).apply()
+        return u
+    }
+
     fun download(s: SubItem) {
         val m = movie ?: return
         val c = ctx ?: return
@@ -257,10 +282,11 @@ class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState)
         scope.launch {
             try {
                 askStorage(c)
-                val names = Subs.download(c, m, s)
+                val tree = moviesTree(c)
+                val names = Subs.download(c, m, s, tree)
                 if (!done.contains(s.id)) done.add(s.id)
                 toast.show(
-                    if (names.size == 1) "Saved to Downloads\n" + names[0] else "Saved " + names.size + " files to Downloads",
+                    if (names.size == 1) "Saved to Movies\n" + names[0] else "Saved " + names.size + " files to Movies",
                     3600
                 )
             } catch (x: CancellationException) {
@@ -272,4 +298,23 @@ class SubsFlow(private val scope: CoroutineScope, private val toast: ToastState)
             }
         }
     }
+}
+
+/** opens the folder picker inside Movies (Android 10+) */
+class PickMoviesFolder : androidx.activity.result.contract.ActivityResultContract<Unit, android.net.Uri?>() {
+    override fun createIntent(context: Context, input: Unit): android.content.Intent =
+        android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            putExtra(
+                android.provider.DocumentsContract.EXTRA_INITIAL_URI,
+                android.provider.DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Movies")
+            )
+            addFlags(
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    android.content.Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+            )
+        }
+
+    override fun parseResult(resultCode: Int, intent: android.content.Intent?): android.net.Uri? =
+        if (resultCode == android.app.Activity.RESULT_OK) intent?.data else null
 }

@@ -110,9 +110,13 @@ fun AddDialog(flow: AddFlow) {
     val permL = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         flow.subs.permDone?.complete(granted)
     }
+    val treeL = rememberLauncherForActivityResult(PickMoviesFolder()) { uri ->
+        flow.subs.treeDone?.complete(uri)
+    }
     SideEffect {
         flow.subs.ctx = ctx.applicationContext
         flow.subs.launchPerm = { permL.launch(it) }
+        flow.subs.launchTree = { treeL.launch(Unit) }
     }
     if (flow.open && flow.phase == "find") {
         MvDialog(
