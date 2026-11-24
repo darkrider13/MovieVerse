@@ -60,7 +60,9 @@ fun PersonDialog(flow: AddFlow) {
         // #pdlg{background:#000}; .pdsc has 2px right padding instead of 4
         padding = PaddingValues(start = 18.dp, top = 18.dp, end = 16.dp, bottom = 18.dp),
         solidBackground = Color.Black,
-        scrollState = pf.scroll.body
+        scrollState = pf.scroll.body,
+        // fixed size: the popup always has the same height (90% of the screen), whatever page is shown or is still loading
+        fillHeight = true
     ) {
         PersonBody(pf)
     }
@@ -129,8 +131,9 @@ private fun PersonBody(pf: PersonFlow) {
     }
 
     // ---- #ppg : Movies | Awards ----
+    // fixed height (title row + five rows): swiping Movies <-> Awards, loading or a short list never changes the size of the popup
     LazyRow(
-        Modifier.fillMaxWidth(), state = sc.pages,
+        Modifier.fillMaxWidth().height(398.dp), state = sc.pages,
         flingBehavior = rememberSnapFlingBehavior(sc.pages)
     ) {
         item {
