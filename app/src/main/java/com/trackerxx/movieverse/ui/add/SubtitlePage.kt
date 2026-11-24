@@ -1,7 +1,15 @@
 package com.trackerxx.movieverse.ui.add
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -64,6 +72,8 @@ import com.trackerxx.movieverse.ui.theme.MvText
 fun SubtitlePage(flow: SubsFlow) {
     val m = flow.movie ?: return
     val head = if (m.title.isNotEmpty()) m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "") else "Subtitles"
+    // which season folders are open (season number -> open); kept while the language filter changes, reset for another title
+    val openSeasons = remember(m.tmdbId, m.title) { mutableStateMapOf<Int, Boolean>() }
 
     // dark theme = same top as the other pages: no solid bar, no line; the black top fades softly into the red / blue glow
     MvPage(onBack = { flow.close() }, title = head, scrollable = false, edgeFade = isDarkBg(Mv.c.bg)) {
@@ -103,6 +113,9 @@ fun SubtitlePage(flow: SubsFlow) {
                                 }
                             )
                         }
+                    } else if (flow.items.any { it.season > 0 }) {
+                        // a TV series: one folder per season, tap a folder to open its subtitles
+                        SeasonFolders(flow, list, openSeasons)
                     } else {
                         Column(Modifier.fillMaxWidth()) {
                             list.forEachIndexed { i, s -> Reveal(i) { SubRow(flow, s, i == 0, i + 1) } }
@@ -147,12 +160,119 @@ private fun Note(text: String) {
     )
 }
 
+/** TV series: the subtitles sorted into one folder per season (Season 1, Season 2 ...; entries without a season go last as "Other") */
+@Composable
+private fun SeasonFolders(flow: SubsFlow, list: List<SubItem>, openSeasons: SnapshotStateMap<Int, Boolean>) {
+    val groups = list.groupBy { it.season }.toList().sortedBy { if (it.first == 0) Int.MAX_VALUE else it.first }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        groups.forEachIndexed { gi, g ->
+            val season = g.first
+            // a single folder opens by itself, with several they all start closed
+            val isOpen = openSeasons[season] ?: (groups.size == 1)
+            Reveal(gi) {
+                SeasonFolder(flow, season, g.second, isOpen) { openSeasons[season] = !isOpen }
+            }
+        }
+    }
+}
+
+/** one season folder: folder icon, "Season N", how many subtitles (Bangla / English), an arrow; the subtitles open inside it */
+@Composable
+private fun SeasonFolder(flow: SubsFlow, season: Int, subs: List<SubItem>, open: Boolean, onToggle: () -> Unit) {
+    val c = Mv.c
+    val card = RoundedCornerShape(16.dp)
+    val noRipple = remember { MutableInteractionSource() }
+    val turn by animateFloatAsState(if (open) 90f else 0f, tween(220, easing = FastOutSlowInEasing), label = "season-arrow")
+    val bn = subs.count { it.code == "BN" }
+    val en = subs.count { it.code == "EN" }
+    val total = subs.size
+    val info = ArrayList<String>()
+    info.add(total.toString() + (if (total == 1) " subtitle" else " subtitles"))
+    if (bn > 0 && en > 0) {
+        info.add(bn.toString() + " Bangla")
+        info.add(en.toString() + " English")
+    }
+    Column(
+        Modifier.fillMaxWidth().clip(card)
+            .background(if (open) c.s2.copy(alpha = .55f) else c.s2.copy(alpha = .3f))
+            .border(1.dp, if (open) c.acc.copy(alpha = .45f) else c.line, card)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().clickable(interactionSource = noRipple, indication = null) { onToggle() }
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(13.dp)
+        ) {
+            Box(
+                Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(c.acc.copy(alpha = .14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                MvIcon(MvIcons.Folder, 22.dp, tint = c.acc)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                MvText(
+                    if (season > 0) "Season " + season else "Other", size = 16.sp, weight = FontWeight.Bold,
+                    lineHeight = 1.2f, maxLines = 1
+                )
+                MvText(
+                    info.joinToString(" · "), size = 12.sp, color = c.mut, lineHeight = 1.2f,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+            }
+            MvIcon(MvIcons.Chevron, 18.dp, Modifier.rotate(turn), tint = if (open) c.acc else c.mut)
+        }
+        AnimatedVisibility(
+            visible = open,
+            enter = expandVertically(tween(240, easing = FastOutSlowInEasing)) + fadeIn(tween(240)),
+            exit = shrinkVertically(tween(200, easing = FastOutSlowInEasing)) + fadeOut(tween(150))
+        ) {
+            Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 4.dp)) {
+                Box(Modifier.fillMaxWidth().height(1.dp).background(c.line.copy(alpha = .55f)))
+                // episodes in order: Episode 1, 2, 3 ... (an episode nobody uploaded is simply skipped);
+                // season packs / names without an episode number come first as "Full season"
+                val eps = subs.groupBy { episodeOf(it) }.toList().sortedBy { it.first }
+                eps.forEach { (ep, list) ->
+                    EpisodeHeader(if (ep > 0) "Episode " + ep else "Full season / Other", list.size)
+                    list.forEachIndexed { i, s -> SubRow(flow, s, i == 0, i + 1, inFolder = true) }
+                }
+            }
+        }
+    }
+}
+
+private val EpS = Regex("S\\d{1,2}[ ._-]?E(\\d{1,3})", RegexOption.IGNORE_CASE)
+private val EpX = Regex("(?<![0-9])\\d{1,2}x(\\d{2,3})(?![0-9])", RegexOption.IGNORE_CASE)
+private val EpW = Regex("(?<![A-Za-z0-9])(?:Episode|Ep|E)[ ._-]?(\\d{1,3})(?![0-9A-Za-z])", RegexOption.IGNORE_CASE)
+
+/** the episode number of a subtitle, read from its release name (S01E03, 1x03, Episode 3, EP03); 0 = none found (season pack) */
+private fun episodeOf(s: SubItem): Int {
+    if (s.episode > 0) return s.episode
+    val n = s.release
+    val m = EpS.find(n) ?: EpX.find(n) ?: EpW.find(n)
+    return m?.groupValues?.get(1)?.toIntOrNull() ?: 0
+}
+
+/** small title line above the subtitles of one episode */
+@Composable
+private fun EpisodeHeader(text: String, count: Int) {
+    val c = Mv.c
+    Row(
+        Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(Modifier.size(width = 3.dp, height = 14.dp).clip(RoundedCornerShape(2.dp)).background(c.acc))
+        MvText(text, size = 13.sp, weight = FontWeight.Bold, color = c.ink, lineHeight = 1.2f, maxLines = 1)
+        MvText(count.toString(), size = 12.sp, color = c.mut, lineHeight = 1.2f, maxLines = 1)
+    }
+}
+
 private val VoteUp = Color(0xFF22C55E)
 private val VoteDown = Color(0xFFEF4444)
 
 /** one subtitle: name + uploader, a details arrow and a red download button; the details open under it */
 @Composable
-private fun SubRow(flow: SubsFlow, s: SubItem, first: Boolean, n: Int) {
+private fun SubRow(flow: SubsFlow, s: SubItem, first: Boolean, n: Int, inFolder: Boolean = false) {
     val c = Mv.c
     val btn = RoundedCornerShape(10.dp)
     val busy = flow.busy.contains(s.id)
@@ -162,7 +282,8 @@ private fun SubRow(flow: SubsFlow, s: SubItem, first: Boolean, n: Int) {
     val noRipple = remember { MutableInteractionSource() }
     val parts = ArrayList<String>()
     if (flow.lang == "all") parts.add(s.langName)
-    if (s.season > 0) parts.add("S" + s.season + (if (s.episode > 0) " E" + s.episode else ""))
+    // inside a season folder the season is already the folder's name
+    if (!inFolder && s.season > 0) parts.add("S" + s.season + (if (s.episode > 0) " E" + s.episode else ""))
     if (s.hi) parts.add("HI")
     if (who.isNotEmpty()) parts.add("By " + who)
     val subLine = parts.joinToString(" \u00B7 ")
