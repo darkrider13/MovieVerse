@@ -187,6 +187,8 @@ fun HomeScreen(splashGone: Boolean) {
     // until its own cards have arrived (no half-drawn list, no cards of the old pill).
     var shownKey by remember { mutableStateOf<String?>(null) }
     var hdrDp by remember { mutableStateOf(0f) }
+    // system bars (+ keyboard) insets: read here (composable), used by the draw blocks of the cover / loading box below
+    val ins = WindowInsets.systemBars.union(WindowInsets.ime)
 
     // ---- what the page shows -------------------------------------------------------------------------------------------
     val rev = AppData.rev
@@ -620,7 +622,6 @@ fun HomeScreen(splashGone: Boolean) {
                                     // the app background glow covers the WHOLE screen; this page is inset by the system bars, so the cover
                                     // must draw the glow with the same origin and size, otherwise it shifts for a moment (= blink)
                                     val t = hdrDp.dp.toPx()
-                                    val ins = WindowInsets.systemBars.union(WindowInsets.ime)
                                     val il = ins.getLeft(this, layoutDirection).toFloat()
                                     val ir = ins.getRight(this, layoutDirection).toFloat()
                                     val it0 = ins.getTop(this).toFloat()
@@ -637,7 +638,6 @@ fun HomeScreen(splashGone: Boolean) {
                     Box(
                         Modifier.fillMaxSize().background(cNow.bg).drawBehind {
                             if (isDarkBg(cNow.bg)) {
-                                val ins = WindowInsets.systemBars.union(WindowInsets.ime)
                                 val il = ins.getLeft(this, layoutDirection).toFloat()
                                 val ir = ins.getRight(this, layoutDirection).toFloat()
                                 val it0 = ins.getTop(this).toFloat()
