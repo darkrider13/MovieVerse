@@ -52,6 +52,7 @@ import com.trackerxx.movieverse.ui.components.BtnSize
 import com.trackerxx.movieverse.ui.components.MvButton
 import com.trackerxx.movieverse.ui.components.MvPage
 import com.trackerxx.movieverse.ui.components.MvPill
+import com.trackerxx.movieverse.ui.components.isDarkBg
 import com.trackerxx.movieverse.ui.components.scrollEdgeFade
 import com.trackerxx.movieverse.ui.theme.Mv
 import com.trackerxx.movieverse.ui.theme.MvIcon
@@ -64,7 +65,8 @@ fun SubtitlePage(flow: SubsFlow) {
     val m = flow.movie ?: return
     val head = if (m.title.isNotEmpty()) m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "") else "Subtitles"
 
-    MvPage(onBack = { flow.close() }, title = head, scrollable = false) {
+    // dark theme = same top as the other pages: no solid bar, no line; the black top fades softly into the red / blue glow
+    MvPage(onBack = { flow.close() }, title = head, scrollable = false, edgeFade = isDarkBg(Mv.c.bg)) {
         MvText("Subtitles", Modifier.padding(top = 6.dp), size = 20.sp, weight = FontWeight.Bold)
 
         // language filter
