@@ -198,7 +198,7 @@ fun GridWebView(host: GridHost, bg: Color, modifier: Modifier = Modifier) {
         modifier = modifier,
         factory = { ctx ->
             WebView(ctx).apply {
-                setBackgroundColor(bg.toArgb())
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)   // the app background (glow) shows through
                 overScrollMode = View.OVER_SCROLL_NEVER
                 isVerticalScrollBarEnabled = false
                 isHorizontalScrollBarEnabled = false

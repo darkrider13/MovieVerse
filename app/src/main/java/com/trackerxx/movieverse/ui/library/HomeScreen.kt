@@ -41,6 +41,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.drawscope.translate
+import com.trackerxx.movieverse.ui.components.detailGlow
+import com.trackerxx.movieverse.ui.components.drawGlow
+import com.trackerxx.movieverse.ui.components.isDarkBg
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -605,13 +609,22 @@ fun HomeScreen(splashGone: Boolean) {
                 // another pill / folder was opened: the old cards are covered for the few frames until the new card frames arrive.
                 // Plain cover, no spinner / text (a spinner flashing for a moment looked like flicker). The posters then fade in on their own.
                 if (libReady && view == "library" && home == "lib" && shownKey != fctx) {
-                    Box(Modifier.fillMaxSize().padding(top = hdrDp.dp).background(cNow.bg).pointerInput(Unit) { })
+                    Box(
+                        Modifier.fillMaxSize().padding(top = hdrDp.dp).background(cNow.bg)
+                            .drawBehind {
+                                if (isDarkBg(cNow.bg)) {
+                                    val t = hdrDp.dp.toPx()
+                                    translate(0f, -t) { drawGlow(size.width, size.height + t) }
+                                }
+                            }
+                            .pointerInput(Unit) { }
+                    )
                 }
 
                 // "Loading your library": nothing of the library is shown before everything is ready
                 if (view == "library" && home == "lib" && !libReady) {
                     Box(
-                        Modifier.fillMaxSize().background(cNow.bg).pointerInput(Unit) { },
+                        Modifier.fillMaxSize().background(cNow.bg).then(if (isDarkBg(cNow.bg)) Modifier.detailGlow() else Modifier).pointerInput(Unit) { },
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
