@@ -239,8 +239,8 @@ object GridJson {
         else -> "n"
     }
 
-    private fun msg(text: String, load: Boolean = false, retry: Boolean = false): JSONObject =
-        JSONObject().put("t", text).put("load", load).put("retry", retry)
+    private fun msg(text: String, load: Boolean = false, retry: Boolean = false, key: String = "upretry"): JSONObject =
+        JSONObject().put("t", text).put("load", load).put("retry", retry).put("k", key)
 
     /** Your Library */
     fun lib(
@@ -286,11 +286,17 @@ object GridJson {
             return o.toString()
         }
         val rows = JSONArray()
+        // ONE Retry in the middle of the page (instead of one per row) when nothing could be loaded
+        val anyLoaded = Trending.ORDER.any { !Trending.lists[it].isNullOrEmpty() }
+        val anyFailed = Trending.ORDER.any { Trending.failed[it] == true }
+        if (!anyLoaded && anyFailed) {
+            o.put("msg", msg("Could not load.", retry = true, key = "trretry"))
+            return o.toString()
+        }
         for (tid in Trending.ORDER) {
             val list = Trending.lists[tid]
-            val failed = Trending.failed[tid] == true
-            if (list.isNullOrEmpty() && !failed) continue
-            val row = JSONObject().put("id", tid).put("title", Trending.TITLES[tid] ?: "").put("failed", list.isNullOrEmpty())
+            if (list.isNullOrEmpty()) continue   // a row that failed while others loaded is simply left out
+            val row = JSONObject().put("id", tid).put("title", Trending.TITLES[tid] ?: "").put("failed", false)
             val items = JSONArray()
             if (!list.isNullOrEmpty()) {
                 val rk = tid == "m"
