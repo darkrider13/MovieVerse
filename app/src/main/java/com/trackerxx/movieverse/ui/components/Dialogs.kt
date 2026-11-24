@@ -165,6 +165,7 @@ fun MvDialog(
     fillHeight: Boolean = false,
     dismissOnOutside: Boolean = false,
     scrollState: ScrollState? = null,
+    animateIn: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val c = Mv.c
@@ -180,8 +181,9 @@ fun MvDialog(
         onDispose { toast.dialogs = toast.dialogs - 1 }
     }
     // the popup rises smoothly (fade + 18dp up, 260 ms); closing has NO animation, the window is simply removed
-    val enter = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { enter.animateTo(1f, tween(260, easing = EaseCss)) }
+    // animateIn = false (Settings): the popup is fully there in its very first frame, together with the dim and the blur behind it
+    val enter = remember { Animatable(if (animateIn) 0f else 1f) }
+    LaunchedEffect(Unit) { if (animateIn) enter.animateTo(1f, tween(260, easing = EaseCss)) }
     val rise = with(LocalDensity.current) { 18.dp.toPx() }
     Dialog(
         onDismissRequest = { currentDismiss?.invoke() },
