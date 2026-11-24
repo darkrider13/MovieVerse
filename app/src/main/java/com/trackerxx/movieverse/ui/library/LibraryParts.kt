@@ -482,8 +482,11 @@ fun TabsRow(
                     selected = false, onClick = onAddStatus, modifier = Modifier.width(itemW),
                     fontSize = 16.sp, padH = 4.dp, padV = 8.dp, weight = FontWeight.ExtraBold
                 ) {
-                    // 16sp glyph, but the line box of a 12.5sp tab (12.5 * 1.45 / 16): the "+" pill is exactly as high as the other pills
-                    MvText("\uFF0B", lineHeight = 1.1328f, maxLines = 1, align = TextAlign.Center)
+                    // the line box of a 12.5sp tab (12.5 * 1.45): the "+" pill is exactly as high as the other pills
+                    val boxH = with(LocalDensity.current) { (12.5.sp * 1.45f).toDp() }
+                    Box(Modifier.height(boxH), contentAlignment = Alignment.Center) {
+                        MvText("+", size = 16.sp, weight = FontWeight.ExtraBold, lineHeight = 1f, maxLines = 1, softWrap = false, align = TextAlign.Center)
+                    }
                 }
             }
         }
