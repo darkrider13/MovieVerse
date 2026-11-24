@@ -328,6 +328,48 @@ private fun StaticField(text: String, modifier: Modifier = Modifier, endPad: Dp 
     }
 }
 
+/**
+ * The age rating as "CODE · full meaning" (e.g. "PG-13 · Parents Strongly Cautioned"). Unknown codes are shown as they are.
+ * Covers US movie (MPAA), US TV, Indian (CBFC) and UK (BBFC) ratings.
+ */
+private fun certFull(raw: String?): String? {
+    val c0 = raw?.trim().orEmpty()
+    if (c0.isEmpty()) return null
+    val key = c0.uppercase().replace(" ", "").replace("_", "-")
+    val meaning = when (key) {
+        "G" -> "General Audiences"
+        "PG" -> "Parental Guidance Suggested"
+        "PG-13" -> "Parents Strongly Cautioned"
+        "R" -> "Restricted"
+        "NC-17" -> "Adults Only"
+        "NR", "UNRATED" -> "Not Rated"
+        "TV-Y" -> "All Children"
+        "TV-Y7", "TV-Y7-FV" -> "Directed to Older Children"
+        "TV-G" -> "General Audience"
+        "TV-PG" -> "Parental Guidance Suggested"
+        "TV-14" -> "Parents Strongly Cautioned"
+        "TV-MA" -> "Mature Audiences Only"
+        "U" -> "Universal, Suitable for All"
+        "UA", "U/A" -> "Parental Guidance for Under 12"
+        "U/A7+", "UA7+" -> "Parental Guidance for Under 7"
+        "U/A13+", "UA13+" -> "Parental Guidance for Under 13"
+        "U/A16+", "UA16+" -> "Parental Guidance for Under 16"
+        "A" -> "Adults Only"
+        "S" -> "Specialised Audiences"
+        "12A" -> "12 and Over, Under 12 with Adult"
+        "12" -> "12 and Over"
+        "15" -> "15 and Over"
+        "18" -> "18 and Over, Adults Only"
+        "18+" -> "Adults Only"
+        "16+" -> "16 and Over"
+        "13+" -> "13 and Over"
+        "7+" -> "7 and Over"
+        "ALL" -> "All Ages"
+        else -> null
+    }
+    return if (meaning != null) "$c0 · $meaning" else c0
+}
+
 @Composable
 private fun MoviePage(flow: AddFlow) {
     val c = Mv.c
@@ -350,7 +392,7 @@ private fun MoviePage(flow: AddFlow) {
 
         // ---- title -----------------------------------------------------------------------------------------------------
         DlgLabel("Title", top = 18.dp)
-        if (lock) StaticField(flow.ft, badge = m.str("cert")?.takeIf { it.isNotEmpty() })
+        if (lock) StaticField(flow.ft, badge = certFull(m.str("cert")))
         else MvTextField(flow.ft, { flow.ft = it }, Modifier.focusRequester(focus), placeholder = "Title", size = FieldSize.Dialog)
 
         // ---- duration + country ------------------------------------------------------------------------------------
