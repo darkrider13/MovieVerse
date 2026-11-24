@@ -169,7 +169,7 @@ fun HomeScreen(splashGone: Boolean) {
     // The library list is only (re)built while Your Library is on screen. On Trending / Releases a background refresh
     // (rev bump) used to re-sort the whole library on the main thread -> scroll stutter. Now it reuses the last result.
     val lvOn = view == "library" && home == "lib"
-    val lvHold = remember { arrayOfNulls<LibView>(1) }
+    val lvHold = remember { arrayOfNulls<Any>(2) }   // [0] = LibView, [1] = the inputs it was built from
     // The heavy part (filter + sort of the whole library) does NOT depend on lib.lim. Loading the next 60 cards while scrolling used to
     // filter + sort the whole library again on the main thread (a hitch every 60 cards). Now only the cheap cut (first lim cards) re-runs.
     // A background refresh (rev bump: ratings, posters, Trending...) must never rebuild the list while the finger is scrolling.
@@ -182,12 +182,15 @@ fun HomeScreen(splashGone: Boolean) {
         }
     }
     val lvFull = remember(revApplied, ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lvOn) {
-        val held = lvHold[0]
-        if (!lvOn && held != null) held
+        val held = lvHold[0] as LibView?
+        val inputs = listOf(revApplied, ready, lib.tab, folderEff, ffEff, lib.q, lib.country)
+        // hidden: keep the last result. Coming back to Your Library: if nothing changed meanwhile, reuse it as it is
+        // (no filter + sort on the main thread while the screen switches, so the switch is instant)
+        if (held != null && (!lvOn || lvHold[1] == inputs)) held
         else LibraryLogic.build(
             AppData.movies.toTypedArray().toList(), AppData.folders.toList(), AppData.statuses.toList(), AppData.SL,
             ready, lib.tab, folderEff, ffEff, lib.q, lib.country, Int.MAX_VALUE
-        ).also { lvHold[0] = it }
+        ).also { lvHold[0] = it; lvHold[1] = inputs }
     }
     val lv = remember(lvFull, lib.lim) { lvFull.cut(lib.lim) }
     val dirty = remember(rev) { AppData.isDirty() }

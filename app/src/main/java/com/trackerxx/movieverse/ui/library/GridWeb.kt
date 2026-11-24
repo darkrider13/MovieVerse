@@ -74,7 +74,7 @@ class GridHost {
         ready = true
         pTheme?.let { send("MV.theme(" + JSONObject.quote(it) + ")") }
         send("MV.top($pTop)")
-        pMode?.let { send("MV.mode(" + JSONObject.quote(it) + ")") }
+        pMode?.let { sendMode(it) }
         for ((_, j) in pPayload) send("MV.set(" + JSONObject.quote(j) + ")")
     }
 
@@ -82,7 +82,14 @@ class GridHost {
     fun setMode(m: String) {
         if (pMode == m) return
         pMode = m
-        if (ready) send("MV.mode(" + JSONObject.quote(m) + ")")
+        if (ready) sendMode(m)
+    }
+
+    /** header height (px) last measured for each list: the page gets it WITH the switch, so cards and header change in one step (no overlap) */
+    private val topFor = HashMap<String, Int>()
+
+    private fun sendMode(m: String) {
+        send("MV.mode(" + JSONObject.quote(m) + "," + (topFor[m] ?: -1) + ")")
     }
 
     fun detach() {
@@ -123,6 +130,7 @@ class GridHost {
     /** room (in dp / CSS px) the Kotlin header takes above the first card */
     fun setTop(dp: Float) {
         pTop = dp.roundToInt()
+        pMode?.let { topFor[it] = pTop }
         if (ready) send("MV.top($pTop)")
     }
 
