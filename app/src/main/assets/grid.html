@@ -16,6 +16,9 @@ img{-webkit-user-drag:none;pointer-events:none}
 .card{display:block;width:100%;cursor:pointer}
 .poster{position:relative;width:100%;aspect-ratio:2/3;border-radius:12px;overflow:hidden;background:var(--s2)}
 .poster img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
+/* Option 3: the card frame, tag and title are drawn at once; only the poster fades in when it is ready (no skeleton) */
+.card .poster img{opacity:0;transition:opacity .35s ease-out}
+.card .poster img.in{opacity:1}
 .cap{position:absolute;left:0;right:0;bottom:0;padding:26px 9px 8px;background:linear-gradient(rgba(8,10,20,0),rgba(8,10,20,.92));color:#fff;display:flex;align-items:flex-end;gap:6px}
 .cap>div{flex:1;min-width:0}
 .cap b{display:block;line-height:1.2;font-size:14px;font-weight:700}
@@ -87,7 +90,9 @@ var cur={mode:null,order:false};
 function A(){return window.Android}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 var EG=0;
-function img(p){if(!p)return '';var l='lazy';if(EG>0){EG--;l='eager'}return '<img src="'+esc(p)+'" alt="" decoding="async" loading="'+l+'" draggable="false">'}
+var LOADED={};
+function pin(x){x.classList.add('in');LOADED[x.getAttribute('src')]=1}
+function img(p){if(!p)return '';var l='lazy';if(EG>0){EG--;l='eager'}return '<img'+(LOADED[p]?' class="in"':'')+' src="'+esc(p)+'" alt="" decoding="async" loading="'+l+'" draggable="false" onload="pin(this)">'}
 function html2el(h){var d=document.createElement('div');d.innerHTML=h;return d.firstChild}
 
 /* keeps the DOM equal to the list: only new / changed items are touched, order is fixed with as few moves as possible */
@@ -184,15 +189,12 @@ function setMode(m){
    so showing it later (or opening another pill) draws complete cards at once. The app is told when they are ready (max 1.5 s). */
 function libReady(d){
   var done=false,fin=function(){if(done)return;done=true;if(A())A().libShown(String(d.key||''))};
-  if(d.msg){fin();return}
-  var im=grid.querySelectorAll('img'),ps=[];
-  for(var i=0;i<im.length&&i<12;i++){
-    var x=im[i];x.loading='eager';
-    if(!x.complete||!x.naturalWidth){ps.push(x.decode?x.decode().catch(function(){}):Promise.resolve())}
+  if(!d.msg){
+    /* posters of about two screens start loading right away (also while the list is hidden), but nobody waits for them */
+    var im=grid.querySelectorAll('img');
+    for(var i=0;i<im.length&&i<12;i++)im[i].loading='eager';
   }
-  if(!ps.length){requestAnimationFrame(function(){requestAnimationFrame(fin)});return}
-  Promise.all(ps).then(function(){requestAnimationFrame(fin)});
-  setTimeout(fin,1500);
+  requestAnimationFrame(function(){requestAnimationFrame(fin)});
 }
 function show(d){
   var m=d.mode;S[m]=d;
