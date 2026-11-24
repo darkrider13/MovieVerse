@@ -331,7 +331,7 @@ fun HomeScreen(splashGone: Boolean) {
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .offset { IntOffset(0, -grid.scrollY) }
+                        .graphicsLayer { translationY = -grid.scrollY.toFloat() }
                         .onSizeChanged { grid.setTop(it.height / dens) }
                         .pointerInput(Unit) { detectVerticalDragGestures { _, dy -> grid.web?.scrollBy(0, -dy.roundToInt()) } }
                         .padding(start = 16.dp, end = 16.dp, top = 16.dp)

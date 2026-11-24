@@ -143,6 +143,15 @@ fun GridWebView(host: GridHost, bg: Color, modifier: Modifier = Modifier) {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = false
                 settings.textZoom = 100
+                // smooth scrolling: GPU-composited page, no zoom/find/save-form work, images cached on disk
+                setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                settings.setSupportZoom(false)
+                settings.builtInZoomControls = false
+                settings.displayZoomControls = false
+                settings.saveFormData = false
+                settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+                settings.allowFileAccess = true
+                settings.mediaPlaybackRequiresUserGesture = true
                 addJavascriptInterface(GridBridge(host), "Android")
                 webViewClient = WebViewClient()
                 setOnScrollChangeListener { _, _, y, _, _ -> host.scrollY = y }
