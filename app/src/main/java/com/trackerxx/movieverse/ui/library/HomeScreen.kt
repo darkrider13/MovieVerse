@@ -416,11 +416,11 @@ fun HomeScreen(splashGone: Boolean) {
     }
     Column(Modifier.fillMaxSize()) {
         TopNav(
-            libraryLabel = if (view == "up") "Home" else "Your Library",
-            librarySelected = view == "library" && home == "lib",
+            libraryLabel = if (view == "up") "Home" else "Releases",
+            librarySelected = view == "up",
             dirty = dirty,
             onBrand = { view = "library" },
-            onLibrary = { if (view == "up") view = "library" else pickHome("lib") },
+            onLibrary = { view = if (view == "up") "library" else "up" },
             onSettings = { settingsOpen = true }
         )
         // clipToBounds: the header (translated up while scrolling) must never draw over the top bar
@@ -468,7 +468,7 @@ fun HomeScreen(splashGone: Boolean) {
                     if (view == "library") {
                         Box(Modifier.padding(bottom = 14.dp)) { Hero(AppData.uname, onAdd = { add.openAdd(lib.tab, folderEff) }) }
                         Box(Modifier.padding(bottom = if (home == "trend" && AppData.apis.key.isNotEmpty()) 0.dp else 12.dp)) {
-                            HomeSwitch(home, onTrending = { pickHome("trend") }, onReleases = { view = "up" })
+                            HomeSwitch(home, onTrending = { pickHome("trend") }, onLibrary = { pickHome("lib") })
                         }
                     }
                     val libShown = view == "library" && home == "lib"

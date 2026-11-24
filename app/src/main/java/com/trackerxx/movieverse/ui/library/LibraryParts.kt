@@ -160,7 +160,7 @@ private val gradCache = HashMap<Triple<Float, Color, Color>, Brush>()
 
 private val EaseInOutCss = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
 
-/** .nav : brand, Your Library / Home button, Settings button (glows red while there is un-exported data) */
+/** .nav : brand, Settings button (glows red while there is un-exported data), Releases / Home button (far right) */
 @Composable
 fun TopNav(
     libraryLabel: String,
@@ -203,8 +203,8 @@ fun TopNav(
                         )
                     }
                 }
-                NavTextButton(libraryLabel, onLibrary, librarySelected)
                 SettingsButton(dirty, onSettings, onSettingsLong)
+                NavTextButton(libraryLabel, onLibrary, librarySelected)
             }
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(c.line))
@@ -341,12 +341,12 @@ fun Hero(name: String, onAdd: () -> Unit) {
     )
 }
 
-/** .hsw : Trending / Releases (Your Library moved to the top bar, next to the gear) */
+/** .hsw : Trending / Your Library (Releases moved to the top bar, at the right end) */
 @Composable
-fun HomeSwitch(home: String, onTrending: () -> Unit, onReleases: () -> Unit) {
+fun HomeSwitch(home: String, onTrending: () -> Unit, onLibrary: () -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         MvPill("Trending", home == "trend", onTrending, Modifier.weight(1f), padH = 0.dp, padV = 10.dp, weight = FontWeight.Bold)
-        MvPill("Releases", false, onReleases, Modifier.weight(1f), padH = 0.dp, padV = 10.dp, weight = FontWeight.Bold)
+        MvPill("Your Library", home == "lib", onLibrary, Modifier.weight(1f), padH = 0.dp, padV = 10.dp, weight = FontWeight.Bold)
     }
 }
 
