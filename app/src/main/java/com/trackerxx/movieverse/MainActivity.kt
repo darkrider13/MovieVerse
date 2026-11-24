@@ -11,6 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.trackerxx.movieverse.enrich.Enrich
 import com.trackerxx.movieverse.ui.MovieVerseApp
+import com.trackerxx.movieverse.update.AutoUpdate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -37,6 +38,20 @@ class MainActivity : ComponentActivity() {
                 while (true) {
                     delay(1_800_000L)
                     Enrich.backfill()
+                }
+            }
+        }
+
+        // update popup: 3 s after the app starts, 0.8 s after it comes back to the front, then every 10 minutes while it is visible
+        lifecycleScope.launch {
+            var first = true
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                delay(if (first) 3000L else 800L)
+                AutoUpdate.check(applicationContext, force = first)
+                first = false
+                while (true) {
+                    delay(600_000L)
+                    AutoUpdate.check(applicationContext, force = false)
                 }
             }
         }
