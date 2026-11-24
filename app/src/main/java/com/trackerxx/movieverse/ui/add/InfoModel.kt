@@ -228,6 +228,27 @@ object InfoModel {
         return items
     }
 
+    /** skelH(m): the loading boxes shown from the first moment the details page opens (same layout as the real tiles) */
+    fun skeleton(m: Movie): List<InfoItem> {
+        val tv = m.tmdbId < 0
+        val un = Enrich.unrel(m)
+        val sh = TileBody.Shimmer
+        val items = ArrayList<InfoItem>()
+        items.add(InfoItem.Half(TileSpec("Language", sh)))
+        if (tv) {
+            items.add(InfoItem.Half(TileSpec("Seasons", sh)))
+            items.add(InfoItem.Half(TileSpec("Episodes", sh)))
+        }
+        if (!un) {
+            items.add(InfoItem.Half(TileSpec("Rating", sh)))
+            items.add(InfoItem.Wide(TileSpec("Votes", sh, wide = true)))
+        }
+        items.add(InfoItem.Wide(TileSpec("Genre", sh, wide = true)))
+        if (!tv) items.add(InfoItem.Pair(TileSpec("In cinemas", sh, inPair = true), TileSpec("OTT release", sh, inPair = true)))
+        if (!tv && !un) items.add(InfoItem.Pair(TileSpec("Budget", sh, inPair = true), TileSpec("Collection", sh, inPair = true)))
+        return items
+    }
+
     private fun relTiles(m: Movie): List<Any> {
         if (m.tmdbId < 0) return emptyList()
         if (m.tmdbId == 0L || !m.truthy("ottChk")) return emptyList()

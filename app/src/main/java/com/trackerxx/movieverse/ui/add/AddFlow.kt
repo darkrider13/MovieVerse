@@ -67,6 +67,10 @@ class AddFlow(
     /** dlg.busy + hold: status / folder / rating / save stay hidden until everything has loaded */
     var busy by mutableStateOf(false)
         private set
+
+    /** true from the moment a title is tapped until its full details arrive: the info grid and the cast show loading boxes */
+    var placeholder by mutableStateOf(false)
+        private set
     var saveEnabled by mutableStateOf(true)
         private set
     var saveLabel by mutableStateOf("Save")
@@ -219,6 +223,7 @@ class AddFlow(
         subs.close()
         open = false
         busy = false
+        placeholder = false
         // dlg 'close' event: a person dialog that was left for a movie comes back
         person.onFormClosed()
     }
@@ -288,6 +293,7 @@ class AddFlow(
         editId = null
         saveLabel = if (fromUp) "Add" else "Save"
         showForm(p, false, false)
+        placeholder = true
         saveEnabled = false
         busy = true
         open = true
@@ -373,6 +379,7 @@ class AddFlow(
                 throw e
             } catch (e: Exception) {
                 busy = false
+                placeholder = false
                 saveEnabled = true
                 if (myTok != tok) return@launch
                 if (fromUp) {
@@ -450,6 +457,7 @@ class AddFlow(
 
     /** showForm(m, isEdit, dup) */
     private fun showForm(m: Movie, edit: Boolean, dupFlag: Boolean) {
+        placeholder = false
         pick = m
         phase = "form"
         isEdit = edit

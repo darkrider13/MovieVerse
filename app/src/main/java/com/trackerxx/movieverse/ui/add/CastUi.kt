@@ -1,5 +1,15 @@
 package com.trackerxx.movieverse.ui.add
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -177,5 +187,48 @@ private fun CastCard(p: CastPerson, cw: androidx.compose.ui.unit.Dp, onPerson: (
         MvText(p.name, size = 9.sp, weight = FontWeight.Bold, lineHeight = 1.2f, align = TextAlign.Center)
         Spacer(Modifier.height(1.dp))
         MvText(p.sub, size = 8.sp, color = c.mut, lineHeight = 1.2f, align = TextAlign.Center)
+    }
+}
+
+
+/** one grey loading box with the moving shine (.sh / #castsk i) */
+@Composable
+private fun ShimBox(modifier: Modifier, shape: Shape) {
+    val c = Mv.c
+    val tr = rememberInfiniteTransition(label = "castsk")
+    val p = tr.animateFloat(0f, 1f, infiniteRepeatable(tween(1100, easing = LinearEasing), RepeatMode.Restart), label = "caskP")
+    Box(modifier.clip(shape).background(c.s2)) {
+        Canvas(Modifier.fillMaxSize()) {
+            val w = size.width
+            val x = -w + p.value * w * 2
+            drawRect(
+                Brush.horizontalGradient(
+                    listOf(Color.Transparent, Color.White.copy(alpha = 0.18f), Color.Transparent),
+                    startX = x, endX = x + w
+                )
+            )
+        }
+    }
+}
+
+/** #castsk : the "Cast" label and four loading cards (photo circle + two text lines) while the cast is loading */
+@Composable
+fun CastSkeleton() {
+    Column(Modifier.fillMaxWidth()) {
+        MvText("Cast", Modifier.padding(top = 10.dp, bottom = 4.dp), weight = FontWeight.Bold)
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp)) {
+            val cw = (this.maxWidth - 18.dp) / 4
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                repeat(4) {
+                    Column(Modifier.width(cw), horizontalAlignment = Alignment.CenterHorizontally) {
+                        ShimBox(Modifier.size(44.dp), CircleShape)
+                        Spacer(Modifier.height(5.dp))
+                        ShimBox(Modifier.fillMaxWidth(0.7f).height(8.dp), RoundedCornerShape(50))
+                        Spacer(Modifier.height(5.dp))
+                        ShimBox(Modifier.fillMaxWidth(0.5f).height(7.dp), RoundedCornerShape(50))
+                    }
+                }
+            }
+        }
     }
 }

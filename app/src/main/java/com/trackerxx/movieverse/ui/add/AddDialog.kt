@@ -381,6 +381,9 @@ private fun MoviePage(flow: AddFlow) {
         Spacer(Modifier.height(10.dp))
         InfoGrid(flow, m)
 
+        // loading boxes for the cast until it has arrived
+        if (busy && flow.cast.data == null && flow.cast.job != null) CastSkeleton()
+
         if (!busy) {
             // ---- cast & crew ------------------------------------------------------------------------------------------------
             flow.cast.data?.let { cd -> CastBlock(cd) { id -> flow.person.openPerson(id) } }

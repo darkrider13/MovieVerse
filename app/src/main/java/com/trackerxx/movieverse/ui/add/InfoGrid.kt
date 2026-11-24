@@ -272,7 +272,7 @@ private fun Tile(t: TileSpec, flow: AddFlow, modifier: Modifier) {
 @Composable
 fun InfoGrid(flow: AddFlow, m: Movie) {
     @Suppress("UNUSED_VARIABLE") val rev = flow.infoRev
-    val items = InfoModel.build(m, flow.rsPage, flow.soOpen)
+    val items = if (flow.placeholder) InfoModel.skeleton(m) else InfoModel.build(m, flow.rsPage, flow.soOpen)
     val rows = ArrayList<MutableList<InfoItem>>()
     for (it in items) {
         when (it) {
