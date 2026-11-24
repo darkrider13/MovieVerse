@@ -193,7 +193,7 @@ private fun CastCard(p: CastPerson, cw: androidx.compose.ui.unit.Dp, onPerson: (
 
 /** one grey loading box with the moving shine (.sh / #castsk i) */
 @Composable
-private fun ShimBox(modifier: Modifier, shape: Shape) {
+internal fun ShimBox(modifier: Modifier, shape: Shape) {
     val c = Mv.c
     val tr = rememberInfiniteTransition(label = "castsk")
     val p = tr.animateFloat(0f, 1f, infiniteRepeatable(tween(1100, easing = LinearEasing), RepeatMode.Restart), label = "caskP")

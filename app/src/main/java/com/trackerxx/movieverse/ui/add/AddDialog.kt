@@ -341,7 +341,8 @@ private fun MoviePage(flow: AddFlow) {
 
     MvPage(
         onBack = { flow.close() },
-        title = if (flow.isEdit) "Movie details" else "Add to Library"
+        title = if (flow.isEdit) "Movie details" else "Add to Library",
+        edgeFade = true
     ) {
         // ---- poster, title (year), overview, Trailer + Subtitle buttons ---------------------------------------------------
         PvHeader(flow, m, copyName)
@@ -374,7 +375,10 @@ private fun MoviePage(flow: AddFlow) {
         InfoGrid(flow, m)
 
         // loading boxes for the cast until it has arrived
-        if (busy && flow.cast.data == null && flow.cast.job != null) CastSkeleton()
+        if (busy && lock) CastSkeleton()
+
+        // while loading: Status / Folder / My rating / Save are already there as shimmering boxes (#dlg.hold)
+        if (busy && lock) LoadingBoxes(flow, m)
 
         if (!busy) {
             // ---- cast & crew ------------------------------------------------------------------------------------------------
@@ -403,6 +407,25 @@ private fun MoviePage(flow: AddFlow) {
                 Box(Modifier.fillMaxWidth().padding(top = 22.dp)) { PageActions(flow, m, focus) }
             }
         }
+    }
+}
+
+/** #dlg.hold : Status, Folder, My rating and Save as grey shimmering boxes until everything has loaded */
+@Composable
+private fun LoadingBoxes(flow: AddFlow, m: Movie) {
+    val r = RoundedCornerShape(12.dp)
+    DlgLabel("Status", top = 16.dp)
+    ShimBox(Modifier.fillMaxWidth().height(48.dp), r)
+    DlgLabel("Folder", top = 16.dp)
+    ShimBox(Modifier.fillMaxWidth().height(40.dp), r)
+    if (!Enrich.unrel(m)) {
+        DlgLabel("My rating")
+        ShimBox(Modifier.fillMaxWidth().height(40.dp), r)
+    }
+    Spacer(Modifier.height(22.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        ShimBox(Modifier.weight(1f).height(38.dp), r)
+        if (flow.isEdit) ShimBox(Modifier.weight(1f).height(38.dp), r)
     }
 }
 
