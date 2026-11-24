@@ -201,9 +201,13 @@ fun HomeScreen(splashGone: Boolean) {
     // finds it ready and only swaps it in.
     var preTick by remember { mutableIntStateOf(0) }
     LaunchedEffect(revApplied, ready, lib.tab, folderEff, ffEff, lib.q, lib.country, lvOn) {
-        if (lvOn || !ready) return@LaunchedEffect
+        if (!ready) return@LaunchedEffect
         val inputs = listOf<Any?>(revApplied, ready, lib.tab, folderEff, ffEff, lib.q, lib.country)
         if (lvHold[0] != null && lvHold[1] == inputs) return@LaunchedEffect
+        // while Your Library is open only a change of the data (rev) is prepared here; tab / search / filter changes are built at once below
+        @Suppress("UNCHECKED_CAST")
+        val heldIn = lvHold[1] as List<Any?>?
+        if (lvOn && (heldIn == null || heldIn.drop(1) != inputs.drop(1))) return@LaunchedEffect
         delay(250)
         while (grid.scrolling) delay(150)
         val mv = AppData.movies.toTypedArray().toList()
@@ -233,7 +237,11 @@ fun HomeScreen(splashGone: Boolean) {
         val inputs = listOf(revApplied, ready, lib.tab, folderEff, ffEff, lib.q, lib.country)
         // hidden: keep the last result. Coming back to Your Library: if nothing changed meanwhile, reuse it as it is
         // (no filter + sort on the main thread while the screen switches, so the switch is instant)
-        if (held != null && (!lvOn || lvHold[1] == inputs)) held
+        // Switching Trending -> Your Library shows the list that is already built AT ONCE, even when background data (ratings ...) changed
+        // meanwhile: nothing is loaded in the tap. The newer data is prepared on a background thread and swapped in a moment later.
+        @Suppress("UNCHECKED_CAST")
+        val heldIn = lvHold[1] as List<Any?>?
+        if (held != null && (!lvOn || lvHold[1] == inputs || (heldIn != null && heldIn.drop(1) == inputs.drop(1)))) held
         else LibraryLogic.build(
             AppData.movies.toTypedArray().toList(), AppData.folders.toList(), AppData.statuses.toList(), AppData.SL,
             ready, lib.tab, folderEff, ffEff, lib.q, lib.country, Int.MAX_VALUE
@@ -416,7 +424,7 @@ fun HomeScreen(splashGone: Boolean) {
                         Box(Modifier.padding(bottom = 14.dp)) { Hero(AppData.uname, onAdd = { add.openAdd(lib.tab, folderEff) }) }
                         Box(Modifier.padding(bottom = if (home == "trend" && AppData.apis.key.isNotEmpty()) 0.dp else 12.dp)) {
                             HomeSwitch(home, onPick = { h ->
-                                if (h == "lib") lib.openTab("all")
+                                // coming back from Trending keeps the tab / folder / filter as they were: the finished list is shown, nothing is rebuilt
                                 if (h != home) {
                                     home = h
                                     Ls.setItem("library.home", h)
