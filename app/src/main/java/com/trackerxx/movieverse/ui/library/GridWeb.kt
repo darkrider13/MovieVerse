@@ -195,7 +195,6 @@ object GridJson {
         else String.format(Locale.US, "rgba(%d,%d,%d,%.2f)", hex(c.red), hex(c.green), hex(c.blue), c.alpha)
 
     fun theme(c: MvColors): String = JSONObject()
-        .put("dark", c.dark)
         .put("bg", css(c.bg)).put("s2", css(c.s2)).put("line", css(c.line))
         .put("mut", css(c.mut)).put("ink", css(c.ink)).put("acc", css(c.acc))
         .put("w", css(c.w)).put("p", css(c.p)).put("n", css(c.n))

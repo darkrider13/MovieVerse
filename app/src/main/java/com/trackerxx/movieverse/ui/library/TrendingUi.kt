@@ -118,7 +118,6 @@ private fun TrendTitle(text: String) {
 private fun TrendCard(o: TrItem, rank: Int, inLib: Boolean, width: androidx.compose.ui.unit.Dp, onTap: (TrItem) -> Unit, sid: String, ri: Int, measurer: androidx.compose.ui.text.TextMeasurer) {
     val c = Mv.c
     val shape = RoundedCornerShape(12.dp)
-    val dark = c.dark
     Column(Modifier.width(width).plainClickable { onTap(o) }) {
         Box(
             Modifier
@@ -129,14 +128,14 @@ private fun TrendCard(o: TrItem, rank: Int, inLib: Boolean, width: androidx.comp
                 .drawWithCache {
                     // everything heavy (gradient, text layout, shadow) is built ONCE here, not on every frame
                     val h = size.height * 0.62f
-                    val a = if (dark) Color(34 / 255f, 36 / 255f, 42 / 255f) else Color(226 / 255f, 228 / 255f, 234 / 255f)
+                    val a = Color(34 / 255f, 36 / 255f, 42 / 255f)
                     val fade = if (rank > 0) Brush.verticalGradient(
                         0f to a.copy(alpha = 0f), 0.12f to a.copy(alpha = 0.09f), 0.28f to a.copy(alpha = 0.26f),
                         0.5f to a.copy(alpha = 0.52f), 0.75f to a.copy(alpha = 0.78f), 1f to a.copy(alpha = 0.92f),
                         startY = size.height - h, endY = size.height
                     ) else null
                     val k = size.width / 100f
-                    val glyph = if (dark) Color.White else Color(0xFF141846)
+                    val glyph = Color.White
                     val layout = if (rank > 0) measurer.measure(
                         rank.toString(),
                         TextStyle(
@@ -146,7 +145,7 @@ private fun TrendCard(o: TrItem, rank: Int, inLib: Boolean, width: androidx.comp
                             fontSize = (70f * k).toSp(),
                             fontWeight = FontWeight.Black,
                             shadow = Shadow(
-                                color = if (dark) Color.White.copy(alpha = 0.5f) else Color(20 / 255f, 24 / 255f, 70 / 255f, 0.4f),
+                                color = Color.White.copy(alpha = 0.5f),
                                 blurRadius = 4.dp.toPx()
                             )
                         )

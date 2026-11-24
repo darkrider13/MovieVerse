@@ -244,7 +244,7 @@ fun HomeScreen(splashGone: Boolean) {
         grid.onMoreTap = { Releases.loadMore() }
         grid.onBuzz = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
     }
-    LaunchedEffect(cNow.dark) { grid.setTheme(GridJson.theme(cNow)) }
+    LaunchedEffect(Unit) { grid.setTheme(GridJson.theme(cNow)) }
     LaunchedEffect(fctx) { grid.scrollTop() }
     // Trending / Releases: the page is rebuilt whenever one of the lists (or a rating that arrives later) changes
     LaunchedEffect(gridMode, libIds) {

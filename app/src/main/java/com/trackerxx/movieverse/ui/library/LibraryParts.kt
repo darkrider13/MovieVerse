@@ -507,7 +507,7 @@ fun SearchRow(value: String, onValue: (String) -> Unit, count: String) {
                     }
                     if (value.isNotEmpty()) {
                         Box(Modifier.padding(start = 8.dp).size(16.dp).plainClickable { onValue("") }) {
-                            MvIcon(MvIcons.Close, 16.dp, tint = if (c.dark) Color.White else Color(0xFF111111))
+                            MvIcon(MvIcons.Close, 16.dp, tint = Color.White)
                         }
                     }
                 }
