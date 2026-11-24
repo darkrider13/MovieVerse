@@ -620,6 +620,8 @@ private fun PvHeader(flow: AddFlow, m: Movie, copyName: (String) -> Unit) {
     val dens = LocalDensity.current
     val tm = androidx.compose.ui.text.rememberTextMeasurer()
     val posterH = 168.dp
+    // opened from a person's movie list: nothing about the title is known yet -> grey shimmer boxes instead of a "New movie" text
+    val loadingTitle = m.title.isEmpty() && flow.placeholder
     val shown = if (m.title.isNotEmpty()) m.title + (if (m.year.isNotEmpty()) " (" + m.year + ")" else "") else "New movie"
     val bx = InfoModel.boxOf(m)
     // "Running": released in cinemas within the last 21 days. It no longer waits for Budget + Collection (a new release often has no collection yet).
@@ -721,7 +723,15 @@ private fun PvHeader(flow: AddFlow, m: Movie, copyName: (String) -> Unit) {
                 pick
             }
             Column(Modifier.fillMaxWidth().heightIn(min = posterH)) {
-                MvText(
+                if (loadingTitle) {
+                    ShimBox(Modifier.padding(top = 4.dp).size(170.dp, 24.dp), RoundedCornerShape(8.dp))
+                    if (ov.isEmpty()) {
+                        Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ShimBox(Modifier.fillMaxWidth().height(13.dp), RoundedCornerShape(6.dp))
+                            ShimBox(Modifier.fillMaxWidth(0.8f).height(13.dp), RoundedCornerShape(6.dp))
+                        }
+                    }
+                } else MvText(
                     titleAnn,
                     size = fit.second.sp, weight = FontWeight.Bold, lineHeight = 1.25f,
                     modifier = Modifier.plainClickable { copyName(if (m.title.isNotEmpty()) shown else "") }
