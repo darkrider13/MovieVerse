@@ -14,4 +14,15 @@
         <item name="windowSplashScreenAnimatedIcon">@drawable/splash_empty</item>
         <item name="postSplashScreenTheme">@style/Theme.MovieVerse</item>
     </style>
+
+    <!-- popups: no platform enter/exit animation (they go away instantly; the rise-in is drawn by MvDialog itself) -->
+    <style name="MvNoWindowAnim">
+        <item name="android:windowEnterAnimation">@null</item>
+        <item name="android:windowExitAnimation">@null</item>
+    </style>
+
+    <!-- full pages: normal enter, NO exit animation (back is instant) -->
+    <style name="MvPageAnim" parent="@android:style/Animation.Dialog">
+        <item name="android:windowExitAnimation">@null</item>
+    </style>
 </resources>
