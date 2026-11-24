@@ -109,15 +109,9 @@ object Refresh {
                             } catch (e: Exception) {
                                 // .catch(function(){})
                             }
-                            if (sig(m) != b) {
+                            // a rating / votes / Rotten Tomatoes change alone is quiet: no pulse, not counted in "updated"
+                            if (sig(m) != b && Enrich.noteChg(m, bf)) {
                                 names.add(m.title)
-                                Enrich.chgSet.add(m.id)
-                                val af = snapF(m)
-                                val cf = Enrich.chgF[m.id] ?: ConcurrentHashMap<String, Boolean>()
-                                for ((k, x) in af) {
-                                    if (x.toString() != bf[k].toString()) cf[k] = true
-                                }
-                                Enrich.chgF[m.id] = cf
                             }
                             delay(20)
                         }

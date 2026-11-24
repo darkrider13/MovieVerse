@@ -63,6 +63,34 @@ object Enrich {
     val chgF = ConcurrentHashMap<String, MutableMap<String, Boolean>>()
     val chgSet: MutableSet<String> = java.util.Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
 
+    /**
+     * QUIET: Rating / Votes / Rotten Tomatoes update silently: no poster pulse, no glowing tile, no "updated" count.
+     * Only the rating badge is rewritten in place. Every other change (cinema date, OTT, budget, collection, seasons, episodes) still flags the card.
+     */
+    val QUIET: Set<String> = setOf("Rating", "Votes", "Rotten Tomatoes")
+
+    /**
+     * noteChg(m, bf, noSet): compares the movie with its earlier snapshot bf, marks the changed fields that are not quiet
+     * (chgF = glowing tiles) and, unless noSet, flags the card (chgSet = poster pulse). True when something non-quiet changed.
+     */
+    fun noteChg(m: Movie, bf: Map<String, Any?>, noSet: Boolean = false): Boolean {
+        val sf = snapF ?: return false
+        val af = sf(m)
+        val cf = chgF[m.id] ?: ConcurrentHashMap<String, Boolean>()
+        var nr = false
+        for ((k, v) in af) {
+            if (v.toString() != bf[k].toString() && !QUIET.contains(k)) {
+                cf[k] = true
+                nr = true
+            }
+        }
+        if (nr) {
+            chgF[m.id] = cf
+            if (!noSet) chgSet.add(m.id)
+        }
+        return nr
+    }
+
     // ---- small helpers ------------------------------------------------------------------------------------------
 
     /** +m.year || 0 */
@@ -650,22 +678,7 @@ object Enrich {
                             }
                             if (x.any { it }) {
                                 changed.add(m)
-                                val sf = snapF
-                                if (bf != null && sf != null) {
-                                    val af = sf(m)
-                                    val cf = chgF[m.id] ?: ConcurrentHashMap<String, Boolean>()
-                                    var any = false
-                                    for ((k, v) in af) {
-                                        if (v.toString() != bf[k].toString()) {
-                                            cf[k] = true
-                                            any = true
-                                        }
-                                    }
-                                    if (any) {
-                                        chgF[m.id] = cf
-                                        chgSet.add(m.id)
-                                    }
-                                }
+                                if (bf != null) noteChg(m, bf)   // rating / votes / Rotten Tomatoes changes stay quiet
                             }
                             delay(20)
                         }
