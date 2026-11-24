@@ -136,6 +136,7 @@ fun HomeScreen(splashGone: Boolean) {
     var home by remember { mutableStateOf("trend") }      // var home='trend' : the app starts on Trending
     var view by remember { mutableStateOf("library") }    // library | up (Releases)
     var settingsOpen by remember { mutableStateOf(false) } // #sdlg (Settings dialog)
+    var updateOpen by remember { mutableStateOf(false) }   // "Checking for updates" (the button left of the gear)
     val export = rememberExportFlow()                      // Settings > Export
     val imp = rememberImportFlow()                         // Settings > Import
     var keyBusy by remember { mutableStateOf(false) }      // #apild "Fetching your API key" after Save
@@ -460,7 +461,8 @@ fun HomeScreen(splashGone: Boolean) {
         TopNav(
             dirty = dirty,
             onBrand = { view = "library" },
-            onSettings = { settingsOpen = true }
+            onSettings = { settingsOpen = true },
+            onUpdate = { updateOpen = true }
         )
         // clipToBounds: the header (translated up while scrolling) must never draw over the top bar
         Box(Modifier.weight(1f).fillMaxWidth().clipToBounds(), contentAlignment = Alignment.TopCenter) {
@@ -665,6 +667,8 @@ fun HomeScreen(splashGone: Boolean) {
     ufkey?.let { k -> ReleaseFilterDialog(k) { ufkey = null } }
 
     AddDialog(add)
+
+    if (updateOpen) com.trackerxx.movieverse.ui.settings.UpdateFlow(onClose = { updateOpen = false })
 
     // ---- Settings (#sdlg) ----------------------------------------------------------------------------------------------
     if (settingsOpen) {
