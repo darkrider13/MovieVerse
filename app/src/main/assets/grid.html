@@ -22,6 +22,9 @@ img{-webkit-user-drag:none;pointer-events:none}
 /* light switch animation: list fades in and rises a few px */
 @keyframes mventer{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .enter{animation:mventer .28s cubic-bezier(.2,.7,.2,1)}
+/* Trending -> Library: the first 4 posters come in one after the other (soft fade, small rise and scale) */
+@keyframes mvstag{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
+.card.stg{animation:mvstag .42s cubic-bezier(.2,.7,.2,1) both;will-change:transform,opacity}
 .cap{position:absolute;left:0;right:0;bottom:0;padding:26px 9px 8px;background:linear-gradient(rgba(8,10,20,0),rgba(8,10,20,.92));color:#fff;display:flex;align-items:flex-end;gap:6px}
 .cap>div{flex:1;min-width:0}
 .cap b{display:block;line-height:1.2;font-size:14px;font-weight:700}
@@ -95,6 +98,7 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){retur
 var EG=0;
 var LOADED={};
 document.addEventListener('animationend',function(e){if(e.animationName==='mventer')e.target.classList.remove('enter')},true);
+document.addEventListener('animationend',function(e){if(e.animationName==='mvstag'){var t=e.target;t.classList.remove('stg');t.style.animationDelay=''}},true);
 function pin(x){x.classList.add('in');LOADED[x.getAttribute('src')]=1}
 function img(p){if(!p)return '';var l='lazy';if(EG>0){EG--;l='eager'}return '<img'+(LOADED[p]?' class="in"':'')+' src="'+esc(p)+'" alt="" decoding="async" loading="'+l+'" draggable="false">'}
 /* load events do not bubble: caught in the capture phase (an inline onload cannot reach functions inside this closure) */
@@ -191,7 +195,16 @@ function setMode(m){
   if(cur.mode===m)return;
   cur.mode=m;window.scrollTo(0,0);
   var el=m==='lib'?grid:m==='up'?gridUp:rows;
-  el.classList.remove('enter');void el.offsetWidth;el.classList.add('enter');
+  if(m==='lib'&&grid.children.length){
+    /* Library: the first 4 posters enter one by one (staggered) instead of the whole list at once */
+    var cs=grid.querySelectorAll('.card'),n=Math.min(4,cs.length);
+    for(var i=0;i<cs.length;i++){cs[i].classList.remove('stg');cs[i].style.animationDelay=''}
+    void grid.offsetWidth;
+    for(var j=0;j<n;j++){cs[j].style.animationDelay=(j*70)+'ms';cs[j].classList.add('stg')}
+    el.classList.remove('enter');
+  }else{
+    el.classList.remove('enter');void el.offsetWidth;el.classList.add('enter');
+  }
   paint();
 }
 /* Library: the first posters (about two screens) are fetched and decoded RIGHT AWAY, also while the list is hidden (Trending open),
