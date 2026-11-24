@@ -57,7 +57,7 @@ class SubPage(val items: List<SubItem>, val more: Boolean)
  * Subtitles from SubSource (api.subsource.net), same steps as the web version:
  *  1. find the film's SubSource entries (IMDb id first, then a title search; a series has one entry per season),
  *  2. list the Bangla / English subtitles of those entries,
- *  3. download = the zip of that subtitle, the subtitle files inside are saved straight into the phone's Download folder.
+ *  3. download = the zip of that subtitle, the subtitle files inside are saved straight into the phone's Movies folder.
  * The key lives in Settings > "Subtitles" (api id `subs`) and is sent as the X-API-Key header.
  */
 object Subs {
@@ -614,10 +614,10 @@ object Subs {
     }
 
     /**
-     * Downloads the zip of a subtitle and saves every subtitle file in it to the Download folder.
+     * Downloads the zip of a subtitle and saves every subtitle file in it to the Movies folder.
      * Returns the names of the saved files (usually one).
      */
-    suspend fun download(ctx: Context, m: Movie, sub: SubItem): List<String> = withContext(Dispatchers.IO) {
+    suspend fun download(ctx: Context, m: Movie, sub: SubItem, tree: android.net.Uri? = null): List<String> = withContext(Dispatchers.IO) {
         val k = keys().firstOrNull() ?: throw IOException("NOKEY")
         val c = URL(BASE + "/subtitles/" + URLEncoder.encode(sub.id, "UTF-8") + "/download").openConnection() as HttpURLConnection
         val bytes: ByteArray = try {
@@ -662,32 +662,33 @@ object Subs {
             val ext = n.substringAfterLast('.', "srt").lowercase()
             val stem = safe(n.substringBeforeLast('.', n))
             val name = (if (files.size == 1) base else "$base - $stem") + "." + ext
-            saved.add(save(ctx, name, ext, data))
+            saved.add(save(ctx, name, ext, data, tree))
         }
         saved
     }
 
-    /** writes into the public Download folder (MediaStore on Android 10+, the folder itself on older phones) */
-    private fun save(ctx: Context, name: String, ext: String, data: ByteArray): String {
+    /**
+     * writes into the public Movies folder: Android 10+ does not let an app put non-media files there through MediaStore,
+     * so the Movies folder the user allowed once (tree) is used; older phones write into the folder itself.
+     */
+    private fun save(ctx: Context, name: String, ext: String, data: ByteArray, tree: android.net.Uri?): String {
         if (Build.VERSION.SDK_INT >= 29) {
-            val v = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, name)
-                put(MediaStore.MediaColumns.MIME_TYPE, mime(ext))
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-            }
+            val t = tree ?: throw IOException("Movies folder not selected")
             val res = ctx.contentResolver
-            val uri = res.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v) ?: throw IOException("Could not create the file")
+            val parent = android.provider.DocumentsContract.buildDocumentUriUsingTree(t, android.provider.DocumentsContract.getTreeDocumentId(t))
+            val uri = android.provider.DocumentsContract.createDocument(res, parent, mime(ext), name)
+                ?: throw IOException("Could not create the file")
             try {
                 (res.openOutputStream(uri) ?: throw IOException("Could not open the file")).use { o -> o.write(data) }
             } catch (e: Exception) {
-                try { res.delete(uri, null, null) } catch (x: Exception) { }
+                try { android.provider.DocumentsContract.deleteDocument(res, uri) } catch (x: Exception) { }
                 throw e
             }
             return name
         }
         @Suppress("DEPRECATION")
-        val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        if (!dir.exists() && !dir.mkdirs()) throw IOException("Could not open the Download folder")
+        val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+        if (!dir.exists() && !dir.mkdirs()) throw IOException("Could not open the Movies folder")
         var f = File(dir, name)
         var n = 1
         while (f.exists()) {
