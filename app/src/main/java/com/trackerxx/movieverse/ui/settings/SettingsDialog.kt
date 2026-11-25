@@ -97,7 +97,7 @@ import java.util.Calendar
 import kotlin.math.pow
 
 private val EaseInOut = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
-private const val FB_URL = "https://www.facebook.com/insanul.islam.abirr"
+private const val FB_URL = "https://t.me/insanul13"
 private const val DEV_NAME = "INSANUL ISLAM ABIR"
 
 /**
@@ -430,7 +430,7 @@ private fun EyeButton(icon: MvIconData, iconSize: Dp, tint: Color, onClick: () -
 // Credit (.credit) and the red blink of the Export button (blkg)
 // ================================================================================================================
 
-/** two right-aligned 9px lines, the developer name opens his Facebook page */
+/** two right-aligned 9px lines, the developer name opens his Telegram profile */
 @Composable
 private fun Credit(open: (String) -> Unit, modifier: Modifier = Modifier) {
     val c = Mv.c
