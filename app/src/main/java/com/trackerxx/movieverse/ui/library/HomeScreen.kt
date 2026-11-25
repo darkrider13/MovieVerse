@@ -201,6 +201,8 @@ fun HomeScreen(splashGone: Boolean) {
     // until its own cards have arrived (no half-drawn list, no cards of the old pill).
     var shownKey by remember { mutableStateOf<String?>(null) }
     var hdrDp by remember { mutableStateOf(0f) }
+    // the header's height of THIS frame (written while the header is measured, so the cover below never works with a stale value)
+    val hdrNow = remember { IntArray(1) }
 
     // ---- what the page shows -------------------------------------------------------------------------------------------
     val rev = AppData.rev
@@ -527,6 +529,11 @@ fun HomeScreen(splashGone: Boolean) {
                 Column(
                     Modifier
                         .fillMaxWidth()
+                        .layout { m, c ->
+                            val p = m.measure(c)
+                            hdrNow[0] = p.height
+                            layout(p.width, p.height) { p.placeRelative(0, 0) }
+                        }
                         .graphicsLayer { translationY = -grid.scrollY.coerceAtLeast(0).toFloat() }   // never pushed down below its place
                         .onSizeChanged {
                             if (home == "trend" && view == "library") hdrPx[1] = it.height.toFloat()
@@ -650,7 +657,16 @@ fun HomeScreen(splashGone: Boolean) {
                 // Plain cover, no spinner / text (a spinner flashing for a moment looked like flicker). The posters then fade in on their own.
                 if (libReady && view == "library" && home == "lib" && shownKey != fctx) {
                     Box(
-                        Modifier.fillMaxSize().padding(top = hdrDp.dp).background(cNow.bg)
+                        Modifier.fillMaxSize()
+                            // starts exactly at the bottom of the header of this frame: it can never cover the buttons / filters above
+                            // (the old padding(top = hdrDp) was one frame late when the header changed its height, so the cover flashed over them)
+                            .layout { m, c ->
+                                @Suppress("UNUSED_VARIABLE") val again = hdrDp   // read the state so the cover is laid out again when the header changes
+                                val top = hdrNow[0].coerceIn(0, c.maxHeight)
+                                val p = m.measure(androidx.compose.ui.unit.Constraints.fixed(c.maxWidth, c.maxHeight - top))
+                                layout(c.maxWidth, c.maxHeight) { p.placeRelative(0, top) }
+                            }
+                            .background(cNow.bg)
                             // the glow is drawn from the cover's REAL position on screen (see AppGlowNode), so it lines up with the app background
                             .then(if (isDarkBg(cNow.bg)) Modifier.then(AppGlowElement) else Modifier)
                             .pointerInput(Unit) { }
