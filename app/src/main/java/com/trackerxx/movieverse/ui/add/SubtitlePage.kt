@@ -59,7 +59,9 @@ import com.trackerxx.movieverse.ui.components.BtnKind
 import com.trackerxx.movieverse.ui.components.BtnSize
 import com.trackerxx.movieverse.ui.components.MvButton
 import com.trackerxx.movieverse.ui.components.MvPage
+import com.trackerxx.movieverse.ui.components.MvLoadingDots
 import com.trackerxx.movieverse.ui.components.MvPill
+import com.trackerxx.movieverse.ui.components.MvSpinner
 import com.trackerxx.movieverse.ui.components.isDarkBg
 import com.trackerxx.movieverse.ui.components.scrollEdgeFade
 import com.trackerxx.movieverse.ui.theme.Mv
@@ -90,9 +92,15 @@ fun SubtitlePage(flow: SubsFlow) {
         // only the subtitle cards scroll (header + language pills stay), with a soft fade at the top and bottom edge
         val listScroll = rememberScrollState()
         LaunchedEffect(flow.lang) { listScroll.scrollTo(0) }
+        if (flow.ui is SubsUi.Loading) {
+            // loading: spinner + title centred in the free area of the page
+            Box(Modifier.weight(1f).fillMaxWidth().padding(bottom = 56.dp), contentAlignment = Alignment.Center) {
+                SubsLoading()
+            }
+        } else
         Column(Modifier.weight(1f).fillMaxWidth().scrollEdgeFade(listScroll).verticalScroll(listScroll)) {
         when (val u = flow.ui) {
-            is SubsUi.Loading -> Note("Searching subtitles…")
+            is SubsUi.Loading -> Unit
             is SubsUi.NoKey -> Note("Add your SubSource API key in Settings \u2192 API keys \u2192 Subtitles.")
             is SubsUi.Error -> Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Note(u.message)
@@ -158,6 +166,27 @@ private fun Note(text: String) {
         text, Modifier.fillMaxWidth().padding(vertical = 18.dp), size = 13.sp, color = Mv.c.mut,
         align = TextAlign.Center, lineHeight = 1.4f
     )
+}
+
+/** Centred loading state: accent spinner, bold "Searching subtitles" with pulsing dots, and a muted hint line. */
+@Composable
+private fun SubsLoading() {
+    val c = Mv.c
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        MvSpinner(52.dp, 4.dp, c.line, c.acc)
+        Row(
+            Modifier.fillMaxWidth().padding(top = 18.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            MvText("Searching subtitles", size = 18.sp, weight = FontWeight.Bold)
+            MvLoadingDots(size = 18.sp, weight = FontWeight.Bold)
+        }
+        MvText(
+            "Looking for Bangla & English matches", Modifier.fillMaxWidth().padding(top = 8.dp),
+            size = 13.sp, weight = FontWeight.SemiBold, color = c.mut, align = TextAlign.Center
+        )
+    }
 }
 
 /** TV series: the subtitles sorted into one folder per season (Season 1, Season 2 ...; entries without a season go last as "Other") */
