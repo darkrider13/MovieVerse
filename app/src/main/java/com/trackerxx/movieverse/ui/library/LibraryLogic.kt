@@ -34,7 +34,7 @@ val SORTS = listOf(
 /** The Library page's own state: tab, folder, search text, filters, how many cards are loaded (lim). */
 @Stable
 class LibraryState {
-    // the Library opens on the "All" tab (first pill, before every status) on a fresh app start
+    // there is no "All" pill any more: "all" is only the value before the data is loaded, HomeScreen then opens the first status
     var tab by mutableStateOf("all")
     var folder by mutableStateOf<String?>(null)
     var country by mutableStateOf("all")
@@ -355,7 +355,7 @@ object LibraryLogic {
         else "Your library is empty. Tap Add to Library, or browse Coming Soon."
 
         return LibView(
-            tabs = listOf("all" to "All") + statuses.map { it.id to (SL[it.id] ?: "") },
+            tabs = statuses.map { it.id to (SL[it.id] ?: "") },   // no "All" pill: only the statuses
             fo = fo,
             folder = folder,
             allCount = if (tab == "all") movies.size else movies.count { it.status == tab },
