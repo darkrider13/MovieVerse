@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
@@ -341,12 +342,34 @@ private fun StaticField(text: String, modifier: Modifier = Modifier, endPad: Dp 
             .padding(start = 11.dp, end = (if (trailer) 44.dp else if (badge != null) 12.dp else endPad) + 1.dp, top = 9.dp, bottom = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        MvText(text, Modifier.weight(1f, fill = badge != null), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (badge != null) {
-            Spacer(Modifier.width(8.dp))
+        if (badge == null) {
+            MvText(text, Modifier.weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        } else {
+            // title on the left, badge on the far right; when the title is long enough to reach the badge,
+            // the badge falls back from the full name ("R · Restricted") to the short form ("R")
+            val gap = 8.dp
             val bs = RoundedCornerShape(6.dp)
-            Box(Modifier.clip(bs).background(c.s).border(1.dp, c.line, bs).padding(horizontal = 7.dp, vertical = 3.dp)) {
-                MvText(certFull(badge), size = 11.sp, weight = FontWeight.Bold, color = c.mut, lineHeight = 1.2f, maxLines = 1, softWrap = false)
+            val title: @Composable () -> Unit = { MvText(text, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            val badgeBox: @Composable (String) -> Unit = { label ->
+                Box(Modifier.clip(bs).background(c.s).border(1.dp, c.line, bs).padding(horizontal = 7.dp, vertical = 3.dp)) {
+                    MvText(label, size = 11.sp, weight = FontWeight.Bold, color = c.mut, lineHeight = 1.2f, maxLines = 1, softWrap = false)
+                }
+            }
+            SubcomposeLayout(Modifier.weight(1f)) { cs ->
+                val gapPx = gap.roundToPx()
+                val free = androidx.compose.ui.unit.Constraints()
+                val titleNat = subcompose("titleNat", title).first().measure(free)
+                val fullLabel = certFull(badge)
+                val fullNat = subcompose("badgeFull") { badgeBox(fullLabel) }.first().measure(free)
+                val useFull = titleNat.width + gapPx + fullNat.width <= cs.maxWidth
+                val b = if (useFull) fullNat else subcompose("badgeShort") { badgeBox(badge) }.first().measure(free)
+                val tw = (cs.maxWidth - gapPx - b.width).coerceAtLeast(0)
+                val t = subcompose("title", title).first().measure(androidx.compose.ui.unit.Constraints(maxWidth = tw))
+                val h = maxOf(t.height, b.height)
+                layout(cs.maxWidth, h) {
+                    t.placeRelative(0, (h - t.height) / 2)
+                    b.placeRelative(cs.maxWidth - b.width, (h - b.height) / 2)
+                }
             }
         }
     }
