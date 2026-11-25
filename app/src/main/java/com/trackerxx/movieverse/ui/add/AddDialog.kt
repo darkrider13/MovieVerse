@@ -307,6 +307,26 @@ private fun DlgLabel(text: String, top: Dp = 10.dp, extra: @Composable () -> Uni
     }
 }
 
+/** certFull("R") = "R · Restricted"; unknown ratings stay as they are */
+private fun certFull(code: String): String {
+    val name = when (code.trim().uppercase()) {
+        "G" -> "General Audiences"
+        "PG" -> "Parental Guidance"
+        "PG-13" -> "Parents Strongly Cautioned"
+        "R" -> "Restricted"
+        "NC-17" -> "Adults Only"
+        "NR", "UNRATED" -> "Not Rated"
+        "TV-Y" -> "All Children"
+        "TV-Y7" -> "Directed to Older Children"
+        "TV-G" -> "General Audience"
+        "TV-PG" -> "Parental Guidance"
+        "TV-14" -> "Parents Strongly Cautioned"
+        "TV-MA" -> "Mature Audience"
+        else -> null
+    }
+    return if (name != null) code + " · " + name else code
+}
+
 /** a read-only text box that looks like the dialog's inputs; badge = the age rating shown right after the text (PG-13) */
 @Composable
 private fun StaticField(text: String, modifier: Modifier = Modifier, endPad: Dp = 10.dp, badge: String? = null, trailer: Boolean = false) {
@@ -321,12 +341,12 @@ private fun StaticField(text: String, modifier: Modifier = Modifier, endPad: Dp 
             .padding(start = 11.dp, end = (if (trailer) 44.dp else if (badge != null) 12.dp else endPad) + 1.dp, top = 9.dp, bottom = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        MvText(text, Modifier.weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        MvText(text, Modifier.weight(1f, fill = badge != null), maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (badge != null) {
             Spacer(Modifier.width(8.dp))
             val bs = RoundedCornerShape(6.dp)
             Box(Modifier.clip(bs).background(c.s).border(1.dp, c.line, bs).padding(horizontal = 7.dp, vertical = 3.dp)) {
-                MvText(badge, size = 11.sp, weight = FontWeight.Bold, color = c.mut, lineHeight = 1.2f, maxLines = 1, softWrap = false)
+                MvText(certFull(badge), size = 11.sp, weight = FontWeight.Bold, color = c.mut, lineHeight = 1.2f, maxLines = 1, softWrap = false)
             }
         }
     }
