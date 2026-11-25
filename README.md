@@ -8,9 +8,9 @@
 
 A fast, native Android movie tracker. Keep your own library, follow what is trending, see what releases today, in cinemas and on OTT, and open rich movie details with ratings, cast, trailers and subtitles.
 
-[![Download APK](https://img.shields.io/badge/Download-APK-E50914?style=for-the-badge&logo=android&logoColor=white)](https://github.com/darkrider13/MovieVerse/releases/latest/download/MovieVerse.apk)
-[![Build](https://img.shields.io/github/actions/workflow/status/darkrider13/MovieVerse/android.yml?branch=main&style=for-the-badge&label=Build&logo=githubactions&logoColor=white)](https://github.com/darkrider13/MovieVerse/actions)
-[![Latest release](https://img.shields.io/github/v/release/darkrider13/MovieVerse?style=for-the-badge&label=Release&color=1f6feb)](https://github.com/darkrider13/MovieVerse/releases/latest)
+[![Download APK](https://img.shields.io/badge/Download-APK-E50914?style=for-the-badge&logo=android&logoColor=white)](https://github.com/darkrider13/MovieVerse-V2/releases/latest/download/MovieVerse.apk)
+[![Build](https://img.shields.io/github/actions/workflow/status/darkrider13/MovieVerse-V2/android.yml?branch=main&style=for-the-badge&label=Build&logo=githubactions&logoColor=white)](https://github.com/darkrider13/MovieVerse-V2/actions)
+[![Latest release](https://img.shields.io/github/v/release/darkrider13/MovieVerse-V2?style=for-the-badge&label=Release&color=1f6feb)](https://github.com/darkrider13/MovieVerse-V2/releases/latest)
 
 ![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=flat-square&logo=kotlin&logoColor=white)
 ![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white)
@@ -57,11 +57,20 @@ All views have search plus **Country** and **Genre** filters, and load more as y
 ### Movie details
 Poster, title and year, overview, **Trailer** (opens on YouTube), **Subtitle** (Bangla and English), duration, country, language, IMDb rating and votes, genres, cinema and OTT dates, budget and collection, with a verdict such as *Blockbuster* or *Disaster* when the numbers are known.
 
+A green **bookmark** on the poster tells you the title is already in your library. Tap it to see its status.
+
+### Subtitles
+- A dedicated **Subtitles page** for every movie and TV show, with **All / Bangla / English** filters.
+- A centred loading screen with a spinner while subtitles are searched, then the list appears with a soft entrance.
+- **Download** saves the file straight into your phone's Download folder. **Show more** loads further results.
+- TV series are grouped into one **folder per season**, so you open only the season you need.
+
 ### Cast and crew
 Director, writers and the main cast in a clean carousel with exactly four people per page. Tap anyone to open their profile with **Movies** and **Awards**.
 
 ### Polish
 - Dark theme with a soft red and blue glow, shimmer placeholders while data loads.
+- Smooth, centred loading states (spinner with pulsing dots) instead of plain text.
 - Popups open and close instantly, together with the background blur.
 - One-tap **update check** from the top bar.
 
@@ -69,7 +78,7 @@ Director, writers and the main cast in a clean carousel with exactly four people
 
 ## Install
 
-1. Open the [latest release](https://github.com/darkrider13/MovieVerse/releases/latest) and download **MovieVerse.apk**.
+1. Open the [latest release](https://github.com/darkrider13/MovieVerse-V2/releases/latest) and download **MovieVerse.apk**.
 2. Open the file on your phone. If Android asks, allow **Install from this source** for your browser or file manager.
 3. Start the app and follow the short setup below.
 
@@ -96,7 +105,7 @@ You can add **several keys per service**. When one key hits its limit, the app m
 ## Backup and restore
 
 - **Export**: Settings > Export writes your whole library to an Excel file (`.xlsx`) that you can save or share.
-- **Import**: Settings > Import reads that file back. Older `.json` backups still work.
+- **Import**: Settings > Import reads that file back.
 - **Moving to a new phone or from the old app**: export on the old one, import on the new one.
 
 ---
@@ -153,7 +162,7 @@ The repository name for update checks is filled in automatically from `GITHUB_RE
 
 ```text
 app/src/main/java/com/trackerxx/movieverse/
-├── data/       library database, models, backup (xlsx / json)
+├── data/       library database, models, backup (xlsx)
 ├── net/        TMDB, MDBList, OMDb, XMDb, subtitles, Wikipedia, currency
 ├── trending/   Trending page logic
 ├── releases/   Releases page logic
@@ -161,7 +170,7 @@ app/src/main/java/com/trackerxx/movieverse/
 ├── update/     update check, download, installer
 ├── ui/
 │   ├── library/     home, library, Releases and Trending screens
-│   ├── add/         movie details, cast, person, trailer
+│   ├── add/         movie details, subtitles page, cast, person, trailer
 │   ├── settings/    settings, export, import, update flow
 │   ├── components/  dialogs, buttons, motion helpers
 │   └── theme/       colors, type, icons
