@@ -211,7 +211,11 @@ fun HomeScreen(splashGone: Boolean) {
     val ffEff = if (lib.ffor == fctx) lib.ff else FilterState()
     // a tab id that no longer exists (e.g. a deleted status) falls back to the "All" pill
     LaunchedEffect(rev, ready) {
-        if (ready && lib.tab != "all" && AppData.statuses.none { it.id == lib.tab }) lib.openTab("all")
+        // there is no "All" pill: the Library always sits on a real status (the first one when nothing valid is selected)
+        if (ready) {
+            val first = AppData.statuses.firstOrNull()?.id
+            if (first != null && (lib.tab == "all" || AppData.statuses.none { it.id == lib.tab })) lib.openTab(first)
+        }
     }
     LaunchedEffect(fctx) { delay(2500); shownKey = fctx }   // safety: never stay on the loading screen
     LaunchedEffect(fctx) {
@@ -521,22 +525,14 @@ fun HomeScreen(splashGone: Boolean) {
                     )
             ) {
                 // the cards (WebView scrolls them itself)
-                GridWebView(grid, cNow.bg, Modifier.fillMaxSize())
-
-                // another pill / folder was opened: the old cards are covered for the few frames until the new card frames arrive.
-                // Plain cover, no spinner / text (a spinner flashing for a moment looked like flicker). The posters then fade in on their own.
-                // It lies BELOW the header and covers the whole page including the part behind the header: the header buttons are half
-                // transparent, so any card / old frame of the page showing through them (for a frame, while the page's top room still has the
-                // old header height) made their background flash darker. The cover is black + the same glow as the app, so the buttons keep
-                // exactly the look they have on the plain app background.
-                if (libReady && view == "library" && home == "lib" && shownKey != fctx) {
-                    Box(
-                        Modifier.fillMaxSize().background(cNow.bg)
-                            // the glow is drawn from the cover's REAL position on screen (see AppGlowNode), so it lines up with the app background
-                            .then(if (isDarkBg(cNow.bg)) Modifier.then(AppGlowElement) else Modifier)
-                            .pointerInput(Unit) { }
-                    )
-                }
+                // Another pill / folder was opened: the old cards are hidden for the few frames until the new card frames arrive.
+                // The page itself is made invisible (alpha 0) instead of painting a cover over it. A cover has to repaint the black + glow
+                // of the app background, and any tiny difference between that copy and the real background showed as the glow blinking.
+                // Now nothing is painted at all: the real app background (and the half transparent header buttons on it) stays untouched.
+                val coverCards = libReady && view == "library" && home == "lib" && shownKey != fctx
+                GridWebView(grid, cNow.bg, Modifier.fillMaxSize().graphicsLayer { alpha = if (coverCards) 0f else 1f })
+                // invisible, only keeps taps away from the hidden old cards
+                if (coverCards) Box(Modifier.fillMaxSize().pointerInput(Unit) { })
 
                 // the Kotlin header (welcome box, buttons, tabs, search ...) sits on top and moves up with the page
                 Column(
