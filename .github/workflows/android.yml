@@ -50,5 +50,9 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk MovieVerse.apk
           # small file the app reads first (a plain download, not limited like the GitHub API)
           echo "{\"versionCode\":${VERSION_CODE},\"size\":$(stat -c%s MovieVerse.apk)}" > version.json
-          gh release delete latest --yes --cleanup-tag || true
+          # remove every old "latest" release (published AND draft) and the leftover tag, so create never hits "tag_name already exists"
+          for id in $(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[] | select(.tag_name=="latest") | .id'); do
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id" || true
+          done
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/latest" || true
           gh release create latest MovieVerse.apk version.json --title "MovieVerse APK" --notes "Latest build. versionCode: ${VERSION_CODE}" --target ${{ github.sha }}
