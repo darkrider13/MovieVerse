@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.trackerxx.movieverse.data.AppData
+import com.trackerxx.movieverse.data.SearchHistory
 import com.trackerxx.movieverse.data.Movie
 import com.trackerxx.movieverse.enrich.Enrich
 import com.trackerxx.movieverse.net.Net
@@ -80,6 +81,9 @@ class AddFlow(
     var query by mutableStateOf("")
         private set
     var find by mutableStateOf<FindUi>(FindUi.Idle)
+    /** recent searches shown under the empty search box (newest first) */
+    var history by mutableStateOf<List<String>>(emptyList())
+        private set
         private set
     private var sres: List<QItem> = emptyList()
     private var curStatus = "watched"
@@ -146,8 +150,23 @@ class AddFlow(
         qReset()
         query = ""
         find = if (key.isEmpty()) FindUi.NoKey else FindUi.Idle
+        history = SearchHistory.load()
         busy = false
         open = true
+    }
+
+    /** tap on a recent search: fills the box and searches right away */
+    fun useHistory(q: String) {
+        query = q
+        search()
+    }
+
+    fun removeHistory(q: String) {
+        history = SearchHistory.remove(q)
+    }
+
+    fun clearHistory() {
+        history = SearchHistory.clear()
     }
 
     private fun qReset() {
@@ -195,6 +214,7 @@ class AddFlow(
             return
         }
         if (key.isEmpty()) return
+        history = SearchHistory.add(t)
         find = FindUi.Searching
         scope.launch {
             try {
@@ -214,6 +234,7 @@ class AddFlow(
     /** tap on a suggestion / result */
     fun pickResult(x: QItem) {
         timer?.cancel()
+        history = SearchHistory.add(query.trim().ifEmpty { x.title })
         choose(x.id, curStatus)
     }
 

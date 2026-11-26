@@ -6,7 +6,13 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.ui.graphics.graphicsLayer
+import com.trackerxx.movieverse.ui.components.riseIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,17 +95,28 @@ fun TrailerDialog(flow: AddFlow) {
         LazyRow(
             Modifier.fillMaxWidth().padding(bottom = 2.dp), state = st,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            flingBehavior = androidx.compose.foundation.gestures.ScrollableDefaults.flingBehavior()
+            flingBehavior = rememberSnapFlingBehavior(st)   // always settles on exactly one card, never half way
         ) {
-            itemsIndexed(l) { _, v ->
-                TrailerCard(v, isT, Modifier.fillParentMaxWidth()) { ytGo(ctx, v.key) }
+            itemsIndexed(l, key = { _, v -> v.key }) { i, v ->
+                TrailerCard(
+                    v, isT,
+                    Modifier.fillParentMaxWidth().graphicsLayer {
+                        // 0 = the card is exactly in place, 1 = a full card width away: the neighbour fades and shrinks a little
+                        val it = st.layoutInfo.visibleItemsInfo.firstOrNull { x -> x.index == i }
+                        val d = if (it == null) 1f else Math.abs(it.offset.toFloat() / (it.size + 10.dp.toPx())).coerceIn(0f, 1f)
+                        val k = 1f - d * 0.07f
+                        scaleX = k
+                        scaleY = k
+                        alpha = 1f - d * 0.45f
+                    }.riseIn("trailer:" + v.key, delayMs = i * 70)
+                ) { ytGo(ctx, v.key) }
             }
         }
         if (n > 1) {
             val cur by remember(st) {
                 derivedStateOf {
                     val f = st.layoutInfo.visibleItemsInfo.firstOrNull()
-                    val w = (f?.size ?: 1) + 10
+                    val w = ((f?.size ?: 1) + 10).coerceAtLeast(1)
                     val k = Math.round((st.firstVisibleItemIndex * w + st.firstVisibleItemScrollOffset).toFloat() / w)
                     k.coerceIn(0, n - 1)
                 }
@@ -110,9 +127,11 @@ fun TrailerDialog(flow: AddFlow) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 for (k in 0 until n) {
+                    val on = k == cur
+                    val w by animateDpAsState(if (on) 20.dp else 7.dp, tween(260, easing = FastOutSlowInEasing), label = "dotW")
+                    val col by animateColorAsState(if (on) c.acc else c.line, tween(260), label = "dotC")
                     Box(
-                        Modifier.height(7.dp).width(if (k == cur) 20.dp else 7.dp).clip(RoundedCornerShape(99.dp))
-                            .background(if (k == cur) c.acc else c.line)
+                        Modifier.height(7.dp).width(w).clip(RoundedCornerShape(99.dp)).background(col)
                             .plainClickable { scope.launch { st.animateScrollToItem(k) } }
                     )
                 }

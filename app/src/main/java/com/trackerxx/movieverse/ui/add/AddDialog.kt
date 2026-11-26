@@ -6,7 +6,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalContext
 import com.trackerxx.movieverse.ui.components.MvPage
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.runtime.key
+import com.trackerxx.movieverse.ui.components.riseIn
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -199,11 +202,58 @@ private fun FindPhase(flow: AddFlow) {
                     MvText(f.message, size = 12.sp, color = c.mut, align = TextAlign.Center)
                     MvButton("Retry", { flow.search() }, kind = BtnKind.Primary, size = BtnSize.Dialog)
                 }
+                is FindUi.Idle ->
+                    if (flow.query.isBlank() && flow.history.isNotEmpty()) HistoryBlock(flow) { fm.clearFocus() }
                 else -> {}
             }
         }
         Spacer(Modifier.height(14.dp))
         MvButton("Cancel", { flow.close() }, Modifier.fillMaxWidth(), kind = BtnKind.Red, size = BtnSize.Dialog)
+    }
+}
+
+/** recent searches: tap to search again, X removes one, "Clear all" empties the list */
+@Composable
+private fun HistoryBlock(flow: AddFlow, onPicked: () -> Unit) {
+    val c = Mv.c
+    Column(Modifier.fillMaxWidth().animateContentSize()) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 4.dp, end = 2.dp, bottom = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            MvText(
+                "Recent searches", Modifier.weight(1f), size = 11.5.sp, weight = FontWeight.Bold,
+                color = c.mut, letterSpacing = 0.4.sp
+            )
+            Row(
+                Modifier.clip(RoundedCornerShape(8.dp)).plainClickable { flow.clearHistory() }.padding(horizontal = 8.dp, vertical = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically
+            ) {
+                MvIcon(MvIcons.Trash, 13.dp, tint = c.acc)
+                MvText("Clear all", size = 11.5.sp, weight = FontWeight.Bold, color = c.acc)
+            }
+        }
+        flow.history.forEachIndexed { i, q ->
+            key(q) {
+                Column(Modifier.fillMaxWidth().riseIn(q, delayMs = i * 30)) {
+                    Row(
+                        Modifier.fillMaxWidth().plainClickable { onPicked(); flow.useHistory(q) }.padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        MvIcon(MvIcons.History, 15.dp, tint = c.mut)
+                        MvText(
+                            q, Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 11.dp), size = 13.sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
+                        Box(
+                            Modifier.size(32.dp).plainClickable { flow.removeHistory(q) },
+                            contentAlignment = Alignment.Center
+                        ) { MvIcon(MvIcons.Close, 13.dp, tint = c.mut) }
+                    }
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(c.line))
+                }
+            }
+        }
     }
 }
 
