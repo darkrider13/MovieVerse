@@ -81,9 +81,9 @@ class AddFlow(
     var query by mutableStateOf("")
         private set
     var find by mutableStateOf<FindUi>(FindUi.Idle)
+        private set
     /** recent searches shown under the empty search box (newest first) */
     var history by mutableStateOf<List<String>>(emptyList())
-        private set
         private set
     private var sres: List<QItem> = emptyList()
     private var curStatus = "watched"
