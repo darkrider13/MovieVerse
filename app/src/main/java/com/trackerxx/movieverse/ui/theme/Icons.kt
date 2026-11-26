@@ -62,6 +62,7 @@ object MvIcons {
         listOf(s(rrect(9f, 9f, 12f, 12f, 2f)), s("M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1")), 2f, true
     )
     val Search = MvIconData(listOf(s(circ(11f, 11f, 7f)), s("M20 20l-3.5-3.5")), 2.2f, false)
+    val History = MvIconData(listOf(s(circ(12f, 12f, 9f)), s("M12 7v5l3.5 2")), 2f, true)
     val Eye = MvIconData(listOf(s("M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"), s(circ(12f, 12f, 3f))), 2f, true)
     val Plus = MvIconData(listOf(s("M12 5v14M5 12h14")), 2.6f, false)
     val Back = MvIconData(listOf(s("M15 5l-7 7 7 7")), 2.4f, true)
